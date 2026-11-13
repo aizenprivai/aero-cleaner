@@ -1,0 +1,236 @@
+//! Background features: the weekly automatic clean, the low-disk alert,
+//! desktop notifications and the systemd user timers that run them.
+
+use crate::cleaner::{self, format_bytes, Kind};
+use crate::settings::{self, Settings};
+use crate::tools;
+use std::fs;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::time::{Duration, SystemTime};
+
+fn home() -> PathBuf {
+    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+}
+
+/// The installed binary if present, so timers keep working after rebuilds.
+fn exe() -> PathBuf {
+    let installed = home().join(".local/bin/aero-cleaner");
+    if installed.exists() { installed } else { std::env::current_exe().unwrap_or(installed) }
+}
+
+/// Shows a desktop notification. With `action`, waits for a click and
+/// returns true if the action button was pressed.
+pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
+    let mut cmd = Command::new("notify-send");
+    cmd.args(["--app-name=AeroClean", "--icon=edit-clear-all", title, body]);
+    if let Some(a) = action {
+        cmd.arg(format!("--action=open={a}"));
+    }
+    match cmd.stderr(Stdio::null()).output() {
+        Ok(out) => String::from_utf8_lossy(&out.stdout).trim() == "open",
+        Err(_) => false,
+    }
+}
+
+/// Opens the main window in its own systemd scope, so it outlives the
+/// short-lived timer service that launched it.
+pub fn launch_gui(args: &[&str]) {
+    let ok = Command::new("systemd-run")
+        .args(["--user", "--collect", "--quiet"])
+        .arg(exe())
+        .args(args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success());
+    if !ok {
+        let _ = Command::new(exe()).args(args).spawn();
+    }
+}
+
+/// What the automatic clean touches: only user-level, password-free items.
+pub fn auto_kinds(settings: &Settings, browsers_open: bool) -> Vec<Kind> {
+    let mut kinds = vec![Kind::Thumbnails];
+    if !browsers_open {
+        kinds.push(Kind::AppCache);
+    }
+    if settings.auto_trash {
+        kinds.push(Kind::Trash);
+    }
+    kinds
+}
+
+/// Runs the automatic clean, records it in the history and returns a summary.
+pub fn auto_clean(settings: &Settings) -> String {
+    let browsers = cleaner::running_browsers();
+    let kinds = auto_kinds(settings, !browsers.is_empty());
+    let measure = |kinds: &[Kind]| -> u64 { kinds.iter().filter_map(|k| cleaner::scan(*k, &settings.exclusions).size).sum() };
+    let before = measure(&kinds);
+    cleaner::clean(&kinds, &settings.exclusions, &|_| {});
+    let freed = before.saturating_sub(measure(&kinds));
+    let names: Vec<&str> = cleaner::CATEGORIES.iter().filter(|c| kinds.contains(&c.kind)).map(|c| c.name).collect();
+    settings::record(freed, &format!("Automatic: {}", names.join(", ")));
+    let mut summary = format!("Freed {} ({})", format_bytes(freed), names.join(", "));
+    if !browsers.is_empty() {
+        summary.push_str(&format!(". Browser cache skipped because {} is open.", browsers.join(" and ")));
+    }
+    summary
+}
+
+fn warning_stamp() -> PathBuf {
+    home().join(".local/share/aero-cleaner/last-disk-warning")
+}
+
+/// True when free space is below the threshold and no warning was shown in
+/// the last 24 hours.
+pub fn disk_is_low(settings: &Settings) -> Option<(u64, u64)> {
+    let (total, avail) = tools::disk_usage()?;
+    let low = avail * 100 < total * settings.low_disk_percent as u64;
+    let recently_warned = fs::metadata(warning_stamp())
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| SystemTime::now().duration_since(t).ok())
+        .is_some_and(|age| age < Duration::from_secs(86400));
+    (low && !recently_warned).then_some((total, avail))
+}
+
+pub fn check_disk(settings: &Settings) {
+    let Some((total, avail)) = disk_is_low(settings) else { return };
+    let _ = fs::create_dir_all(warning_stamp().parent().unwrap());
+    let _ = fs::write(warning_stamp(), "");
+    let body = format!("Only {} free of {}. AeroClean can help you make room.", format_bytes(avail), format_bytes(total));
+    if notify("Your disk is almost full", &body, Some("Open AeroClean")) {
+        launch_gui(&["--tab", "map"]);
+    }
+}
+
+// ---------- systemd user timers ----------
+
+pub struct Job {
+    pub unit: &'static str,
+    pub description: &'static str,
+    pub command: &'static str,
+    pub schedule: &'static str,
+}
+
+pub const AUTO_CLEAN: Job = Job {
+    unit: "aero-cleaner-clean",
+    description: "AeroClean weekly automatic clean",
+    command: "clean --auto",
+    schedule: "OnCalendar=weekly\nRandomizedDelaySec=1h\nPersistent=true",
+};
+
+pub const DISK_CHECK: Job = Job {
+    unit: "aero-cleaner-disk",
+    description: "AeroClean low disk space check",
+    command: "check-disk",
+    schedule: "OnBootSec=10min\nOnUnitActiveSec=1h",
+};
+
+fn unit_dir() -> PathBuf {
+    std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config")).join("systemd/user")
+}
+
+fn systemctl(args: &[&str]) -> Result<String, String> {
+    let out = Command::new("systemctl").arg("--user").args(args).env("LC_ALL", "C").output().map_err(|e| e.to_string())?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
+}
+
+pub fn unit_files(job: &Job) -> (String, String) {
+    let service = format!(
+        "[Unit]\nDescription={}\n\n[Service]\nType=oneshot\nExecStart=\"{}\" {}\nNice=10\nIOSchedulingClass=idle\n",
+        job.description,
+        exe().display(),
+        job.command
+    );
+    let timer = format!("[Unit]\nDescription={} (timer)\n\n[Timer]\n{}\n\n[Install]\nWantedBy=timers.target\n", job.description, job.schedule);
+    (service, timer)
+}
+
+pub fn enable(job: &Job) -> Result<(), String> {
+    let dir = unit_dir();
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let (service, timer) = unit_files(job);
+    fs::write(dir.join(format!("{}.service", job.unit)), service).map_err(|e| e.to_string())?;
+    fs::write(dir.join(format!("{}.timer", job.unit)), timer).map_err(|e| e.to_string())?;
+    systemctl(&["daemon-reload"])?;
+    systemctl(&["enable", "--now", &format!("{}.timer", job.unit)]).map(|_| ())
+}
+
+pub fn disable(job: &Job) -> Result<(), String> {
+    let _ = systemctl(&["disable", "--now", &format!("{}.timer", job.unit)]);
+    let dir = unit_dir();
+    let _ = fs::remove_file(dir.join(format!("{}.service", job.unit)));
+    let _ = fs::remove_file(dir.join(format!("{}.timer", job.unit)));
+    systemctl(&["daemon-reload"]).map(|_| ())
+}
+
+pub fn is_enabled(job: &Job) -> bool {
+    systemctl(&["is-enabled", &format!("{}.timer", job.unit)]).is_ok_and(|s| s == "enabled")
+}
+
+/// Human-readable next run time, e.g. "Mon 2026-11-16 00:42:00 CET".
+pub fn next_run(job: &Job) -> Option<String> {
+    let v = systemctl(&["show", "-P", "NextElapseUSecRealtime", &format!("{}.timer", job.unit)]).ok()?;
+    (!v.is_empty() && v != "n/a").then_some(v)
+}
+
+/// Adds "Quick clean" and "Disk map" to the right-click menu of the
+/// AeroClean launcher (menu, panel and desktop icons).
+pub fn install_launcher() -> Result<(), String> {
+    let dir = home().join(".local/share/applications");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let exe = exe();
+    let e = exe.display();
+    let text = format!(
+        "[Desktop Entry]\nName=AeroClean\nComment=Clean caches, logs and junk files\nExec={e}\nIcon=edit-clear-all\nTerminal=false\nType=Application\nCategories=System;\nStartupWMClass=aero-cleaner\nActions=QuickClean;DiskMap;\n\n\
+         [Desktop Action QuickClean]\nName=Quick clean\nExec={e} clean --auto\n\n\
+         [Desktop Action DiskMap]\nName=Disk map\nExec={e} --tab map\n"
+    );
+    fs::write(dir.join("aero-cleaner.desktop"), text).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn units_are_well_formed() {
+        let (service, timer) = unit_files(&AUTO_CLEAN);
+        assert!(service.contains("Type=oneshot") && service.contains("clean --auto"));
+        assert!(service.lines().any(|l| l.starts_with("ExecStart=\"/") && l.ends_with("\" clean --auto")), "absolute, quoted path: {service}");
+        assert!(timer.contains("OnCalendar=weekly") && timer.contains("WantedBy=timers.target"));
+        let (_, disk_timer) = unit_files(&DISK_CHECK);
+        assert!(disk_timer.contains("OnUnitActiveSec=1h"));
+    }
+
+    #[test]
+    fn systemd_accepts_the_units() {
+        let dir = std::env::temp_dir().join(format!("aero-units-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        for job in [&AUTO_CLEAN, &DISK_CHECK] {
+            let (service, timer) = unit_files(job);
+            fs::write(dir.join(format!("{}.service", job.unit)), service).unwrap();
+            fs::write(dir.join(format!("{}.timer", job.unit)), &timer).unwrap();
+            let out = Command::new("systemd-analyze").args(["--user", "verify"]).arg(dir.join(format!("{}.timer", job.unit))).output().unwrap();
+            let err = String::from_utf8_lossy(&out.stderr);
+            assert!(out.status.success(), "systemd rejected {}: {err}", job.unit);
+        }
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn auto_clean_never_needs_root() {
+        let s = Settings { auto_trash: true, ..Default::default() };
+        for k in auto_kinds(&s, false) {
+            let cat = cleaner::CATEGORIES.iter().find(|c| c.kind == k).unwrap();
+            assert!(!cat.root, "{:?} would need a password", k);
+        }
+        assert!(!auto_kinds(&s, true).contains(&Kind::AppCache), "browser cache skipped while a browser runs");
+    }
+}
