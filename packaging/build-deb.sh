@@ -56,9 +56,9 @@ Upstream-Name: aero-cleaner
 
 Files: *
 Copyright: $(date +%Y) $(git config user.name 2>/dev/null || echo "AeroClean authors")
-License: all-rights-reserved
- No license has been chosen yet: all rights reserved by the author.
+License: MIT
 EOF
+sed -n '3,$p' LICENSE | sed 's/^$/./; s/^/ /' >> "$STAGE/usr/share/doc/aero-cleaner/copyright"
 
 INSTALLED_KB=$(du -sk "$STAGE/usr" | cut -f1)
 mkdir -p "$STAGE/DEBIAN"

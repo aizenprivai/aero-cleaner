@@ -48,7 +48,6 @@
 - README with screenshots; 21 automated tests
 
 ## 💡 Ideas for later
-- Choose a license (none yet: all rights reserved)
 - Flatpak package (its sandbox makes system cleaning harder)
 - Firefox history cleaning (needs SQLite: history and bookmarks share one database)
 - More languages (the translation table makes this a single file per language)

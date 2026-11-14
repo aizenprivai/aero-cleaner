@@ -2,6 +2,8 @@
 name = "aero-cleaner"
 version = "1.0.0"
 edition = "2024"
+license = "MIT"
+description = "Frutiger Aero style system cleaner for Linux Mint"
 
 [dependencies]
 eframe = "0.37.0"

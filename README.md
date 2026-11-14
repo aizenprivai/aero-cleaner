@@ -89,3 +89,7 @@ AERO_I18N_MISSING=1 cargo run     # with language=fr, prints untranslated string
 | `src/i18n.rs` | French translation |
 
 See [ROADMAP.md](ROADMAP.md) for what's done and what's next.
+
+## License
+
+[MIT](LICENSE)
