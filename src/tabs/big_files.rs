@@ -6,10 +6,11 @@ impl App {
     pub(crate) fn start_big_scan(&mut self) {
         self.big_scanning = Some(0);
         self.big_msg.clear();
+        let min = self.settings.big_min_mb * 1_000_000;
         let tx = self.notifier();
         std::thread::spawn(move || {
             let progress_tx = tx.clone();
-            let files = tools::find_big_files(100_000_000, 100, &move |n| {
+            let files = tools::find_big_files(min, 100, &move |n| {
                 let _ = progress_tx.send(Msg::BigProgress(n));
             });
             let _ = tx.send(Msg::BigDone(files));
@@ -27,7 +28,7 @@ impl App {
             ui,
             area,
             "Big files",
-            "The 100 largest files over 100 MB in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.",
+            &format!("The 100 largest files over {} in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.", format_bytes(self.settings.big_min_mb * 1_000_000)),
             Some((label, !scanning)),
         );
         if clicked {
@@ -80,28 +81,28 @@ impl App {
                     let name = f.path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
                     let dir = f.path.parent().map(|d| d.to_string_lossy().replacen(&home, "~", 1)).unwrap_or_default();
                     let text_clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 290.0, rect.max.y)));
-                    text_clip.text(pos2(rect.min.x + 56.0, cy - 9.0), Align2::LEFT_CENTER, &name, bold(15.0), th.text);
-                    let mut bx = rect.min.x + 56.0 + text_clip.layout_no_wrap(name.clone(), bold(15.0), th.text).size().x + 8.0;
+                    text_clip.text(pos2(rect.min.x + 56.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(&name), bold(15.0), th.text);
+                    let mut bx = rect.min.x + 56.0 + text_clip.layout_no_wrap(crate::i18n::tr(name.clone()), bold(15.0), th.text).size().x + 8.0;
                     for (show, label, color) in [(duplicate, "duplicate", th.accent), (app_file, "⚠ app file", th.root_orb)] {
                         if !show {
                             continue;
                         }
-                        let tag = text_clip.layout_no_wrap(label.to_string(), regular(10.5), aero::darken(color, 0.6));
+                        let tag = text_clip.layout_no_wrap(crate::i18n::tr(label.to_string()), regular(10.5), aero::darken(color, 0.6));
                         let br = Rect::from_min_size(pos2(bx, cy - 17.0), vec2(tag.size().x + 12.0, 16.0));
                         aero::rrect_grad(&text_clip, br, 8.0, &[(0.0, aero::lighten(color, 0.65)), (1.0, aero::lighten(color, 0.3))]);
                         text_clip.galley(br.center() - tag.size() / 2.0, tag, aero::darken(color, 0.6));
                         bx = br.max.x + 6.0;
                     }
-                    text_clip.text(pos2(rect.min.x + 56.0, cy + 11.0), Align2::LEFT_CENTER, format!("{dir}  ·  {}", tools::age(f.modified)), regular(12.0), th.soft);
+                    text_clip.text(pos2(rect.min.x + 56.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(format!("{dir}  ·  {}", tools::age(f.modified))), regular(12.0), th.soft);
                     embossed(p, pos2(rect.max.x - 200.0, cy), Align2::RIGHT_CENTER, &format_bytes(f.size), bold(16.0), th.text);
 
                     let open_r = Rect::from_min_size(pos2(rect.max.x - 184.0, cy - 15.0), vec2(80.0, 30.0));
                     let trash_r = Rect::from_min_size(pos2(rect.max.x - 96.0, cy - 15.0), vec2(84.0, 30.0));
-                    if aero::aqua_button(ui, open_r, "📂 Open", th.accent, true).on_hover_text("Open the folder that contains this file").clicked() {
+                    if aero::aqua_button(ui, open_r, "📂 Open", th.accent, true).on_hover_text(crate::i18n::tr("Open the folder that contains this file")).clicked() {
                         tools::open_folder(&f.path);
                     }
                     let tip = if app_file { "This file is inside an app's hidden folder. Trashing it may break that app." } else { "Move to Trash (recoverable)" };
-                    if aero::aqua_button(ui, trash_r, "🗑 Trash", th.root_orb, true).on_hover_text(tip).clicked() {
+                    if aero::aqua_button(ui, trash_r, "🗑 Trash", th.root_orb, true).on_hover_text(crate::i18n::tr(tip)).clicked() {
                         match tools::trash(&f.path) {
                             Ok(()) => {
                                 remove = Some(i);

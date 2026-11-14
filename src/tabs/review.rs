@@ -20,7 +20,7 @@ impl App {
             let inner = sheet.shrink(24.0);
             embossed(&p, pos2(inner.min.x, inner.min.y + 14.0), Align2::LEFT_CENTER, "Ready to clean?", bold(24.0), th.text);
             let summary = format!("{} items selected · about {} will be freed", review.kinds.len(), format_bytes(total));
-            p.text(pos2(inner.min.x, inner.min.y + 44.0), Align2::LEFT_CENTER, summary, regular(14.0), th.soft);
+            p.text(pos2(inner.min.x, inner.min.y + 44.0), Align2::LEFT_CENTER, crate::i18n::tr(summary), regular(14.0), th.soft);
 
             let mut top = inner.min.y + 66.0;
             if !review.browsers.is_empty() {
@@ -32,7 +32,7 @@ impl App {
                     "⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.",
                     review.browsers.join(" and ")
                 );
-                let g = p.layout(msg, regular(13.0), aero::darken(c, 0.7), warn.width() - 24.0);
+                let g = p.layout(crate::i18n::tr(msg), regular(13.0), aero::darken(c, 0.7), warn.width() - 24.0);
                 p.galley(pos2(warn.min.x + 12.0, warn.center().y - g.size().y / 2.0), g, aero::darken(c, 0.7));
                 top = warn.max.y + 10.0;
             }
@@ -45,7 +45,7 @@ impl App {
                         let a = spin * 5.0 + k as f32 * std::f32::consts::TAU / 8.0;
                         p.circle_filled(list.center() - vec2(0.0, 14.0) + Vec2::angled(a) * 14.0, 2.0 + k as f32 * 0.4, with_alpha(th.accent, (60 + k * 24) as u8));
                     }
-                    p.text(list.center() + vec2(0.0, 18.0), Align2::CENTER_CENTER, "Preparing the list...", regular(14.0), th.soft);
+                    p.text(list.center() + vec2(0.0, 18.0), Align2::CENTER_CENTER, crate::i18n::tr("Preparing the list..."), regular(14.0), th.soft);
                 }
                 Some(lines) => {
                     ui.scope_builder(egui::UiBuilder::new().max_rect(list.shrink(12.0)), |ui| {
@@ -54,12 +54,12 @@ impl App {
                                 let cat = CATEGORIES.iter().find(|c| c.kind == *kind).unwrap();
                                 let size = self.items.iter().zip(CATEGORIES).find(|(_, c)| c.kind == *kind).and_then(|(it, _)| it.result.as_ref()?.size);
                                 let title = match size {
-                                    Some(sz) => format!("{} {}  ·  {}", cat.icon, cat.name, format_bytes(sz)),
-                                    None => format!("{} {}", cat.icon, cat.name),
+                                    Some(sz) => format!("{} {}  ·  {}", cat.icon, crate::i18n::t(cat.name), format_bytes(sz)),
+                                    None => format!("{} {}", cat.icon, crate::i18n::t(cat.name)),
                                 };
-                                ui.label(egui::RichText::new(title).font(bold(15.0)).color(th.text));
+                                ui.label(egui::RichText::new(crate::i18n::tr(title)).font(bold(15.0)).color(th.text));
                                 for l in ls {
-                                    ui.label(egui::RichText::new(format!("    {l}")).font(regular(12.5)).color(th.soft));
+                                    ui.label(egui::RichText::new(crate::i18n::tr(format!("    {l}"))).font(regular(12.5)).color(th.soft));
                                 }
                                 ui.add_space(6.0);
                             }

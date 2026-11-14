@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>AeroClean</title>
+  <defs>
+    <radialGradient id="body" cx="50%" cy="38%" r="62%">
+      <stop offset="0%" stop-color="#7fe0ff"/>
+      <stop offset="45%" stop-color="#1e9be8"/>
+      <stop offset="78%" stop-color="#1a7d3f"/>
+      <stop offset="100%" stop-color="#3fbf4a"/>
+    </radialGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9be86a"/>
+      <stop offset="100%" stop-color="#2f9a24"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#003060" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#003060" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="orb"><circle cx="128" cy="124" r="104"/></clipPath>
+  </defs>
+  <ellipse cx="128" cy="236" rx="92" ry="14" fill="url(#shadow)"/>
+  <circle cx="128" cy="124" r="104" fill="url(#body)"/>
+  <g clip-path="url(#orb)">
+    <ellipse cx="96" cy="250" rx="150" ry="78" fill="url(#grass)" opacity="0.9"/>
+  </g>
+  <circle cx="128" cy="124" r="104" fill="none" stroke="#0b4f86" stroke-width="3" opacity="0.7"/>
+  <!-- Sparkle -->
+  <path d="M128 58 C134 100 142 110 184 118 C142 126 134 136 128 178 C122 136 114 126 72 118 C114 110 122 100 128 58 Z"
+        fill="#ffffff" stroke="#0b4f86" stroke-opacity="0.25" stroke-width="2"/>
+  <path d="M182 64 C184 76 187 79 199 81 C187 83 184 86 182 98 C180 86 177 83 165 81 C177 79 180 76 182 64 Z" fill="#ffffff"/>
+  <circle cx="84" cy="168" r="6" fill="#ffffff" opacity="0.9"/>
+  <!-- Glossy highlight -->
+  <ellipse cx="128" cy="64" rx="74" ry="40" fill="url(#gloss)"/>
+</svg>

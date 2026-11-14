@@ -6,6 +6,7 @@ mod cleaner;
 mod devclean;
 mod diskmap;
 mod dupes;
+mod i18n;
 mod settings;
 mod tabs;
 mod theme;
@@ -133,7 +134,7 @@ impl App {
         let themes = theme::all();
         let theme = theme::load(&themes);
         let mut app = App {
-            items: CATEGORIES.iter().map(|c| Item { on: c.default_on, result: None }).collect(),
+            items: vec![],
             phase: Phase::Idle,
             tx,
             rx,
@@ -165,9 +166,31 @@ impl App {
             auto: Default::default(),
             boot: Default::default(),
         };
+        app.items = app.initial_selection();
         app.apply_visuals(ctx);
         app.start_scan();
         app
+    }
+
+    /// Ticked categories: the remembered selection, or the recommended defaults.
+    fn initial_selection(&self) -> Vec<Item> {
+        CATEGORIES
+            .iter()
+            .map(|c| {
+                let on = match &self.settings.selected {
+                    Some(sel) => sel.contains(&format!("{:?}", c.kind)),
+                    None => c.default_on,
+                };
+                Item { on, result: None }
+            })
+            .collect()
+    }
+
+    /// Saves the current ticks so they come back next time.
+    fn remember_selection(&mut self) {
+        let sel = self.items.iter().zip(CATEGORIES).filter(|(it, _)| it.on).map(|(_, c)| format!("{:?}", c.kind)).collect();
+        self.settings.selected = Some(sel);
+        self.settings.save();
     }
 
     fn apply_visuals(&self, ctx: &egui::Context) {
@@ -224,8 +247,9 @@ impl App {
         self.review = Some(Review { kinds: kinds.clone(), lines: None, browsers });
         let tx = self.notifier();
         let excl = self.settings.exclusions.clone();
+        let days = self.settings.journal_days;
         std::thread::spawn(move || {
-            let lines = kinds.iter().map(|&k| (k, cleaner::preview(k, &excl))).collect();
+            let lines = kinds.iter().map(|&k| (k, cleaner::preview(k, &excl, days))).collect();
             tx.send(Msg::Preview(lines));
         });
     }
@@ -237,9 +261,10 @@ impl App {
         self.log.clear();
         let tx = self.notifier();
         let excl = self.settings.exclusions.clone();
+        let days = self.settings.journal_days;
         std::thread::spawn(move || {
             let log_tx = tx.clone();
-            cleaner::clean(&kinds, &excl, &move |line| {
+            cleaner::clean(&kinds, &excl, days, &move |line| {
                 let _ = log_tx.send(Msg::Log(line));
             });
             let _ = tx.send(Msg::CleanDone);
@@ -325,7 +350,8 @@ impl App {
                     }
                 }
                 Msg::BigDone(files) => {
-                    self.big_msg = if files.is_empty() { "No files over 100 MB in your home folder. Nice!".into() } else { String::new() };
+                    let min = format_bytes(self.settings.big_min_mb * 1_000_000);
+                    self.big_msg = if files.is_empty() { format!("No files over {min} in your home folder. Nice!") } else { String::new() };
                     self.big = files;
                     self.big_scanning = None;
                     self.big_done = true;
@@ -382,13 +408,13 @@ impl eframe::App for App {
         let logo = pos2(inner.min.x + 32.0, inner.min.y + 34.0);
         aero::orb(&p, logo, 32.0, th.logo, "✨");
         embossed(&p, pos2(logo.x + 48.0, logo.y - 9.0), Align2::LEFT_CENTER, "AeroClean", bold(34.0), th.text);
-        p.text(pos2(logo.x + 50.0, logo.y + 20.0), Align2::LEFT_CENTER, "Give your PC that fresh, sparkling feeling", regular(15.0), th.soft);
+        p.text(pos2(logo.x + 50.0, logo.y + 20.0), Align2::LEFT_CENTER, crate::i18n::tr("Give your PC that fresh, sparkling feeling"), regular(15.0), th.soft);
 
         let total = self.total_of(&self.selected());
         let th = &self.themes[self.theme];
         let pill = Rect::from_min_size(pos2(inner.max.x - 240.0, inner.min.y), vec2(240.0, 46.0));
         aero::surface(&p, pill, 23.0, th, false, None);
-        p.text(pill.center() - vec2(0.0, 10.0), Align2::CENTER_CENTER, "Ready to free", regular(12.0), th.soft);
+        p.text(pill.center() - vec2(0.0, 10.0), Align2::CENTER_CENTER, crate::i18n::tr("Ready to free"), regular(12.0), th.soft);
         let amount_color = if th.dark { aero::lighten(th.go, 0.35) } else { aero::darken(th.go, 0.1) };
         embossed(&p, pill.center() + vec2(0.0, 9.0), Align2::CENTER_CENTER, &format_bytes(total), bold(20.0), amount_color);
         if let Some((size, avail)) = self.disk {
@@ -519,11 +545,12 @@ Usage:
 fn main() -> eframe::Result {
     // Command-line mode, used by the systemd timers and the launcher's right-click actions.
     let args: Vec<String> = std::env::args().skip(1).collect();
+    i18n::set_language(&Settings::load().language);
     match args.first().map(String::as_str) {
         Some("clean") if args.iter().any(|a| a == "--auto") => {
             let summary = automation::auto_clean(&Settings::load());
             println!("{summary}");
-            automation::notify("AeroClean cleaned up ✨", &summary, None);
+            automation::notify(&i18n::tr("AeroClean cleaned up ✨"), &i18n::tr(&summary), None);
             return Ok(());
         }
         Some("check-disk") => {
@@ -536,9 +563,11 @@ fn main() -> eframe::Result {
         }
         _ => {}
     }
-    // Add "Quick clean" / "Disk map" to the launcher's right-click menu once.
+    // Install/refresh the user launcher (icon + right-click actions) once.
+    // Skipped when the .deb package provides the system-wide launcher.
     let launcher = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/applications/aero-cleaner.desktop");
-    if !std::fs::read_to_string(&launcher).unwrap_or_default().contains("Actions=QuickClean") {
+    let packaged = std::path::Path::new("/usr/share/applications/aero-cleaner.desktop").exists();
+    if !packaged && !std::fs::read_to_string(&launcher).unwrap_or_default().contains("Icon=aero-cleaner") {
         let _ = automation::install_launcher();
     }
 
@@ -547,7 +576,8 @@ fn main() -> eframe::Result {
             .with_title("AeroClean")
             .with_app_id("aero-cleaner")
             .with_inner_size([1080.0, 800.0])
-            .with_min_inner_size([960.0, 680.0]),
+            .with_min_inner_size([960.0, 680.0])
+            .with_icon(Arc::new(eframe::icon_data::from_png_bytes(include_bytes!("../assets/aero-cleaner.png")).unwrap_or_default())),
         ..Default::default()
     };
     eframe::run_native(

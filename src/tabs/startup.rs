@@ -41,8 +41,8 @@ impl App {
                     }
                     aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, if e.system { th.root_orb } else { th.user_orb }, "🚀");
                     let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 130.0, rect.max.y)));
-                    clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, &e.name, bold(15.0), th.text);
-                    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, &e.comment, regular(12.0), th.soft);
+                    clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(&e.name), bold(15.0), th.text);
+                    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(&e.comment), regular(12.0), th.soft);
                     let (badge, color) = if e.critical {
                         ("needed by desktop", rgba(150, 160, 172, 255))
                     } else if e.enabled {
@@ -50,13 +50,13 @@ impl App {
                     } else {
                         ("off", rgba(150, 160, 172, 255))
                     };
-                    let tag = p.layout_no_wrap(badge.to_string(), regular(11.0), aero::darken(color, 0.6));
+                    let tag = p.layout_no_wrap(crate::i18n::tr(badge.to_string()), regular(11.0), aero::darken(color, 0.6));
                     let br = Rect::from_min_size(pos2(rect.max.x - 18.0 - tag.size().x - 16.0, cy - 10.0), vec2(tag.size().x + 16.0, 20.0));
                     aero::rrect_grad(p, br, 10.0, &[(0.0, aero::lighten(color, 0.6)), (1.0, aero::lighten(color, 0.2))]);
                     aero::rrect_outline(p, br, 10.0, Stroke::new(1.0, aero::darken(color, 0.25)));
                     p.galley(br.center() - tag.size() / 2.0, tag, aero::darken(color, 0.6));
                     if e.critical {
-                        resp.on_hover_text("Part of the desktop. Turning it off could break things, so it's locked.");
+                        resp.on_hover_text(crate::i18n::tr("Part of the desktop. Turning it off could break things, so it's locked."));
                     } else if hovered {
                         resp.on_hover_cursor(egui::CursorIcon::PointingHand);
                     }

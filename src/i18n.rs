@@ -1,0 +1,506 @@
+//! English/French translation.
+//!
+//! Text is translated where it is drawn (`tr`), so most code just writes
+//! English. Formatted text is matched against templates: "Freed 1,2 Go"
+//! matches "Freed {}" and becomes "Libéré 1,2 Go". Uppercase section
+//! headers match their template case-insensitively.
+//!
+//! Run with `AERO_I18N_MISSING=1` to print strings that have no translation.
+
+use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
+
+static FRENCH: AtomicBool = AtomicBool::new(false);
+
+/// "auto" follows the system language; "en" and "fr" force one.
+pub fn set_language(setting: &str) {
+    let fr = match setting {
+        "fr" => true,
+        "en" => false,
+        _ => system_is_french(),
+    };
+    FRENCH.store(fr, Ordering::Relaxed);
+}
+
+pub fn is_french() -> bool {
+    FRENCH.load(Ordering::Relaxed)
+}
+
+pub fn system_is_french() -> bool {
+    ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .filter_map(|k| std::env::var(k).ok())
+        .find(|v| !v.is_empty())
+        .is_some_and(|v| v.starts_with("fr"))
+}
+
+struct Table {
+    exact: HashMap<String, &'static str>,
+    upper: HashMap<String, String>,
+    /// (literal parts of the English template, French template), most specific first.
+    templates: Vec<(Vec<String>, &'static str)>,
+}
+
+fn table() -> &'static Table {
+    static T: OnceLock<Table> = OnceLock::new();
+    T.get_or_init(|| {
+        let mut exact = HashMap::new();
+        let mut upper = HashMap::new();
+        let mut templates = Vec::new();
+        for (en, fr) in FR {
+            if en.contains("{}") {
+                templates.push((en.split("{}").map(str::to_string).collect::<Vec<_>>(), *fr));
+            } else {
+                exact.insert(en.to_string(), *fr);
+                upper.insert(en.to_uppercase(), fr.to_uppercase());
+            }
+        }
+        templates.sort_by_key(|(parts, _)| std::cmp::Reverse(parts.iter().map(|p| p.len()).sum::<usize>()));
+        Table { exact, upper, templates }
+    })
+}
+
+/// Extracts the holes if `s` matches the template `parts` (case-insensitive when `upper`).
+fn match_template(s: &str, parts: &[String], upper: bool) -> Option<Vec<String>> {
+    let norm = |x: &str| if upper { x.to_uppercase() } else { x.to_string() };
+    let first = norm(&parts[0]);
+    let mut rest = s.strip_prefix(first.as_str())?;
+    let mut holes = Vec::new();
+    for (i, lit) in parts.iter().enumerate().skip(1) {
+        let lit = norm(lit);
+        let last = i == parts.len() - 1;
+        let pos = if last {
+            if !rest.ends_with(lit.as_str()) {
+                return None;
+            }
+            rest.len() - lit.len()
+        } else if lit.is_empty() {
+            return None;
+        } else {
+            rest.find(lit.as_str())?
+        };
+        if pos == 0 {
+            return None; // holes are never empty
+        }
+        holes.push(rest[..pos].to_string());
+        rest = &rest[pos + lit.len()..];
+    }
+    Some(holes)
+}
+
+fn fill(template: &str, holes: &[String]) -> String {
+    let mut out = template.to_string();
+    if template.contains("{0}") {
+        for (i, h) in holes.iter().enumerate() {
+            out = out.replace(&format!("{{{i}}}"), h);
+        }
+    } else {
+        for h in holes {
+            out = out.replacen("{}", h, 1);
+        }
+    }
+    out
+}
+
+fn translate(s: &str) -> Option<String> {
+    let t = table();
+    if let Some(fr) = t.exact.get(s) {
+        return Some(fr.to_string());
+    }
+    let is_upper = s.chars().any(|c| c.is_alphabetic()) && !s.chars().any(|c| c.is_lowercase());
+    if is_upper {
+        if let Some(fr) = t.upper.get(s) {
+            return Some(fr.clone());
+        }
+    }
+    for (parts, fr) in &t.templates {
+        if let Some(holes) = match_template(s, parts, false) {
+            // Holes like "Cache" or "3 days ago" get translated too.
+            let holes: Vec<String> = holes.iter().map(|h| t.exact.get(h.as_str()).map(|f| f.to_string()).unwrap_or_else(|| h.clone())).collect();
+            return Some(fill(fr, &holes));
+        }
+        if is_upper {
+            if let Some(holes) = match_template(s, parts, true) {
+                return Some(fill(fr, &holes).to_uppercase());
+            }
+        }
+    }
+    None
+}
+
+/// Translates text about to be drawn. Leading/trailing spaces are kept.
+pub fn tr(s: impl AsRef<str>) -> String {
+    let s = s.as_ref();
+    if !is_french() {
+        return s.to_string();
+    }
+    static CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(Default::default);
+    if let Some(hit) = cache.lock().unwrap().get(s) {
+        return hit.clone();
+    }
+    let core = s.trim();
+    let out = match translate(core) {
+        Some(fr) => {
+            let start = &s[..s.len() - s.trim_start().len()];
+            let end = &s[s.trim_end().len()..];
+            format!("{start}{fr}{end}")
+        }
+        None => {
+            report_missing(core);
+            s.to_string()
+        }
+    };
+    let mut c = cache.lock().unwrap();
+    if c.len() > 4000 {
+        c.clear();
+    }
+    c.insert(s.to_string(), out.clone());
+    out
+}
+
+/// Translates a fixed English string (for text built before drawing).
+pub fn t(s: &'static str) -> &'static str {
+    if !is_french() {
+        return s;
+    }
+    table().exact.get(s).copied().unwrap_or(s)
+}
+
+fn report_missing(s: &str) {
+    if std::env::var_os("AERO_I18N_MISSING").is_none() || s.chars().filter(|c| c.is_alphabetic()).count() < 2 {
+        return;
+    }
+    static SEEN: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    if SEEN.get_or_init(Default::default).lock().unwrap().insert(s.to_string()) {
+        eprintln!("[i18n missing] {s}");
+    }
+}
+
+/// English → French. "{}" marks a value; the French side may use {0}, {1}
+/// to reorder values.
+const FR: &[(&str, &str)] = &[
+    // ----- Header & navigation -----
+    ("Give your PC that fresh, sparkling feeling", "Redonnez à votre PC son éclat d'origine"),
+    ("Ready to free", "Espace récupérable"),
+    ("{} free of {}", "{} libres sur {}"),
+    ("💽 {} free of {}", "💽 {} libres sur {}"),
+    ("CLEAN", "NETTOYER"),
+    ("FIND SPACE", "TROUVER DE L'ESPACE"),
+    ("SYSTEM", "SYSTÈME"),
+    ("Cleaner", "Nettoyage"),
+    ("Browsers", "Navigateurs"),
+    ("Developer", "Développeur"),
+    ("Big files", "Gros fichiers"),
+    ("Duplicates", "Doublons"),
+    ("Disk map", "Carte du disque"),
+    ("Boot time", "Démarrage"),
+    ("Startup", "Applis auto"),
+    ("Themes", "Thèmes"),
+    ("Settings", "Paramètres"),
+    // ----- Cleaner -----
+    ("YOUR FILES", "VOS FICHIERS"),
+    ("SYSTEM  (asks for your password once)", "SYSTÈME  (mot de passe demandé une fois)"),
+    ("🔒 admin", "🔒 admin"),
+    ("🔍 Scan", "🔍 Analyser"),
+    ("✨ Clean now", "✨ Nettoyer"),
+    ("Scanning your system...", "Analyse de votre système..."),
+    ("Scan complete. Choose what to clean.", "Analyse terminée. Choisissez quoi nettoyer."),
+    ("Pick at least one thing to clean.", "Choisissez au moins un élément à nettoyer."),
+    ("Cleaning...", "Nettoyage..."),
+    ("✨ Sparkling clean! Freed {}", "✨ Tout propre ! {} libérés"),
+    ("up to {}", "jusqu'à {}"),
+    ("size unknown until removed", "taille connue après suppression"),
+    ("Flatpak not installed", "Flatpak n'est pas installé"),
+    ("1 package", "1 paquet"),
+    ("{} packages", "{} paquets"),
+    ("Trash", "Corbeille"),
+    ("Files you already moved to the trash", "Les fichiers déjà placés dans la corbeille"),
+    ("Thumbnail cache", "Cache des miniatures"),
+    ("Image previews, rebuilt automatically when needed", "Aperçus d'images, recréés automatiquement si besoin"),
+    ("App & browser cache", "Cache des applications et navigateurs"),
+    ("~/.cache and Flatpak app caches (close your browser first)", "~/.cache et caches des applis Flatpak (fermez d'abord votre navigateur)"),
+    ("Developer caches", "Caches de développement"),
+    ("Cargo, npm and Gradle download caches (re-downloaded on demand)", "Caches de téléchargement Cargo, npm et Gradle (retéléchargés si besoin)"),
+    ("Recent files history", "Historique des fichiers récents"),
+    ("The \"recently opened\" list (privacy)", "La liste « ouverts récemment » (vie privée)"),
+    ("Unused Flatpak runtimes", "Environnements Flatpak inutilisés"),
+    ("Runtimes no installed app needs anymore", "Environnements dont plus aucune appli n'a besoin"),
+    ("APT package cache", "Cache des paquets APT"),
+    ("Downloaded .deb installers that are already installed", "Paquets .deb téléchargés et déjà installés"),
+    ("Unused packages & old kernels", "Paquets inutiles et anciens noyaux"),
+    ("Packages nothing depends on anymore (apt autoremove)", "Paquets dont plus rien ne dépend (apt autoremove)"),
+    ("System journal", "Journal système"),
+    ("Old system logs, keeps the last {} days", "Anciens journaux système, garde les {} derniers jours"),
+    ("Rotated log files", "Anciens fichiers journaux"),
+    ("Old compressed logs in /var/log (*.gz, *.1, *.old)", "Anciens journaux compressés dans /var/log (*.gz, *.1, *.old)"),
+    ("Crash reports", "Rapports de plantage"),
+    ("Crash dumps in /var/crash", "Rapports de plantage dans /var/crash"),
+    ("Old temporary files", "Anciens fichiers temporaires"),
+    ("Files in /var/tmp untouched for 7+ days", "Fichiers de /var/tmp inutilisés depuis 7 jours ou plus"),
+    // Cleaning log
+    (">> Cleaning APT cache", ">> Nettoyage du cache APT"),
+    (">> Removing unused packages", ">> Suppression des paquets inutiles"),
+    (">> Shrinking system journal", ">> Réduction du journal système"),
+    (">> Deleting rotated logs", ">> Suppression des anciens journaux"),
+    (">> Deleting crash reports", ">> Suppression des rapports de plantage"),
+    (">> Deleting old temp files", ">> Suppression des anciens fichiers temporaires"),
+    (">> {}", ">> {}"),
+    ("{} files removed", "{} fichiers supprimés"),
+    ("{} item(s) in use, skipped", "{} élément(s) en cours d'utilisation, ignoré(s)"),
+    ("Asking for administrator password...", "Demande du mot de passe administrateur..."),
+    ("Password prompt was cancelled, system items were skipped.", "Mot de passe annulé, les éléments système ont été ignorés."),
+    ("System cleanup finished with errors (code {})", "Nettoyage système terminé avec des erreurs (code {})"),
+    ("System cleanup failed: {}", "Échec du nettoyage système : {}"),
+    ("Could not run pkexec: {}", "Impossible de lancer pkexec : {}"),
+    // ----- Review sheet -----
+    ("Ready to clean?", "Prêt à nettoyer ?"),
+    ("{} items selected · about {} will be freed", "{} éléments sélectionnés · environ {} seront libérés"),
+    ("⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.",
+     "⚠ {} est ouvert. Fermez-le d'abord pour un nettoyage complet : les fichiers qu'il utilise seront ignorés et il devra peut-être recharger des pages."),
+    ("Preparing the list...", "Préparation de la liste..."),
+    ("Cancel", "Annuler"),
+    ("kept: {}", "conservé : {}"),
+    ("…and {} more", "…et {} de plus"),
+    ("Removes: {}", "Supprime : {}"),
+    ("No packages to remove", "Aucun paquet à supprimer"),
+    ("Runs: flatpak uninstall --unused", "Lance : flatpak uninstall --unused"),
+    ("Deletes downloaded .deb files in /var/cache/apt/archives", "Supprime les fichiers .deb téléchargés dans /var/cache/apt/archives"),
+    ("Deletes system log entries older than {} days", "Supprime les entrées du journal de plus de {} jours"),
+    ("Deletes *.gz, *.old and *.1-style files in /var/log", "Supprime les fichiers *.gz, *.old et *.1 de /var/log"),
+    ("Deletes everything in /var/crash", "Supprime tout le contenu de /var/crash"),
+    ("Deletes files in /var/tmp untouched for 7+ days", "Supprime les fichiers de /var/tmp inutilisés depuis 7 jours ou plus"),
+    // ----- Big files -----
+    ("The 100 largest files over {} in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.",
+     "Les 100 plus gros fichiers de plus de {} dans votre dossier personnel. « Corbeille » déplace le fichier dans la corbeille : vous pouvez encore le récupérer."),
+    ("🔍 Find big files", "🔍 Chercher"),
+    ("🔍 Search again", "🔍 Relancer"),
+    ("Looked at {} files...", "{} fichiers examinés..."),
+    ("Press \"Find big files\" to see what takes up your space.", "Cliquez sur « Chercher » pour voir ce qui prend de la place."),
+    ("No files over {} in your home folder. Nice!", "Aucun fichier de plus de {} dans votre dossier personnel. Bravo !"),
+    ("{} FILES  ·  {} IN TOTAL", "{} FICHIERS  ·  {} AU TOTAL"),
+    ("duplicate", "doublon"),
+    ("⚠ app file", "⚠ fichier d'appli"),
+    ("📂 Open", "📂 Ouvrir"),
+    ("🗑 Trash", "🗑 Corbeille"),
+    ("Open the folder that contains this file", "Ouvrir le dossier qui contient ce fichier"),
+    ("Move to Trash (recoverable)", "Mettre à la corbeille (récupérable)"),
+    ("This file is inside an app's hidden folder. Trashing it may break that app.", "Ce fichier se trouve dans le dossier caché d'une appli. Le supprimer peut casser cette appli."),
+    ("Moved {} to the Trash. Empty the Trash in the Cleaner tab to free {}.", "{} a été mis à la corbeille. Videz la corbeille dans Nettoyage pour libérer {}."),
+    ("Could not move {} to the Trash: {}", "Impossible de mettre {} à la corbeille : {}"),
+    // ----- Duplicates -----
+    ("Duplicate files", "Fichiers en double"),
+    ("Files with exactly the same content, 1 MB or bigger. The oldest copy is marked as the original.", "Fichiers au contenu strictement identique, de 1 Mo ou plus. La copie la plus ancienne est l'originale."),
+    ("🔍 Find duplicates", "🔍 Chercher les doublons"),
+    ("Starting...", "Démarrage..."),
+    ("Comparing contents... {}%", "Comparaison des contenus... {} %"),
+    ("Include hidden app folders", "Inclure les dossiers cachés des applis"),
+    ("Off by default: copies inside an app's own folders are usually needed by that app.", "Désactivé par défaut : les copies dans les dossiers d'une appli lui sont souvent nécessaires."),
+    ("PRESS \"FIND DUPLICATES\" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)", "CLIQUEZ SUR « CHERCHER LES DOUBLONS » (LA LECTURE DES FICHIERS PEUT PRENDRE UNE MINUTE)"),
+    ("{} GROUPS  ·  {} WASTED", "{} GROUPES  ·  {} GASPILLÉS"),
+    ("NO DUPLICATES FOUND. NICE AND TIDY!", "AUCUN DOUBLON. TOUT EST BIEN RANGÉ !"),
+    ("{} copies × {}  ·  wastes {}", "{} copies × {}  ·  {} gaspillés"),
+    ("Keep original, trash rest", "Garder l'original"),
+    ("Moves every copy except the oldest to the Trash", "Met toutes les copies sauf la plus ancienne à la corbeille"),
+    ("original", "original"),
+    ("Move this copy to the Trash (recoverable)", "Mettre cette copie à la corbeille (récupérable)"),
+    ("Moved {} file(s) to the Trash ({}). Empty the Trash to free the space.", "{} fichier(s) mis à la corbeille ({}). Videz la corbeille pour libérer l'espace."),
+    ("Moved {} file(s); {} failed: {}", "{} fichier(s) déplacé(s) ; {} échec(s) : {}"),
+    // ----- Developer -----
+    ("Developer cleanup", "Nettoyage développeur"),
+    ("Build folders and packages inside your projects. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.",
+     "Dossiers de compilation et paquets de vos projets. Votre code n'est jamais touché, et tout revient à la prochaine compilation. Les projets inactifs depuis 30 jours sont présélectionnés."),
+    ("🗑 Delete {}", "🗑 Supprimer {}"),
+    ("Click again to delete", "Cliquez encore pour supprimer"),
+    ("Deleting...", "Suppression..."),
+    ("Looked at {} folders...", "{} dossiers examinés..."),
+    ("{} FOLDERS  ·  {} IN TOTAL", "{} DOSSIERS  ·  {} AU TOTAL"),
+    ("🔄 Rescan", "🔄 Réanalyser"),
+    ("NO BUILD FOLDERS FOUND IN YOUR PROJECTS.", "AUCUN DOSSIER DE COMPILATION DANS VOS PROJETS."),
+    ("Rust build (target)", "Compilation Rust (target)"),
+    ("Node packages (node_modules)", "Paquets Node (node_modules)"),
+    ("Python virtualenv", "Environnement virtuel Python"),
+    ("rebuilt by cargo build", "recréé par cargo build"),
+    ("reinstalled by npm install", "réinstallé par npm install"),
+    ("recreated by python -m venv", "recréé par python -m venv"),
+    ("{}  ·  project changed {}", "{}  ·  projet modifié {}"),
+    ("Deleting this is safe: it's {}.", "Vous pouvez le supprimer sans risque : il est {}."),
+    ("NOT CLEANED HERE", "NON NETTOYÉ ICI"),
+    ("Waydroid Android image", "Image Android de Waydroid"),
+    ("Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
+     "Nécessaire pour les applis Android. Si vous ne les utilisez pas : sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid"),
+    ("Freed {}", "{} libérés"),
+    ("Freed {}, {} failed: {}", "{0} libérés, {1} échec(s) : {2}"),
+    // ----- Disk map -----
+    ("What fills your home folder: the bigger the tile, the more space. Click a folder to look inside, right-click to go back.",
+     "Ce qui remplit votre dossier personnel : plus la tuile est grande, plus ça prend de place. Cliquez sur un dossier pour l'ouvrir, clic droit pour revenir."),
+    ("⬆ Up", "⬆ Remonter"),
+    ("Measured {} items...", "{} éléments mesurés..."),
+    ("{} small items", "{} petits éléments"),
+    ("Click to look inside", "Cliquez pour voir le contenu"),
+    // ----- Browsers -----
+    ("Clean each browser on its own terms: cache, cookies or history. The browser has to be closed while cleaning.",
+     "Nettoyez chaque navigateur à votre façon : cache, cookies ou historique. Le navigateur doit être fermé pendant le nettoyage."),
+    ("🔄 Refresh", "🔄 Actualiser"),
+    ("Looking for browsers...", "Recherche des navigateurs..."),
+    ("No supported browser found (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox).", "Aucun navigateur pris en charge (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox)."),
+    ("1 profile", "1 profil"),
+    ("{} profiles", "{} profils"),
+    ("{}  ·  {}  ·  ⚠ OPEN, CLOSE IT TO CLEAN", "{}  ·  {}  ·  ⚠ OUVERT, FERMEZ-LE POUR NETTOYER"),
+    ("Cache", "Cache"),
+    ("Cookies & site data", "Cookies et données de sites"),
+    ("Browsing history", "Historique de navigation"),
+    ("Saved copies of web pages. Safe: pages just load a bit slower once.", "Copies enregistrées des pages web. Sans risque : les pages chargent un peu plus lentement une fois."),
+    ("Signs you out of websites and resets site preferences.", "Vous déconnecte des sites et réinitialise leurs préférences."),
+    ("Visited pages, top sites and address bar suggestions. Bookmarks are kept.", "Pages visitées, sites favoris et suggestions de la barre d'adresse. Les marque-pages sont conservés."),
+    ("Not supported for this browser (history shares a file with your bookmarks).", "Non pris en charge pour ce navigateur (l'historique partage un fichier avec vos marque-pages)."),
+    ("✨ Clean {}", "✨ Nettoyer {}"),
+    ("Click again: signs you out", "Encore : vous serez déconnecté"),
+    ("Click again: erases history", "Encore : efface l'historique"),
+    ("{} cleaned: {}", "{} nettoyé : {}"),
+    ("{} cleaned, {} item(s) skipped", "{} nettoyé, {} élément(s) ignoré(s)"),
+    ("Close {} first.", "Fermez d'abord {}."),
+    // ----- Boot -----
+    ("How long your PC takes to start, and which services slow it down. Changes apply at the next boot.",
+     "Le temps de démarrage de votre PC et les services qui le ralentissent. Les changements s'appliquent au prochain démarrage."),
+    ("Reading boot data...", "Lecture des données de démarrage..."),
+    ("Boot data isn't available yet (the system may still be starting up).", "Données de démarrage pas encore disponibles (le système démarre peut-être encore)."),
+    ("last boot, from power button to desktop", "dernier démarrage, du bouton d'allumage au bureau"),
+    ("Firmware", "Firmware"),
+    ("Boot menu", "Menu de démarrage"),
+    ("Kernel", "Noyau"),
+    ("Services", "Services"),
+    ("Your PC's BIOS/UEFI. Change it in the firmware setup (F2/Del at power-on).", "Le BIOS/UEFI de votre PC. Se règle dans le firmware (F2/Suppr à l'allumage)."),
+    ("GRUB's menu wait plus loading Linux.", "L'attente du menu GRUB et le chargement de Linux."),
+    ("Linux starting up and finding your hardware.", "Le démarrage de Linux et la détection du matériel."),
+    ("Everything systemd starts until the desktop is ready.", "Tout ce que systemd lance jusqu'à ce que le bureau soit prêt."),
+    ("BOOT HISTORY", "HISTORIQUE DES DÉMARRAGES"),
+    ("Your boot history builds up each time you restart. Come back after your next reboot!", "L'historique se remplit à chaque redémarrage. Revenez après le prochain !"),
+    ("older", "plus ancien"),
+    ("latest", "dernier"),
+    ("SLOWEST SERVICES AT LAST BOOT", "SERVICES LES PLUS LENTS AU DERNIER DÉMARRAGE"),
+    ("Turn off", "Désactiver"),
+    ("Turn on", "Activer"),
+    ("Waiting...", "Patientez..."),
+    ("Start this service at boot again", "Relancer ce service au démarrage"),
+    ("Stop starting this service at boot (asks for your password)", "Ne plus lancer ce service au démarrage (mot de passe demandé)"),
+    ("needed", "nécessaire"),
+    ("on demand", "à la demande"),
+    ("Part of the system. Turning it off could break booting or the desktop.", "Fait partie du système. Le désactiver pourrait casser le démarrage ou le bureau."),
+    ("Started by a timer, socket or another service, not directly at boot.", "Lancé par un minuteur, un socket ou un autre service, pas directement au démarrage."),
+    ("{} will start at boot", "{} sera lancé au démarrage"),
+    ("{} will no longer start at boot", "{} ne sera plus lancé au démarrage"),
+    ("Password prompt was cancelled", "Mot de passe annulé"),
+    // ----- Startup apps -----
+    ("Startup apps", "Applications au démarrage"),
+    ("Apps that start when you log in. Turning off the ones you don't need makes login faster. Changes apply at your next login.",
+     "Les applis lancées à l'ouverture de session. Désactiver celles dont vous n'avez pas besoin accélère la connexion. Effet à la prochaine session."),
+    ("{} OF {} APPS START AT LOGIN", "{} APPLIS SUR {} SE LANCENT À LA CONNEXION"),
+    ("needed by desktop", "nécessaire au bureau"),
+    ("starts at login", "lancée à la connexion"),
+    ("off", "désactivée"),
+    ("Part of the desktop. Turning it off could break things, so it's locked.", "Fait partie du bureau. La désactiver pourrait poser problème, elle est donc verrouillée."),
+    ("{} will start at login", "{} se lancera à la connexion"),
+    ("{} will no longer start at login", "{} ne se lancera plus à la connexion"),
+    ("Could not change {}: {}", "Impossible de modifier {} : {}"),
+    // ----- Themes -----
+    ("Blue skies, green hills, bubbles", "Ciel bleu, collines vertes, bulles"),
+    ("Underwater light and sandy dunes", "Lumière sous-marine et dunes de sable"),
+    ("Warm sky over purple mountains", "Ciel chaud sur montagnes violettes"),
+    ("Smoked glass and northern lights", "Verre fumé et aurores boréales"),
+    ("Pastel skies and cherry blossoms", "Ciel pastel et cerisiers en fleurs"),
+    // ----- Settings -----
+    ("Motion, automation, folders to keep, and your cleaning history.", "Animations, automatisation, dossiers à garder et historique de nettoyage."),
+    ("MOTION", "ANIMATIONS"),
+    ("Reduce motion", "Réduire les animations"),
+    ("Freeze the animated background to save battery. It already pauses when the window isn't active.", "Fige le fond animé pour économiser la batterie. Il se met déjà en pause quand la fenêtre n'est pas active."),
+    ("AUTOMATION", "AUTOMATISATION"),
+    ("Weekly automatic clean", "Nettoyage automatique hebdomadaire"),
+    ("Thumbnails and app caches, once a week. Never asks for a password.", "Miniatures et caches des applis, une fois par semaine. Sans mot de passe."),
+    ("Browser caches are skipped if a browser is open at that moment. Folders to keep are respected.", "Les caches de navigateur sont ignorés si un navigateur est ouvert à ce moment-là. Les dossiers à garder sont respectés."),
+    ("next: {}", "prochain : {}"),
+    ("Also empty the Trash", "Vider aussi la corbeille"),
+    ("Files you deleted more than a week ago can't be restored after this.", "Les fichiers supprimés ne pourront plus être récupérés ensuite."),
+    ("Low disk space alert", "Alerte d'espace disque faible"),
+    ("Checks every hour and notifies you when less than {}% of the disk is free (at most once a day).", "Vérifie chaque heure et vous prévient sous {} % d'espace libre (une fois par jour max)."),
+    ("Change the threshold", "Changer le seuil"),
+    ("▶ Run automatic clean now", "▶ Lancer le nettoyage auto"),
+    ("Tip: right-click AeroClean in the menu for Quick clean and Disk map.", "Astuce : clic droit sur AeroClean dans le menu pour Nettoyage rapide et Carte du disque."),
+    ("Could not change the timer: {}", "Impossible de modifier le minuteur : {}"),
+    ("CLEANING", "NETTOYAGE"),
+    ("System journal retention", "Conservation du journal système"),
+    ("How many days of system logs to keep when cleaning the journal.", "Nombre de jours de journaux système conservés lors du nettoyage."),
+    ("Big file size", "Taille des gros fichiers"),
+    ("Files bigger than this are listed in Big files.", "Les fichiers plus gros que ça apparaissent dans Gros fichiers."),
+    ("Remember my selection", "Mémoriser ma sélection"),
+    ("The items you tick in the Cleaner stay ticked next time.", "Les éléments cochés dans Nettoyage le restent la prochaine fois."),
+    ("Reset", "Réinitialiser"),
+    ("Back to the recommended selection", "Revenir à la sélection recommandée"),
+    ("{} days", "{} jours"),
+    ("LANGUAGE", "LANGUE"),
+    ("Automatic", "Automatique"),
+    ("Follows your system language", "Suit la langue du système"),
+    ("FOLDERS TO KEEP  (the cleaner never touches these)", "DOSSIERS À GARDER  (jamais nettoyés)"),
+    ("Nothing excluded yet.", "Aucun dossier exclu pour l'instant."),
+    ("{}   (folder not found)", "{}   (dossier introuvable)"),
+    ("Remove", "Retirer"),
+    ("Add", "Ajouter"),
+    ("📁 Browse", "📁 Parcourir"),
+    ("🌐 Keep browser caches", "🌐 Garder les caches web"),
+    ("Websites stay fast to load, but those caches won't be cleaned", "Les sites restent rapides à charger, mais ces caches ne seront pas nettoyés"),
+    ("Keeping {}", "{} est conservé"),
+    ("No browser caches found.", "Aucun cache de navigateur trouvé."),
+    ("Added {} browser cache folder(s).", "{} dossier(s) de cache ajouté(s)."),
+    ("Type or pick a folder first.", "Saisissez ou choisissez d'abord un dossier."),
+    ("Use a full path, like ~/.cache/mozilla", "Utilisez un chemin complet, comme ~/.cache/mozilla"),
+    ("Already excluded.", "Déjà exclu."),
+    ("CLEANING HISTORY", "HISTORIQUE DE NETTOYAGE"),
+    ("{} freed in total", "{} libérés au total"),
+    ("over 1 clean", "en 1 nettoyage"),
+    ("over {} cleans", "en {} nettoyages"),
+    ("Automatic: {}", "Automatique : {}"),
+    // ----- Automation / notifications -----
+    ("AeroClean cleaned up ✨", "AeroClean a fait le ménage ✨"),
+    ("Freed {} ({})", "{} libérés ({})"),
+    ("{}. Browser cache skipped because {} is open.", "{}. Cache du navigateur ignoré car {} est ouvert."),
+    ("Your disk is almost full", "Votre disque est presque plein"),
+    ("Only {} free of {}. AeroClean can help you make room.", "Plus que {} libres sur {}. AeroClean peut vous aider à faire de la place."),
+    ("Open AeroClean", "Ouvrir AeroClean"),
+    // ----- Ages -----
+    ("today", "aujourd'hui"),
+    ("yesterday", "hier"),
+    ("{} days ago", "il y a {} jours"),
+    ("{} months ago", "il y a {} mois"),
+    ("{} years ago", "il y a {} ans"),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn templates_and_case() {
+        FRENCH.store(true, Ordering::Relaxed);
+        assert_eq!(tr("Trash"), "Corbeille");
+        assert_eq!(tr("    Removes: vim, nano"), "    Supprime : vim, nano", "spaces kept");
+        assert_eq!(tr("Freed 1,2 Go"), "1,2 Go libérés");
+        assert_eq!(tr("Freed 1,2 Go, 2 failed: oops"), "1,2 Go libérés, 2 échec(s) : oops", "reordered");
+        assert_eq!(tr("YOUR FILES"), "VOS FICHIERS");
+        assert_eq!(tr("12 FILES  ·  3,0 Go IN TOTAL"), "12 FICHIERS  ·  3,0 Go AU TOTAL");
+        assert_eq!(tr("BRAVE WILL NO LONGER START AT LOGIN"), "BRAVE NE SE LANCERA PLUS À LA CONNEXION");
+        assert_eq!(tr("Deleting this is safe: it's rebuilt by cargo build."), "Vous pouvez le supprimer sans risque : il est recréé par cargo build.", "hole translated");
+        assert_eq!(tr("my-photo.jpg"), "my-photo.jpg", "unknown text unchanged");
+        FRENCH.store(false, Ordering::Relaxed);
+        assert_eq!(tr("Trash"), "Trash");
+    }
+
+    #[test]
+    fn every_template_has_matching_placeholders() {
+        for (en, fr) in FR {
+            let n = en.matches("{}").count();
+            let m = if fr.contains("{0}") { (0..n).filter(|i| fr.contains(&format!("{{{i}}}"))).count() } else { fr.matches("{}").count() };
+            assert_eq!(n, m, "placeholder count differs: {en:?} -> {fr:?}");
+        }
+    }
+}

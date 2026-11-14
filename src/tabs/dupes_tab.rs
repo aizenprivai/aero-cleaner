@@ -66,8 +66,8 @@ impl App {
                 aero::surface(p, rect, 14.0, th, resp.hovered(), None);
                 let cy = rect.center().y;
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.dupes.include_hidden, resp.hovered(), th.go, th.accent);
-                p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, "Include hidden app folders", bold(15.0), th.text);
-                p.text(pos2(rect.min.x + 52.0, cy + 11.0), Align2::LEFT_CENTER, "Off by default: copies inside an app's own folders are usually needed by that app.", regular(12.0), th.soft);
+                p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Include hidden app folders"), bold(15.0), th.text);
+                p.text(pos2(rect.min.x + 52.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr("Off by default: copies inside an app's own folders are usually needed by that app."), regular(12.0), th.soft);
 
                 if !self.dupes.done {
                     Self::section(ui, "PRESS \"FIND DUPLICATES\" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)", th);
@@ -93,7 +93,7 @@ impl App {
                     aero::orb(p, pos2(rect.min.x + 24.0, cy), 15.0, th.user_orb, "📑");
                     let name = g.files[0].path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
                     let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 250.0, rect.max.y)));
-                    clip.text(pos2(rect.min.x + 48.0, cy - 8.0), Align2::LEFT_CENTER, &name, bold(15.0), th.text);
+                    clip.text(pos2(rect.min.x + 48.0, cy - 8.0), Align2::LEFT_CENTER, crate::i18n::tr(&name), bold(15.0), th.text);
                     clip.text(
                         pos2(rect.min.x + 48.0, cy + 11.0),
                         Align2::LEFT_CENTER,
@@ -102,7 +102,7 @@ impl App {
                         th.soft,
                     );
                     let btn = Rect::from_min_size(pos2(rect.max.x - 236.0, cy - 15.0), vec2(224.0, 30.0));
-                    if aero::aqua_button(ui, btn, "Keep original, trash rest", th.root_orb, true).on_hover_text("Moves every copy except the oldest to the Trash").clicked() {
+                    if aero::aqua_button(ui, btn, "Keep original, trash rest", th.root_orb, true).on_hover_text(crate::i18n::tr("Moves every copy except the oldest to the Trash")).clicked() {
                         trash_rest = Some(gi);
                     }
 
@@ -114,7 +114,7 @@ impl App {
                         let cy = rect.center().y;
                         let mut x = rect.min.x + 12.0;
                         if fi == 0 {
-                            let tag = p.layout_no_wrap("original".into(), regular(10.5), aero::darken(th.go, 0.6));
+                            let tag = p.layout_no_wrap(crate::i18n::tr("original"), regular(10.5), aero::darken(th.go, 0.6));
                             let br = Rect::from_min_size(pos2(x, cy - 8.0), vec2(tag.size().x + 12.0, 16.0));
                             aero::rrect_grad(p, br, 8.0, &[(0.0, aero::lighten(th.go, 0.65)), (1.0, aero::lighten(th.go, 0.3))]);
                             p.galley(br.center() - tag.size() / 2.0, tag, th.text);
@@ -122,13 +122,13 @@ impl App {
                         }
                         let dir = f.path.parent().map(|d| pretty(d)).unwrap_or_default();
                         let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 180.0, rect.max.y)));
-                        clip.text(pos2(x, cy), Align2::LEFT_CENTER, format!("{dir}  ·  {}", tools::age(f.modified)), regular(12.5), th.text);
+                        clip.text(pos2(x, cy), Align2::LEFT_CENTER, crate::i18n::tr(format!("{dir}  ·  {}", tools::age(f.modified))), regular(12.5), th.text);
                         let open_r = Rect::from_min_size(pos2(rect.max.x - 172.0, cy - 13.0), vec2(76.0, 26.0));
                         let trash_r = Rect::from_min_size(pos2(rect.max.x - 90.0, cy - 13.0), vec2(80.0, 26.0));
                         if aero::aqua_button(ui, open_r, "📂 Open", th.accent, true).clicked() {
                             tools::open_folder(&f.path);
                         }
-                        if aero::aqua_button(ui, trash_r, "🗑 Trash", th.root_orb, true).on_hover_text("Move this copy to the Trash (recoverable)").clicked() {
+                        if aero::aqua_button(ui, trash_r, "🗑 Trash", th.root_orb, true).on_hover_text(crate::i18n::tr("Move this copy to the Trash (recoverable)")).clicked() {
                             trash_one = Some((gi, fi));
                         }
                     }

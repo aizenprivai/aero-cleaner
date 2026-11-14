@@ -1,7 +1,16 @@
 [package]
 name = "aero-cleaner"
-version = "0.6.0"
+version = "1.0.0"
 edition = "2024"
 
 [dependencies]
 eframe = "0.37.0"
+
+[profile.dist]
+# Used for packaging (`cargo build --profile dist`): stripped, whole-program
+# optimized. Halves the binary size but takes several minutes to build.
+inherits = "release"
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

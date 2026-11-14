@@ -39,14 +39,20 @@
 - Right-click launcher actions (Quick clean, Disk map) instead of a tray icon: Cinnamon on Wayland has no tray host running, so a tray icon would be invisible
 - 19 automated tests (including systemd validating the generated timers)
 
-## 🔜 v1.0 – Release (next)
-- More settings (default categories, journal retention, big file threshold)
-- French translation
-- Real app icon, README with screenshots
-- Packaging: `.deb` first; Flatpak later (its sandbox makes system cleaning harder)
-- Smaller binary (strip + LTO, currently ~28 MB) and a CI pipeline running the tests
+**v1.0 – Release**
+- More settings: journal retention, big file threshold, remembered Cleaner selection (with reset), language
+- French translation of the whole app, sizes in French units ("1,2 Go"), French app names from the system; untranslated-string QA mode
+- App icon (window, menu, notifications, package)
+- `.deb` package (`packaging/build-deb.sh`), optimized `dist` build: 29.6 MB → 14.9 MB binary, 5.2 MB package
+- GitHub Actions: tests on every push; a `v*` tag builds the `.deb` and publishes a release
+- README with screenshots; 21 automated tests
+
+## 💡 Ideas for later
+- Choose a license (none yet: all rights reserved)
+- Flatpak package (its sandbox makes system cleaning harder)
+- Firefox history cleaning (needs SQLite: history and bookmarks share one database)
+- More languages (the translation table makes this a single file per language)
+- Tray icon if a future Cinnamon Wayland release runs a tray host (StatusNotifierItem via `ksni`)
 
 ## 🧹 Tech debt
-- Tray icon if a future Cinnamon Wayland release ships a tray host (code path: StatusNotifierItem via the `ksni` crate)
-- Firefox history cleaning (needs SQLite, since history and bookmarks share one database)
 - UI tests for the theme and tab screens

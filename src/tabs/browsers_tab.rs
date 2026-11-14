@@ -70,7 +70,7 @@ impl App {
                 }
                 for (bi, b) in self.browsers.list.iter().enumerate() {
                     let running = self.browsers.running.get(bi).copied().unwrap_or(false);
-                    let profiles = format!("{} profile{}", b.profiles, if b.profiles == 1 { "" } else { "s" });
+                    let profiles = crate::i18n::tr(format!("{} profile{}", b.profiles, if b.profiles == 1 { "" } else { "s" }));
                     let title = if running { format!("{}  ·  {profiles}  ·  ⚠ OPEN, CLOSE IT TO CLEAN", b.name.to_uppercase()) } else { format!("{}  ·  {profiles}", b.name.to_uppercase()) };
                     Self::section(ui, &title, th);
                     for (pi, part) in Part::ALL.iter().enumerate() {
@@ -95,9 +95,9 @@ impl App {
                         };
                         let grey = rgba(150, 160, 172, 255);
                         aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, if usable { hue } else { grey }, icon);
-                        p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, part.label(), bold(15.0), if usable { th.text } else { grey });
+                        p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(part.label()), bold(15.0), if usable { th.text } else { grey });
                         let desc = if usable { part.desc() } else { "Not supported for this browser (history shares a file with your bookmarks)." };
-                        p.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, desc, regular(12.0), th.soft);
+                        p.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(desc), regular(12.0), th.soft);
                         if let Some((_, size)) = data {
                             embossed(p, pos2(rect.max.x - 18.0, cy), Align2::RIGHT_CENTER, &format_bytes(*size), bold(16.0), th.text);
                         }
@@ -131,7 +131,7 @@ impl App {
             }
             self.browsers.confirm = None;
             let b = &self.browsers.list[bi];
-            let names: Vec<&str> = parts.iter().map(|p| p.label()).collect();
+            let names: Vec<&str> = parts.iter().map(|p| crate::i18n::t(p.label())).collect();
             self.browsers.msg = match browsers::clean(b, &parts) {
                 Ok(0) => format!("{} cleaned: {}", b.name, names.join(", ")),
                 Ok(n) => format!("{} cleaned, {n} item(s) skipped", b.name),

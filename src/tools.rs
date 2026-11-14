@@ -78,15 +78,18 @@ pub fn open_folder(path: &Path) {
 }
 
 pub fn age(t: Option<SystemTime>) -> String {
+    // Some packaging tools set dates to 1970; showing "56 years ago" would be nonsense.
+    let t = t.filter(|t| t.duration_since(std::time::UNIX_EPOCH).is_ok_and(|d| d.as_secs() > 315_532_800));
     let Some(d) = t.and_then(|t| SystemTime::now().duration_since(t).ok()) else { return String::new() };
     let days = d.as_secs() / 86400;
-    match days {
+    let text = match days {
         0 => "today".into(),
         1 => "yesterday".into(),
         2..=59 => format!("{days} days ago"),
         60..=729 => format!("{} months ago", days / 30),
         _ => format!("{} years ago", days / 365),
-    }
+    };
+    crate::i18n::tr(text)
 }
 
 // ---------- Startup apps ----------
@@ -155,6 +158,11 @@ fn is_critical(file: &str) -> bool {
     NEEDED.iter().any(|n| f.contains(n))
 }
 
+fn localized(kv: &BTreeMap<String, String>, key: &str) -> Option<String> {
+    let fr = crate::i18n::is_french().then(|| kv.get(&format!("{key}[fr_FR]")).or_else(|| kv.get(&format!("{key}[fr]")))).flatten();
+    fr.or_else(|| kv.get(key)).cloned()
+}
+
 pub fn startup_entries() -> Vec<StartupEntry> {
     let mut files: BTreeMap<String, (Option<String>, Option<String>)> = BTreeMap::new();
     for (dir, is_user) in [(PathBuf::from(SYSTEM_DIR), false), (user_dir(), true)] {
@@ -181,8 +189,9 @@ pub fn startup_entries() -> Vec<StartupEntry> {
         let truthy = |k: &str| kv.get(k).map(|v| v.eq_ignore_ascii_case("true"));
         let enabled = truthy("Hidden") != Some(true) && truthy("X-GNOME-Autostart-enabled") != Some(false);
         out.push(StartupEntry {
-            name: kv.get("Name").cloned().unwrap_or_else(|| file.trim_end_matches(".desktop").to_string()),
-            comment: kv.get("Comment").cloned().unwrap_or_default(),
+            // Apps ship their own translations (Name[fr]=...); use them in French.
+            name: localized(&kv, "Name").unwrap_or_else(|| file.trim_end_matches(".desktop").to_string()),
+            comment: localized(&kv, "Comment").unwrap_or_default(),
             enabled,
             system: sys.is_some(),
             critical: is_critical(&file),

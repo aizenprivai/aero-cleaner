@@ -25,11 +25,28 @@ pub struct Settings {
     pub auto_trash: bool,
     /// Low-disk alert fires below this percentage of free space.
     pub low_disk_percent: u8,
+    /// Days of system journal kept when cleaning it.
+    pub journal_days: u32,
+    /// Minimum size for the Big files list, in MB.
+    pub big_min_mb: u64,
+    /// The Cleaner categories ticked last time (by name), if remembered.
+    pub selected: Option<Vec<String>>,
+    /// "auto", "en" or "fr".
+    pub language: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { reduce_motion: false, exclusions: vec![], auto_trash: false, low_disk_percent: 10 }
+        Settings {
+            reduce_motion: false,
+            exclusions: vec![],
+            auto_trash: false,
+            low_disk_percent: 10,
+            journal_days: 3,
+            big_min_mb: 100,
+            selected: None,
+            language: "auto".into(),
+        }
     }
 }
 
@@ -42,6 +59,10 @@ impl Settings {
                 Some(("reduce_motion", v)) => s.reduce_motion = v.trim() == "true",
                 Some(("auto_trash", v)) => s.auto_trash = v.trim() == "true",
                 Some(("low_disk_percent", v)) => s.low_disk_percent = v.trim().parse().unwrap_or(10).clamp(1, 50),
+                Some(("journal_days", v)) => s.journal_days = v.trim().parse().unwrap_or(3).clamp(1, 365),
+                Some(("big_min_mb", v)) => s.big_min_mb = v.trim().parse().unwrap_or(100).clamp(1, 100_000),
+                Some(("selected", v)) => s.selected = Some(v.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()),
+                Some(("language", v)) if ["auto", "en", "fr"].contains(&v.trim()) => s.language = v.trim().to_string(),
                 Some(("exclude", v)) if !v.trim().is_empty() => s.exclusions.push(PathBuf::from(v.trim())),
                 _ => {}
             }
@@ -51,9 +72,12 @@ impl Settings {
 
     pub fn save(&self) {
         let mut text = format!(
-            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\n",
-            self.reduce_motion, self.auto_trash, self.low_disk_percent
+            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\n",
+            self.reduce_motion, self.auto_trash, self.low_disk_percent, self.journal_days, self.big_min_mb, self.language
         );
+        if let Some(sel) = &self.selected {
+            text.push_str(&format!("selected={}\n", sel.join(",")));
+        }
         for x in &self.exclusions {
             text.push_str(&format!("exclude={}\n", x.display()));
         }

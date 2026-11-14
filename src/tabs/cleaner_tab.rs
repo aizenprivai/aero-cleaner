@@ -9,11 +9,13 @@ impl App {
         let width = ui.available_width() - 14.0;
         let (rect, resp) = ui.allocate_exact_size(vec2(width, 60.0), Sense::click());
         let rect = rect.translate(vec2(4.0, 0.0));
+        let mut toggled = false;
         let item = &mut self.items[i];
         let available = item.result.as_ref().is_none_or(|r| r.available);
         let busy = self.phase != Phase::Idle;
         if resp.clicked() && available && !busy {
             item.on = !item.on;
+            toggled = true;
         }
         let checked = item.on && available;
         let hovered = resp.hovered() && available && !busy;
@@ -30,15 +32,15 @@ impl App {
 
         let text_x = rect.min.x + 104.0;
         let name_color = if available { th.text } else { grey };
-        let name_rect = p.text(pos2(text_x, cy - 10.0), Align2::LEFT_CENTER, cat.name, bold(16.0), name_color);
+        let name_rect = p.text(pos2(text_x, cy - 10.0), Align2::LEFT_CENTER, crate::i18n::tr(cat.name), bold(16.0), name_color);
         if cat.root {
             let badge = Rect::from_min_size(pos2(name_rect.max.x + 8.0, cy - 19.0), vec2(56.0, 18.0));
             let b = th.root_orb;
             aero::rrect_grad(p, badge, 9.0, &[(0.0, aero::lighten(b, 0.55)), (1.0, aero::lighten(b, 0.15))]);
             aero::rrect_outline(p, badge, 9.0, Stroke::new(1.0, aero::darken(b, 0.25)));
-            p.text(badge.center(), Align2::CENTER_CENTER, "🔒 admin", regular(11.0), aero::darken(b, 0.65));
+            p.text(badge.center(), Align2::CENTER_CENTER, crate::i18n::tr("🔒 admin"), regular(11.0), aero::darken(b, 0.65));
         }
-        p.text(pos2(text_x, cy + 11.0), Align2::LEFT_CENTER, cat.desc, regular(13.0), th.soft);
+        p.text(pos2(text_x, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(cat.desc.replace("{}", &self.settings.journal_days.to_string())), regular(13.0), th.soft);
 
         let right = pos2(rect.max.x - 18.0, cy);
         match &item.result {
@@ -60,12 +62,15 @@ impl App {
                     embossed(p, right - vec2(0.0, if sub.is_empty() { 0.0 } else { 9.0 }), Align2::RIGHT_CENTER, &main, bold(17.0), th.text);
                 }
                 if !sub.is_empty() {
-                    p.text(right + vec2(0.0, if main.is_empty() { 0.0 } else { 11.0 }), Align2::RIGHT_CENTER, &sub, regular(12.0), th.soft);
+                    p.text(right + vec2(0.0, if main.is_empty() { 0.0 } else { 11.0 }), Align2::RIGHT_CENTER, crate::i18n::tr(&sub), regular(12.0), th.soft);
                 }
             }
         }
         if hovered {
             resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+        }
+        if toggled {
+            self.remember_selection();
         }
     }
 
@@ -109,7 +114,7 @@ impl App {
         } else {
             aero::orb(&p, sc, 12.0, th.go, "✔");
         }
-        let status = p.layout(self.status.clone(), regular(14.0), th.text, status_box.width() - 64.0);
+        let status = p.layout(crate::i18n::tr(self.status.clone()), regular(14.0), th.text, status_box.width() - 64.0);
         p.galley(pos2(sc.x + 22.0, status_box.center().y - status.size().y / 2.0), status, th.text);
 
         let (accent, go, bubble_tint) = (th.accent, th.go, th.bubble);

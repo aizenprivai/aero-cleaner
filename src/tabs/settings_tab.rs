@@ -23,10 +23,26 @@ fn toggle_row(ui: &mut egui::Ui, w: f32, indent: f32, on: bool, icon: &str, titl
     let cy = rect.center().y;
     aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, on, resp.hovered(), th.go, th.accent);
     aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, icon);
-    p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, title, bold(15.0), th.text);
+    p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(title), bold(15.0), th.text);
     let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 120.0, rect.max.y)));
-    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, desc, regular(12.0), th.soft);
+    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(desc), regular(12.0), th.soft);
     resp
+}
+
+/// A row with a title, a description and a value button on the right.
+/// Returns true when the button was clicked.
+fn option_row(ui: &mut egui::Ui, w: f32, icon: &str, title: &str, desc: &str, value: &str, tip: &str, th: &Theme) -> bool {
+    let (rect, resp) = ui.allocate_exact_size(vec2(w, 60.0), Sense::hover());
+    let rect = rect.translate(vec2(4.0, 0.0));
+    let p = ui.painter();
+    aero::surface(p, rect, 14.0, th, resp.hovered(), None);
+    let cy = rect.center().y;
+    aero::orb(p, pos2(rect.min.x + 26.0, cy), 15.0, th.user_orb, icon);
+    p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(title), bold(15.0), th.text);
+    let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 150.0, rect.max.y)));
+    clip.text(pos2(rect.min.x + 52.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(desc), regular(12.0), th.soft);
+    let btn = Rect::from_min_size(pos2(rect.max.x - 136.0, cy - 15.0), vec2(124.0, 30.0));
+    aero::aqua_button(ui, btn, value, th.accent, true).on_hover_text(crate::i18n::tr(tip)).clicked()
 }
 
 impl App {
@@ -41,6 +57,8 @@ impl App {
             self.auto.checked = Some(time);
         }
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
+        let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
+        let mut set_lang: Option<&'static str> = None;
         let home = std::env::var("HOME").unwrap_or_default();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
         let th = &self.themes[self.theme];
@@ -63,18 +81,18 @@ impl App {
                 let cy = rect.center().y;
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.settings.reduce_motion, resp.hovered(), th.go, th.accent);
                 aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, "⏸");
-                p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, "Reduce motion", bold(15.0), th.text);
-                p.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, "Freeze the animated background to save battery. It already pauses when the window isn't active.", regular(12.0), th.soft);
+                p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Reduce motion"), bold(15.0), th.text);
+                p.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr("Freeze the animated background to save battery. It already pauses when the window isn't active."), regular(12.0), th.soft);
 
                 // ----- Automation -----
                 Self::section(ui, "AUTOMATION", th);
                 let resp = toggle_row(ui, row_w, 0.0, self.auto.clean_on, "🗓", "Weekly automatic clean",
                     "Thumbnails and app caches, once a week. Never asks for a password.", th);
-                let resp = resp.on_hover_text("Browser caches are skipped if a browser is open at that moment. Folders to keep are respected.");
+                let resp = resp.on_hover_text(crate::i18n::tr("Browser caches are skipped if a browser is open at that moment. Folders to keep are respected."));
                 toggle_clean = resp.clicked();
                 if let Some(next) = &self.auto.next_clean {
                     let r = resp.rect;
-                    ui.painter().text(pos2(r.max.x - 14.0, r.center().y), Align2::RIGHT_CENTER, format!("next: {}", next.split_whitespace().take(2).collect::<Vec<_>>().join(" ")), regular(12.0), th.soft);
+                    ui.painter().text(pos2(r.max.x - 14.0, r.center().y), Align2::RIGHT_CENTER, crate::i18n::tr(format!("next: {}", next.split_whitespace().take(2).collect::<Vec<_>>().join(" "))), regular(12.0), th.soft);
                 }
                 toggle_trash = toggle_row(ui, row_w - 40.0, 40.0, self.settings.auto_trash, "🗑", "Also empty the Trash",
                     "Files you deleted more than a week ago can't be restored after this.", th).clicked();
@@ -82,7 +100,7 @@ impl App {
                 let resp = toggle_row(ui, row_w, 0.0, self.auto.disk_on, "🔔", "Low disk space alert",
                     &format!("Checks every hour and notifies you when less than {pct}% of the disk is free (at most once a day)."), th);
                 let pr = Rect::from_min_size(pos2(resp.rect.max.x - 82.0, resp.rect.center().y - 15.0), vec2(70.0, 30.0));
-                cycle_pct = aero::aqua_button(ui, pr, &format!("{pct}%"), th.accent, true).on_hover_text("Change the threshold").clicked();
+                cycle_pct = aero::aqua_button(ui, pr, &format!("{pct}%"), th.accent, true).on_hover_text(crate::i18n::tr("Change the threshold")).clicked();
                 toggle_disk = resp.clicked() && !cycle_pct;
                 let (rect, _) = ui.allocate_exact_size(vec2(row_w, 44.0), Sense::hover());
                 let rect = rect.translate(vec2(4.0, 0.0));
@@ -90,7 +108,34 @@ impl App {
                 let label = if self.auto.running { "Cleaning..." } else { "▶ Run automatic clean now" };
                 run_now = aero::aqua_button(ui, run_r, label, th.go, !self.auto.running).clicked();
                 ui.painter().text(pos2(run_r.max.x + 14.0, run_r.center().y), Align2::LEFT_CENTER,
-                    "Tip: right-click AeroClean in the menu for Quick clean and Disk map.", regular(12.0), th.soft);
+                    crate::i18n::tr("Tip: right-click AeroClean in the menu for Quick clean and Disk map."), regular(12.0), th.soft);
+
+                // ----- Cleaning -----
+                Self::section(ui, "CLEANING", th);
+                let days = format!("{} days", self.settings.journal_days);
+                cycle_journal = option_row(ui, row_w, "📜", "System journal retention",
+                    "How many days of system logs to keep when cleaning the journal.", &days, "Change the threshold", th);
+                let mb = self.settings.big_min_mb;
+                let unit = if crate::i18n::is_french() { ("Mo", "Go") } else { ("MB", "GB") };
+                let big = if mb >= 1000 { format!("{} {}", mb / 1000, unit.1) } else { format!("{mb} {}", unit.0) };
+                cycle_big = option_row(ui, row_w, "🐘", "Big file size", "Files bigger than this are listed in Big files.", &big, "Change the threshold", th);
+                reset_sel = option_row(ui, row_w, "☑", "Remember my selection",
+                    "The items you tick in the Cleaner stay ticked next time.", "Reset", "Back to the recommended selection", th);
+
+                // ----- Language -----
+                Self::section(ui, "LANGUAGE", th);
+                let (rect, _) = ui.allocate_exact_size(vec2(row_w, 46.0), Sense::hover());
+                let rect = rect.translate(vec2(4.0, 0.0));
+                for (k, (code, label)) in [("auto", "Automatic"), ("en", "English"), ("fr", "Français")].into_iter().enumerate() {
+                    let r = Rect::from_min_size(pos2(rect.min.x + k as f32 * 150.0, rect.min.y + 4.0), vec2(140.0, 38.0));
+                    let active = self.settings.language == code;
+                    let text = if active { format!("✔ {}", crate::i18n::tr(label)) } else { crate::i18n::tr(label) };
+                    let resp = aero::aqua_button(ui, r, &text, if active { th.go } else { th.accent }, true);
+                    let resp = if code == "auto" { resp.on_hover_text(crate::i18n::tr("Follows your system language")) } else { resp };
+                    if resp.clicked() && !active {
+                        set_lang = Some(code);
+                    }
+                }
 
                 // ----- Exclusions -----
                 Self::section(ui, "FOLDERS TO KEEP  (the cleaner never touches these)", th);
@@ -99,7 +144,7 @@ impl App {
                     let (rect, _) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
                     let rect = rect.translate(vec2(4.0, 0.0));
                     aero::surface(ui.painter(), rect, 12.0, th, false, None);
-                    ui.painter().text(rect.left_center() + vec2(16.0, 0.0), Align2::LEFT_CENTER, "Nothing excluded yet.", regular(13.0), th.soft);
+                    ui.painter().text(rect.left_center() + vec2(16.0, 0.0), Align2::LEFT_CENTER, crate::i18n::tr("Nothing excluded yet."), regular(13.0), th.soft);
                 }
                 for (i, x) in self.settings.exclusions.iter().enumerate() {
                     let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 44.0), Sense::hover());
@@ -108,7 +153,7 @@ impl App {
                     let cy = rect.center().y;
                     aero::orb(ui.painter(), pos2(rect.min.x + 22.0, cy), 12.0, th.go, "🛡");
                     let missing = if x.exists() { "" } else { "   (folder not found)" };
-                    ui.painter().text(pos2(rect.min.x + 44.0, cy), Align2::LEFT_CENTER, format!("{}{missing}", pretty(x)), bold(14.0), th.text);
+                    ui.painter().text(pos2(rect.min.x + 44.0, cy), Align2::LEFT_CENTER, crate::i18n::tr(format!("{}{missing}", pretty(x))), bold(14.0), th.text);
                     let rm = Rect::from_min_size(pos2(rect.max.x - 104.0, cy - 14.0), vec2(92.0, 28.0));
                     if aero::aqua_button(ui, rm, "Remove", th.root_orb, true).clicked() {
                         remove = Some(i);
@@ -151,14 +196,14 @@ impl App {
                 let (rect, _) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
                 let rect = rect.translate(vec2(4.0, 0.0));
                 let keep_r = Rect::from_min_size(rect.min + vec2(0.0, 2.0), vec2(230.0, 36.0));
-                if aero::aqua_button(ui, keep_r, "🌐 Keep browser caches", th.go, true).on_hover_text("Websites stay fast to load, but those caches won't be cleaned").clicked() {
+                if aero::aqua_button(ui, keep_r, "🌐 Keep browser caches", th.go, true).on_hover_text(crate::i18n::tr("Websites stay fast to load, but those caches won't be cleaned")).clicked() {
                     let dirs = settings::browser_cache_dirs();
                     let added = dirs.iter().filter(|d| self.settings.add_exclusion(&d.to_string_lossy()).is_ok()).count();
                     self.settings_msg = if dirs.is_empty() { "No browser caches found.".into() } else { format!("Added {added} browser cache folder(s).") };
                     rescan |= added > 0;
                 }
                 if !self.settings_msg.is_empty() {
-                    ui.painter().text(pos2(keep_r.max.x + 14.0, keep_r.center().y), Align2::LEFT_CENTER, &self.settings_msg, regular(13.0), th.soft);
+                    ui.painter().text(pos2(keep_r.max.x + 14.0, keep_r.center().y), Align2::LEFT_CENTER, crate::i18n::tr(&self.settings_msg), regular(13.0), th.soft);
                 }
 
                 // ----- History -----
@@ -171,18 +216,20 @@ impl App {
                 let amount_color = if th.dark { aero::lighten(th.go, 0.35) } else { aero::darken(th.go, 0.1) };
                 embossed(ui.painter(), pos2(rect.min.x + 56.0, rect.center().y - 8.0), Align2::LEFT_CENTER, &format!("{} freed in total", format_bytes(total)), bold(18.0), amount_color);
                 let n = self.history.len();
-                ui.painter().text(pos2(rect.min.x + 56.0, rect.center().y + 13.0), Align2::LEFT_CENTER, format!("over {n} clean{}", if n == 1 { "" } else { "s" }), regular(12.0), th.soft);
+                ui.painter().text(pos2(rect.min.x + 56.0, rect.center().y + 13.0), Align2::LEFT_CENTER, crate::i18n::tr(format!("over {n} clean{}", if n == 1 { "" } else { "s" })), regular(12.0), th.soft);
                 for h in self.history.iter().take(20) {
                     let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
                     let rect = rect.translate(vec2(4.0, 0.0));
                     let p = ui.painter();
                     aero::surface(p, rect, 12.0, th, false, None);
                     let cy = rect.center().y;
-                    p.text(pos2(rect.min.x + 16.0, cy), Align2::LEFT_CENTER, tools::age(Some(h.when)), bold(13.0), th.text);
+                    p.text(pos2(rect.min.x + 16.0, cy), Align2::LEFT_CENTER, crate::i18n::tr(tools::age(Some(h.when))), bold(13.0), th.text);
                     let clip = p.with_clip_rect(Rect::from_min_max(pos2(rect.min.x + 120.0, rect.min.y), pos2(rect.max.x - 110.0, rect.max.y)));
-                    clip.text(pos2(rect.min.x + 120.0, cy), Align2::LEFT_CENTER, &h.what, regular(12.0), th.soft);
+                    // Stored in English; translate each category name for display.
+                    let what = h.what.split(", ").map(crate::i18n::tr).collect::<Vec<_>>().join(", ");
+                    clip.text(pos2(rect.min.x + 120.0, cy), Align2::LEFT_CENTER, &what, regular(12.0), th.soft);
                     embossed(p, pos2(rect.max.x - 16.0, cy), Align2::RIGHT_CENTER, &format_bytes(h.freed), bold(14.0), th.text);
-                    resp.on_hover_text(&h.what);
+                    resp.on_hover_text(what);
                 }
                 ui.add_space(6.0);
             });
@@ -214,6 +261,41 @@ impl App {
                 _ => 5,
             };
             self.settings.save();
+        }
+        if cycle_journal {
+            self.settings.journal_days = match self.settings.journal_days {
+                3 => 7,
+                7 => 14,
+                14 => 30,
+                _ => 3,
+            };
+            self.settings.save();
+        }
+        if cycle_big {
+            self.settings.big_min_mb = match self.settings.big_min_mb {
+                50 => 100,
+                100 => 250,
+                250 => 500,
+                500 => 1000,
+                _ => 50,
+            };
+            self.settings.save();
+            // The Big files list was built with the old threshold.
+            self.big.clear();
+            self.big_done = false;
+        }
+        if reset_sel {
+            self.settings.selected = None;
+            self.settings.save();
+            let fresh = self.initial_selection();
+            for (it, f) in self.items.iter_mut().zip(fresh) {
+                it.on = f.on;
+            }
+        }
+        if let Some(code) = set_lang {
+            self.settings.language = code.to_string();
+            self.settings.save();
+            crate::i18n::set_language(code);
         }
         if run_now {
             self.auto.running = true;

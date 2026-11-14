@@ -148,6 +148,7 @@ pub fn rrect_outline(painter: &Painter, rect: Rect, r: f32, stroke: Stroke) {
 
 /// Text with a soft light "emboss" underneath, typical of the era.
 pub fn embossed(painter: &Painter, pos: Pos2, align: Align2, text: &str, font: FontId, color: Color32) {
+    let text = &crate::i18n::tr(text);
     // Dark text gets a light highlight below; light text gets a dark shadow.
     let light_text = color.r() as u32 + color.g() as u32 + color.b() as u32 > 450;
     let under = if light_text { rgba(0, 10, 30, 150) } else { rgba(255, 255, 255, 170) };
@@ -161,6 +162,7 @@ pub fn with_alpha(c: Color32, a: u8) -> Color32 {
 
 /// Text with a dark drop shadow, for light text on colored buttons.
 pub fn shadowed(painter: &Painter, pos: Pos2, align: Align2, text: &str, font: FontId, color: Color32) {
+    let text = &crate::i18n::tr(text);
     painter.text(pos + Vec2::new(0.0, 1.5), align, text, font.clone(), rgba(0, 30, 60, 110));
     painter.text(pos, align, text, font, color);
 }
@@ -371,7 +373,7 @@ pub fn nav_item(ui: &mut Ui, rect: Rect, icon: &str, label: &str, active: bool, 
         if active {
             shadowed(p, pos, Align2::LEFT_CENTER, text, font, text_color);
         } else {
-            p.text(pos, Align2::LEFT_CENTER, text, font, text_color);
+            p.text(pos, Align2::LEFT_CENTER, crate::i18n::tr(text), font, text_color);
         }
     };
     draw(pos2(rect.min.x + 12.0, cy), icon, regular(16.0));

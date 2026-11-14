@@ -23,7 +23,7 @@ fn exe() -> PathBuf {
 /// returns true if the action button was pressed.
 pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
     let mut cmd = Command::new("notify-send");
-    cmd.args(["--app-name=AeroClean", "--icon=edit-clear-all", title, body]);
+    cmd.args(["--app-name=AeroClean", "--icon=aero-cleaner", title, body]);
     if let Some(a) = action {
         cmd.arg(format!("--action=open={a}"));
     }
@@ -67,7 +67,7 @@ pub fn auto_clean(settings: &Settings) -> String {
     let kinds = auto_kinds(settings, !browsers.is_empty());
     let measure = |kinds: &[Kind]| -> u64 { kinds.iter().filter_map(|k| cleaner::scan(*k, &settings.exclusions).size).sum() };
     let before = measure(&kinds);
-    cleaner::clean(&kinds, &settings.exclusions, &|_| {});
+    cleaner::clean(&kinds, &settings.exclusions, settings.journal_days, &|_| {});
     let freed = before.saturating_sub(measure(&kinds));
     let names: Vec<&str> = cleaner::CATEGORIES.iter().filter(|c| kinds.contains(&c.kind)).map(|c| c.name).collect();
     settings::record(freed, &format!("Automatic: {}", names.join(", ")));
@@ -99,8 +99,8 @@ pub fn check_disk(settings: &Settings) {
     let Some((total, avail)) = disk_is_low(settings) else { return };
     let _ = fs::create_dir_all(warning_stamp().parent().unwrap());
     let _ = fs::write(warning_stamp(), "");
-    let body = format!("Only {} free of {}. AeroClean can help you make room.", format_bytes(avail), format_bytes(total));
-    if notify("Your disk is almost full", &body, Some("Open AeroClean")) {
+    let body = crate::i18n::tr(format!("Only {} free of {}. AeroClean can help you make room.", format_bytes(avail), format_bytes(total)));
+    if notify(&crate::i18n::tr("Your disk is almost full"), &body, Some(&crate::i18n::tr("Open AeroClean"))) {
         launch_gui(&["--tab", "map"]);
     }
 }
@@ -182,13 +182,19 @@ pub fn next_run(job: &Job) -> Option<String> {
 
 /// Adds "Quick clean" and "Disk map" to the right-click menu of the
 /// AeroClean launcher (menu, panel and desktop icons).
+pub const ICON_SVG: &str = include_str!("../assets/aero-cleaner.svg");
+
 pub fn install_launcher() -> Result<(), String> {
+    // The icon goes into the user's icon theme folder so "Icon=aero-cleaner" resolves.
+    let icon_dir = home().join(".local/share/icons/hicolor/scalable/apps");
+    fs::create_dir_all(&icon_dir).map_err(|e| e.to_string())?;
+    fs::write(icon_dir.join("aero-cleaner.svg"), ICON_SVG).map_err(|e| e.to_string())?;
     let dir = home().join(".local/share/applications");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let exe = exe();
     let e = exe.display();
     let text = format!(
-        "[Desktop Entry]\nName=AeroClean\nComment=Clean caches, logs and junk files\nExec={e}\nIcon=edit-clear-all\nTerminal=false\nType=Application\nCategories=System;\nStartupWMClass=aero-cleaner\nActions=QuickClean;DiskMap;\n\n\
+        "[Desktop Entry]\nName=AeroClean\nComment=Clean caches, logs and junk files\nExec={e}\nIcon=aero-cleaner\nTerminal=false\nType=Application\nCategories=System;\nStartupWMClass=aero-cleaner\nActions=QuickClean;DiskMap;\n\n\
          [Desktop Action QuickClean]\nName=Quick clean\nExec={e} clean --auto\n\n\
          [Desktop Action DiskMap]\nName=Disk map\nExec={e} --tab map\n"
     );
@@ -217,7 +223,8 @@ mod tests {
             let (service, timer) = unit_files(job);
             fs::write(dir.join(format!("{}.service", job.unit)), service).unwrap();
             fs::write(dir.join(format!("{}.timer", job.unit)), &timer).unwrap();
-            let out = Command::new("systemd-analyze").args(["--user", "verify"]).arg(dir.join(format!("{}.timer", job.unit))).output().unwrap();
+            // System mode: works on CI machines that have no user session.
+            let out = Command::new("systemd-analyze").args(["verify"]).arg(dir.join(format!("{}.timer", job.unit))).output().unwrap();
             let err = String::from_utf8_lossy(&out.stderr);
             assert!(out.status.success(), "systemd rejected {}: {err}", job.unit);
         }

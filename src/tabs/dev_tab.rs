@@ -123,15 +123,15 @@ impl App {
                     aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, item.kind.icon());
                     let project = item.path.parent().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
                     let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 110.0, rect.max.y)));
-                    let name_r = clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, &project, bold(15.0), th.text);
-                    clip.text(pos2(name_r.max.x + 8.0, cy - 9.0), Align2::LEFT_CENTER, item.kind.label(), regular(12.0), th.soft);
+                    let name_r = clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(&project), bold(15.0), th.text);
+                    clip.text(pos2(name_r.max.x + 8.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(item.kind.label()), regular(12.0), th.soft);
                     let touched = match tools::age(item.project_touched).as_str() {
                         "" => String::new(),
                         a => format!("  ·  project changed {a}"),
                     };
-                    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, format!("{}{touched}", pretty(&item.path)), regular(12.0), th.soft);
+                    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(format!("{}{touched}", pretty(&item.path))), regular(12.0), th.soft);
                     embossed(p, pos2(rect.max.x - 18.0, cy), Align2::RIGHT_CENTER, &format_bytes(item.size), bold(16.0), th.text);
-                    resp.on_hover_text(format!("Deleting this is safe: it's {}.", item.kind.rebuild_hint()));
+                    resp.on_hover_text(crate::i18n::tr(format!("Deleting this is safe: it's {}.", item.kind.rebuild_hint())));
                 }
 
                 if let Some(size) = self.dev.waydroid {
@@ -142,7 +142,7 @@ impl App {
                     aero::surface(p, rect, 14.0, th, false, None);
                     let cy = rect.center().y;
                     aero::orb(p, pos2(rect.min.x + 26.0, cy), 15.0, th.root_orb, "🤖");
-                    p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, "Waydroid Android image", bold(15.0), th.text);
+                    p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Waydroid Android image"), bold(15.0), th.text);
                     p.text(
                         pos2(rect.min.x + 52.0, cy + 11.0),
                         Align2::LEFT_CENTER,

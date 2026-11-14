@@ -62,7 +62,7 @@ impl App {
         let mut jump = None;
         for (depth, name) in crumbs.iter().enumerate() {
             let last = depth == crumbs.len() - 1;
-            let g = p.layout_no_wrap(name.clone(), bold(14.0), th.text);
+            let g = p.layout_no_wrap(crate::i18n::tr(name.clone()), bold(14.0), th.text);
             let r = Rect::from_min_size(pos2(x, bar.min.y), vec2(g.size().x + 12.0, bar.height()));
             let resp = ui.interact(r, egui::Id::unique(("crumb", depth)), if last { Sense::hover() } else { Sense::click() });
             if !last {
@@ -74,7 +74,7 @@ impl App {
             p.galley(pos2(x + 6.0, bar.center().y - g.size().y / 2.0), g, th.text);
             x = r.max.x + 4.0;
             if !last {
-                p.text(pos2(x + 2.0, bar.center().y), Align2::LEFT_CENTER, "›", bold(16.0), th.soft);
+                p.text(pos2(x + 2.0, bar.center().y), Align2::LEFT_CENTER, crate::i18n::tr("›"), bold(16.0), th.soft);
                 x += 16.0;
             }
         }
@@ -118,7 +118,7 @@ impl App {
             }
             let pct = child.size as f64 * 100.0 / node.size.max(1) as f64;
             let hint = if child.is_dir && !child.children.is_empty() { "\nClick to look inside" } else { "" };
-            let resp = resp.on_hover_text(format!("{}\n{} ({pct:.1}%){hint}", child.path.display(), format_bytes(child.size)));
+            let resp = resp.on_hover_text(crate::i18n::tr(format!("{}\n{} ({pct:.1}%){hint}", child.path.display(), format_bytes(child.size))));
             if resp.clicked() && child.is_dir && !child.children.is_empty() {
                 open = Some(i);
             }

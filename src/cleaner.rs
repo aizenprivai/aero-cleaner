@@ -44,7 +44,7 @@ pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::Flatpak, name: "Unused Flatpak runtimes", desc: "Runtimes no installed app needs anymore", icon: "📦", root: false, default_on: true },
     Category { kind: Kind::AptCache, name: "APT package cache", desc: "Downloaded .deb installers that are already installed", icon: "💿", root: true, default_on: true },
     Category { kind: Kind::Autoremove, name: "Unused packages & old kernels", desc: "Packages nothing depends on anymore (apt autoremove)", icon: "🐧", root: true, default_on: false },
-    Category { kind: Kind::Journal, name: "System journal", desc: "Old system logs, keeps the last 3 days", icon: "📜", root: true, default_on: true },
+    Category { kind: Kind::Journal, name: "System journal", desc: "Old system logs, keeps the last {} days", icon: "📜", root: true, default_on: true },
     Category { kind: Kind::OldLogs, name: "Rotated log files", desc: "Old compressed logs in /var/log (*.gz, *.1, *.old)", icon: "📄", root: true, default_on: true },
     Category { kind: Kind::CrashReports, name: "Crash reports", desc: "Crash dumps in /var/crash", icon: "💥", root: true, default_on: true },
     Category { kind: Kind::VarTmp, name: "Old temporary files", desc: "Files in /var/tmp untouched for 7+ days", icon: "⏳", root: true, default_on: true },
@@ -95,7 +95,7 @@ fn skips_for(kind: Kind, exclusions: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 /// What cleaning `kind` would remove, as short human-readable lines.
-pub fn preview(kind: Kind, exclusions: &[PathBuf]) -> Vec<String> {
+pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<String> {
     let home = home();
     let pretty = |p: &Path| p.to_string_lossy().replacen(&*home.to_string_lossy(), "~", 1);
     match kind {
@@ -130,7 +130,7 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf]) -> Vec<String> {
         }
         Kind::Flatpak => vec!["Runs: flatpak uninstall --unused".into()],
         Kind::AptCache => vec!["Deletes downloaded .deb files in /var/cache/apt/archives".into()],
-        Kind::Journal => vec!["Deletes system log entries older than 3 days".into()],
+        Kind::Journal => vec![format!("Deletes system log entries older than {journal_days} days")],
         Kind::OldLogs => vec!["Deletes *.gz, *.old and *.1-style files in /var/log".into()],
         Kind::CrashReports => vec!["Deletes everything in /var/crash".into()],
         Kind::VarTmp => vec!["Deletes files in /var/tmp untouched for 7+ days".into()],
@@ -289,28 +289,29 @@ fn clear(p: &Path, skips: &[PathBuf]) -> usize {
     failed
 }
 
-fn root_script(kind: Kind) -> Option<&'static str> {
-    Some(match kind {
+fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
+    let s = match kind {
         Kind::AptCache => "echo '>> Cleaning APT cache'; apt-get clean",
         Kind::Autoremove => "echo '>> Removing unused packages'; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y",
-        Kind::Journal => "echo '>> Shrinking system journal'; journalctl --vacuum-time=3d",
+        Kind::Journal => return Some(format!("echo '>> Shrinking system journal'; journalctl --vacuum-time={}d", journal_days.max(1))),
         Kind::OldLogs => "echo '>> Deleting rotated logs'; find /var/log -type f -not -path '/var/log/journal/*' \\( -name '*.gz' -o -name '*.old' -o -regex '.*\\.[0-9]+' \\) -print -delete | wc -l | sed 's/$/ files removed/'",
         Kind::CrashReports => "echo '>> Deleting crash reports'; find /var/crash -mindepth 1 -delete",
         Kind::VarTmp => "echo '>> Deleting old temp files'; find /var/tmp -mindepth 1 -type f -mtime +7 -delete; find /var/tmp -mindepth 1 -type d -empty -delete",
         _ => return None,
-    })
+    };
+    Some(s.to_string())
 }
 
 /// Cleans the given categories, reporting progress lines through `log`.
-pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], log: &dyn Fn(String)) {
+pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dyn Fn(String)) {
     // Merge stderr into stdout so a single pipe carries everything (no deadlock).
     let mut script = String::from("exec 2>&1\nexport LC_ALL=C\n");
     let mut need_root = false;
 
     for &kind in kinds {
         let cat = CATEGORIES.iter().find(|c| c.kind == kind).unwrap();
-        if let Some(line) = root_script(kind) {
-            script.push_str(line);
+        if let Some(line) = root_script(kind, journal_days) {
+            script.push_str(&line);
             script.push('\n');
             need_root = true;
             continue;
@@ -351,14 +352,17 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], log: &dyn Fn(String)) {
 }
 
 pub fn format_bytes(b: u64) -> String {
-    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    // French uses "octets" (o, Ko, Mo...) and a decimal comma.
+    let fr = crate::i18n::is_french();
+    let units: [&str; 5] = if fr { ["o", "Ko", "Mo", "Go", "To"] } else { ["B", "KB", "MB", "GB", "TB"] };
     let mut v = b as f64;
     let mut i = 0;
-    while v >= 1000.0 && i < UNITS.len() - 1 {
+    while v >= 1000.0 && i < units.len() - 1 {
         v /= 1000.0;
         i += 1;
     }
-    if i == 0 { format!("{b} B") } else { format!("{v:.1} {}", UNITS[i]) }
+    let text = if i == 0 { format!("{b} {}", units[0]) } else { format!("{v:.1} {}", units[i]) };
+    if fr { text.replace('.', ",") } else { text }
 }
 
 #[cfg(test)]
@@ -434,8 +438,8 @@ mod tests {
     #[test]
     fn root_scripts_are_valid_shell() {
         for c in CATEGORIES {
-            if let Some(s) = root_script(c.kind) {
-                let ok = Command::new("sh").args(["-n", "-c", s]).status().unwrap().success();
+            if let Some(s) = root_script(c.kind, 3) {
+                let ok = Command::new("sh").args(["-n", "-c", &s]).status().unwrap().success();
                 assert!(ok, "bad shell for {:?}", c.kind);
             }
         }
@@ -448,7 +452,7 @@ mod tests {
         for f in ["syslog", "syslog.1", "kern.log.2.gz", "Xorg.0.log", "Xorg.0.log.old", "journal/x.journal.1"] {
             fs::write(base.join(f), "x").unwrap();
         }
-        let script = root_script(Kind::OldLogs).unwrap()
+        let script = root_script(Kind::OldLogs, 3).unwrap()
             .replace("/var/log", base.to_str().unwrap())
             .replace("; find ", "; /usr/bin/find ");
         let out = Command::new("sh").args(["-c", &script]).output().unwrap();
