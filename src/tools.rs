@@ -28,7 +28,7 @@ pub struct BigFile {
 /// largest files of at least `min` bytes, biggest first.
 pub fn find_big_files(min: u64, limit: usize, progress: &dyn Fn(u64)) -> Vec<BigFile> {
     let home = home();
-    let skip = [home.join(".local/share/Trash")];
+    let skip = [home.join(".local/share/Trash"), home.join(".Trash")];
     let mut stack = vec![home];
     let mut found = Vec::new();
     let mut scanned = 0u64;
@@ -155,11 +155,13 @@ fn localized(kv: &BTreeMap<String, String>, key: &str) -> Option<String> {
 pub fn startup_entries() -> Vec<StartupEntry> {
     #[cfg(windows)]
     return crate::windows::startup_entries();
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    return crate::macos::startup_entries();
+    #[cfg(target_os = "linux")]
     linux_startup_entries()
 }
 
-#[cfg_attr(windows, allow(dead_code))]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn linux_startup_entries() -> Vec<StartupEntry> {
     let mut files: BTreeMap<String, (Option<String>, Option<String>)> = BTreeMap::new();
     for (dir, is_user) in [(PathBuf::from(SYSTEM_DIR), false), (user_dir(), true)] {
@@ -219,11 +221,13 @@ fn set_key(text: &str, key: &str, value: &str) -> String {
 pub fn set_startup(file: &str, enabled: bool) -> Result<(), String> {
     #[cfg(windows)]
     return crate::windows::set_startup(file, enabled);
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    return crate::macos::set_startup(file, enabled);
+    #[cfg(target_os = "linux")]
     linux_set_startup(file, enabled)
 }
 
-#[cfg_attr(windows, allow(dead_code))]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn linux_set_startup(file: &str, enabled: bool) -> Result<(), String> {
     let user_path = user_dir().join(file);
     let text = fs::read_to_string(&user_path)

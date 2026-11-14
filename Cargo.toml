@@ -1,9 +1,9 @@
 [package]
 name = "aero-cleaner"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 license = "MIT"
-description = "Frutiger Aero style system cleaner for Linux Mint"
+description = "Frutiger Aero style system cleaner for Linux, Windows and macOS"
 
 [dependencies]
 eframe = { version = "0.37.0", features = ["glow"] }
@@ -22,6 +22,10 @@ panic = "abort"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading", "Win32_System_Registry"] }
 winreg = "0.55"
+trash = "5"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Moves files to the Trash through Finder, so "Put Back" works.
 trash = "5"
 
 [build-dependencies]

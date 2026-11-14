@@ -56,6 +56,13 @@
 - Segoe UI font, bundled emoji icons, icon embedded in the `.exe`, OpenGL fallback when DirectX 12/Vulkan isn't available
 - `packaging/build-windows.sh`; CI tests on Linux and Windows; releases ship the `.deb`, the Windows `.zip` and `SHA256SUMS`
 
+**v1.2 – macOS version**
+- Same app on macOS 11 or later, from the same code (`platform.rs` + `macos.rs`), as a universal `.app` for Apple Silicon and Intel
+- macOS cleaning: Trash (through Finder, so no Full Disk Access needed), `~/Library/Caches`, Quick Look thumbnails, crash reports, Xcode DerivedData and simulator caches, Homebrew downloads and unused packages, Recent Items; with one administrator prompt: old system logs, system crash reports, old `/private/var/tmp` files
+- Startup apps from launch agents, turned on or off per user through launchctl (plist files are never edited)
+- Browsers at their macOS locations, launchd agents for automation, macOS notifications, Lucida Grande font, native folder picker
+- `packaging/build-macos.sh`; CI tests on Linux, Windows and macOS; releases also ship the macOS `.zip`
+
 ---
 
 # 🗺 Road to 2.0
@@ -71,20 +78,21 @@
 
 | Version | Theme | Size | Main risk |
 |---|---|---|---|
-| v1.2 | Quick wins | S | – |
-| v1.3 | Your disk over time | M | Keeping history small |
+| v1.3 | Quick wins | S | – |
+| v1.4 | Your disk over time | M | Keeping history small |
 | v1.5 | Safety net & custom rules | M | Undo storage on nearly full disks |
 | **v2.0** | **Trusted & everywhere** | **L** | **Privileged helper security, distro differences** |
 
-## 🔜 v1.2 – Quick wins
+## 🔜 v1.3 – Quick wins
 - **Firefox history:** delete visits and unbookmarked pages through SQLite (`rusqlite`, bundled). Bookmarks stay untouched.
 - **Keyboard navigation:** Tab and arrow keys, Space to tick, Ctrl+1…9 to switch screens.
 - **UI snapshot tests** (`egui_kittest`): every screen × 2 languages × 5 themes × 2 systems, compared to reference images in CI.
+- **macOS polish:** notarized, signed app (no Gatekeeper warning), a `.dmg`, and the Boot time screen.
 - **Windows polish:** Boot time screen (from the Windows event log), a proper installer (MSI or Inno Setup), and a code-signed `.exe` so SmartScreen stops warning.
 - **Update check:** opt-in "New version available" check against GitHub Releases. No data is sent.
 - **Release polish:** `SHA256SUMS` attached to each release, and a Duplicates screenshot in the README.
 
-## 📈 v1.3 – Your disk over time
+## 📈 v1.4 – Your disk over time
 - **Disk history:** the hourly check already runs, so it also records free space. A glossy line chart shows the last 90 days.
 - **Forecast:** "At this rate your disk is full in about 4 months", shown in the low-disk alert too.
 - **Growth finder:** which folders grew the most this week, from compact disk-map snapshots.

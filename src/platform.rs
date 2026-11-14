@@ -1,10 +1,12 @@
-//! Everything that differs between Linux and Windows lives here (or in
-//! `windows.rs` for the larger Windows-only features).
+//! Everything that differs between Linux, Windows and macOS lives here (or
+//! in `windows.rs` / `macos.rs` for the larger system-specific features).
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub const IS_WINDOWS: bool = cfg!(windows);
+pub const IS_MACOS: bool = cfg!(target_os = "macos");
+pub const IS_LINUX: bool = !IS_WINDOWS && !IS_MACOS;
 
 /// The user's home folder (`$HOME`, or `%USERPROFILE%` on Windows).
 pub fn home() -> PathBuf {
@@ -16,18 +18,24 @@ fn env_dir(var: &str) -> Option<PathBuf> {
     std::env::var_os(var).filter(|v| !v.is_empty()).map(PathBuf::from)
 }
 
-/// Where settings live: `~/.config/aero-cleaner` or `%APPDATA%\AeroClean`.
+/// Where settings live: `~/.config/aero-cleaner`, `%APPDATA%\AeroClean`
+/// or `~/Library/Application Support/AeroClean`.
 pub fn config_dir() -> PathBuf {
-    if IS_WINDOWS {
+    if IS_MACOS {
+        home().join("Library/Application Support/AeroClean")
+    } else if IS_WINDOWS {
         env_dir("APPDATA").unwrap_or_else(|| home().join("AppData/Roaming")).join("AeroClean")
     } else {
         env_dir("XDG_CONFIG_HOME").unwrap_or_else(|| home().join(".config")).join("aero-cleaner")
     }
 }
 
-/// Where history and state live: `~/.local/share/aero-cleaner` or `%LOCALAPPDATA%\AeroClean`.
+/// Where history and state live: `~/.local/share/aero-cleaner`,
+/// `%LOCALAPPDATA%\AeroClean` or `~/Library/Application Support/AeroClean`.
 pub fn data_dir() -> PathBuf {
-    if IS_WINDOWS {
+    if IS_MACOS {
+        config_dir()
+    } else if IS_WINDOWS {
         env_dir("LOCALAPPDATA").unwrap_or_else(|| home().join("AppData/Local")).join("AeroClean")
     } else {
         env_dir("XDG_DATA_HOME").unwrap_or_else(|| home().join(".local/share")).join("aero-cleaner")
@@ -45,11 +53,11 @@ pub fn roaming_app_data() -> PathBuf {
 }
 
 /// True for paths (relative to home) that belong to apps rather than the
-/// user: hidden dot-folders on Linux, plus `AppData` on Windows.
+/// user: hidden dot-folders, plus `AppData` on Windows and `Library` on macOS.
 pub fn is_app_data(rel: &Path) -> bool {
-    rel.components().any(|c| {
+    rel.components().enumerate().any(|(i, c)| {
         let s = c.as_os_str().to_string_lossy();
-        s.starts_with('.') || (IS_WINDOWS && s.eq_ignore_ascii_case("AppData"))
+        s.starts_with('.') || (IS_WINDOWS && s.eq_ignore_ascii_case("AppData")) || (IS_MACOS && i == 0 && s == "Library")
     })
 }
 
@@ -59,7 +67,11 @@ pub fn disk_usage() -> Option<(u64, u64)> {
     {
         crate::windows::disk_usage()
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        crate::macos::disk_usage()
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         let out = Command::new("df").args(["-B1", "--output=size,avail", "/"]).output().ok()?;
         let text = String::from_utf8_lossy(&out.stdout);
@@ -70,6 +82,9 @@ pub fn disk_usage() -> Option<(u64, u64)> {
 
 /// Names of running programs, lowercase, without ".exe".
 pub fn running_processes() -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    return crate::macos::running_processes();
+    #[allow(unreachable_code)]
     if IS_WINDOWS {
         // `tasklist /fo csv /nh` prints "image.exe","pid",... (not localized).
         let out = Command::new("tasklist").args(["/fo", "csv", "/nh"]).stderr(Stdio::null()).output();
@@ -89,6 +104,9 @@ pub fn running_processes() -> Vec<String> {
 pub fn open_folder(path: &Path) {
     if IS_WINDOWS {
         let _ = Command::new("explorer").arg(format!("/select,{}", path.display())).spawn();
+    } else if IS_MACOS {
+        // Opens Finder with the file selected.
+        let _ = Command::new("open").arg("-R").arg(path).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
     } else if let Some(dir) = path.parent() {
         let _ = Command::new("xdg-open").arg(dir).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
     }
@@ -96,23 +114,26 @@ pub fn open_folder(path: &Path) {
 
 /// Moves a file to the Trash / Recycle Bin (recoverable).
 pub fn move_to_trash(path: &Path) -> Result<(), String> {
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos"))]
     {
         trash::delete(path).map_err(|e| e.to_string())
     }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         let out = Command::new("gio").arg("trash").arg("--").arg(path).stderr(Stdio::piped()).output().map_err(|e| e.to_string())?;
         if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) }
     }
 }
 
-/// UI font files (regular, bold). Segoe UI is the original Aero-era font.
-pub fn font_files() -> [&'static str; 2] {
+/// UI font files (regular, bold), with the face index inside the file.
+/// Segoe UI is the original Aero-era font; Lucida Grande is the Aqua one.
+pub fn font_files() -> [(&'static str, u32); 2] {
     if IS_WINDOWS {
-        ["C:\\Windows\\Fonts\\segoeui.ttf", "C:\\Windows\\Fonts\\segoeuib.ttf"]
+        [("C:\\Windows\\Fonts\\segoeui.ttf", 0), ("C:\\Windows\\Fonts\\segoeuib.ttf", 0)]
+    } else if IS_MACOS {
+        [("/System/Library/Fonts/LucidaGrande.ttc", 0), ("/System/Library/Fonts/LucidaGrande.ttc", 1)]
     } else {
-        ["/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"]
+        [("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", 0), ("/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf", 0)]
     }
 }
 
@@ -120,7 +141,7 @@ pub fn font_files() -> [&'static str; 2] {
 /// scheduled jobs keep working after rebuilds.
 pub fn exe() -> PathBuf {
     let current = std::env::current_exe().unwrap_or_default();
-    if IS_WINDOWS {
+    if !IS_LINUX {
         return current;
     }
     let installed = home().join(".local/bin/aero-cleaner");

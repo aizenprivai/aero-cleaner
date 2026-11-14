@@ -17,6 +17,9 @@ mod theme;
 mod tools;
 #[cfg(windows)]
 mod windows;
+// Also built for tests on other systems: its text parsing is tested everywhere.
+#[cfg(any(target_os = "macos", test))]
+mod macos;
 
 use aero::{bold, embossed, regular};
 use cleaner::{format_bytes, Kind, ScanResult, CATEGORIES};
@@ -438,7 +441,7 @@ impl eframe::App for App {
             ("SYSTEM", &[(Tab::Boot, "⏱", "Boot time"), (Tab::Startup, "🚀", "Startup"), (Tab::Themes, "🎨", "Themes"), (Tab::Settings, "⚙", "Settings")]),
         ];
         // Boot analysis relies on systemd, so it's Linux-only for now.
-        let hidden = |tab: Tab| platform::IS_WINDOWS && tab == Tab::Boot;
+        let hidden = |tab: Tab| !platform::IS_LINUX && tab == Tab::Boot;
         let mut y = nav_top + 8.0;
         let mut new_tab = self.tab;
         for (title, entries) in groups {
@@ -518,10 +521,12 @@ fn start_tab() -> Tab {
 fn setup_fonts(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
     let defaults = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
-    let mut add = |name: &str, path: &str| -> bool {
+    let mut add = |name: &str, (path, index): (&str, u32)| -> bool {
         match std::fs::read(path) {
             Ok(bytes) => {
-                fonts.font_data.insert(name.into(), Arc::new(FontData::from_owned(bytes)));
+                let mut data = FontData::from_owned(bytes);
+                data.index = index;
+                fonts.font_data.insert(name.into(), Arc::new(data));
                 true
             }
             Err(_) => false,
@@ -580,10 +585,11 @@ fn main() -> eframe::Result {
         _ => {}
     }
     // Install/refresh the launcher once: a Start Menu shortcut on Windows; on
-    // Linux the user .desktop file (skipped when the .deb provides one).
+    // Linux the user .desktop file (skipped when the .deb provides one). On
+    // macOS the .app bundle is the launcher, nothing to install.
     if platform::IS_WINDOWS {
         let _ = automation::install_launcher();
-    } else {
+    } else if platform::IS_LINUX {
         let launcher = platform::home().join(".local/share/applications/aero-cleaner.desktop");
         let packaged = std::path::Path::new("/usr/share/applications/aero-cleaner.desktop").exists();
         if !packaged && !std::fs::read_to_string(&launcher).unwrap_or_default().contains("Icon=aero-cleaner") {

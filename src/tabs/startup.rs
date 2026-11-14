@@ -44,7 +44,7 @@ impl App {
                     clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(&e.name), bold(15.0), th.text);
                     clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(&e.comment), regular(12.0), th.soft);
                     let (badge, color) = if e.critical {
-                        (if crate::platform::IS_WINDOWS { "all users" } else { "needed by desktop" }, rgba(150, 160, 172, 255))
+                        (if crate::platform::IS_WINDOWS { "all users" } else if crate::platform::IS_MACOS { "part of macOS" } else { "needed by desktop" }, rgba(150, 160, 172, 255))
                     } else if e.enabled {
                         ("starts at login", th.go)
                     } else {
@@ -58,6 +58,8 @@ impl App {
                     if e.critical {
                         let tip = if crate::platform::IS_WINDOWS {
                             "Installed for all users. Change it in Task Manager (needs admin)."
+                        } else if crate::platform::IS_MACOS {
+                            "Part of macOS. Turning it off could break things, so it's locked."
                         } else {
                             "Part of the desktop. Turning it off could break things, so it's locked."
                         };

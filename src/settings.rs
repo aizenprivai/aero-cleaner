@@ -139,6 +139,10 @@ pub fn browser_cache_dirs() -> Vec<PathBuf> {
     if crate::platform::IS_WINDOWS {
         return vec![];
     }
+    if crate::platform::IS_MACOS {
+        let c = home().join("Library/Caches");
+        return ["Firefox", "BraveSoftware", "Google/Chrome", "Chromium", "Vivaldi", "Microsoft Edge"].iter().map(|d| c.join(d)).filter(|p| p.exists()).collect();
+    }
     let c = home().join(".cache");
     ["mozilla", "BraveSoftware", "google-chrome", "chromium", "vivaldi", "librewolf"]
         .iter()

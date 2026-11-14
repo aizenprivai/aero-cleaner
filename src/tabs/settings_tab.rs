@@ -109,6 +109,8 @@ impl App {
                 run_now = aero::aqua_button(ui, run_r, label, th.go, !self.auto.running).clicked();
                 let tip = if crate::platform::IS_WINDOWS {
                     "Runs through Windows Task Scheduler, under the AeroClean folder."
+                } else if crate::platform::IS_MACOS {
+                    "Runs in the background through launchd. Keep AeroClean in Applications."
                 } else {
                     "Tip: right-click AeroClean in the menu for Quick clean and Disk map."
                 };
@@ -117,8 +119,11 @@ impl App {
                 // ----- Cleaning -----
                 Self::section(ui, "CLEANING", th);
                 let days = format!("{} days", self.settings.journal_days);
-                cycle_journal = option_row(ui, row_w, "📜", "System journal retention",
-                    "How many days of system logs to keep when cleaning the journal.", &days, "Change the threshold", th);
+                // The systemd journal only exists on Linux.
+                if crate::platform::IS_LINUX {
+                    cycle_journal = option_row(ui, row_w, "📜", "System journal retention",
+                        "How many days of system logs to keep when cleaning the journal.", &days, "Change the threshold", th);
+                }
                 let mb = self.settings.big_min_mb;
                 let unit = if crate::i18n::is_french() { ("Mo", "Go") } else { ("MB", "GB") };
                 let big = if mb >= 1000 { format!("{} {}", mb / 1000, unit.1) } else { format!("{mb} {}", unit.0) };
@@ -189,10 +194,15 @@ impl App {
                 if aero::aqua_button(ui, browse_r, "📁 Browse", th.accent, true).clicked() {
                     let tx = notifier.clone();
                     std::thread::spawn(move || {
-                        let out = std::process::Command::new("zenity")
-                            .args(["--file-selection", "--directory", "--title=Choose a folder to keep"])
-                            .output();
-                        let picked = out.ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+                        #[cfg(target_os = "macos")]
+                        let picked = crate::macos::choose_folder(&crate::i18n::tr("Choose a folder to keep"));
+                        #[cfg(not(target_os = "macos"))]
+                        let picked = {
+                            let out = std::process::Command::new("zenity")
+                                .args(["--file-selection", "--directory", "--title=Choose a folder to keep"])
+                                .output();
+                            out.ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                        };
                         tx.send(Msg::Picked(picked));
                     });
                 }

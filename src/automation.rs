@@ -1,5 +1,6 @@
 //! Background features: the weekly automatic clean, the low-disk alert,
-//! desktop notifications and the systemd user timers that run them.
+//! desktop notifications and what runs them: systemd user timers on Linux,
+//! Task Scheduler on Windows, launchd agents on macOS.
 
 use crate::cleaner::{self, format_bytes, Kind};
 use crate::settings::{self, Settings};
@@ -13,8 +14,14 @@ use crate::platform::{exe, home};
 
 /// Shows a desktop notification. With `action`, waits for a click and
 /// returns true if the action button was pressed (Linux only; Windows toasts
-/// from a background task can't report clicks back).
+/// and macOS notifications from a background task can't report clicks back).
 pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = action;
+        crate::macos::notify(title, body);
+        return false;
+    }
     #[cfg(windows)]
     {
         let _ = action;
@@ -36,7 +43,7 @@ pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
 /// Opens the main window in its own systemd scope, so it outlives the
 /// short-lived timer service that launched it.
 pub fn launch_gui(args: &[&str]) {
-    if crate::platform::IS_WINDOWS {
+    if !crate::platform::IS_LINUX {
         let _ = Command::new(exe()).args(args).spawn();
         return;
     }
@@ -159,6 +166,8 @@ pub fn unit_files(job: &Job) -> (String, String) {
 pub fn enable(job: &Job) -> Result<(), String> {
     #[cfg(windows)]
     return crate::windows::task_enable(job.unit, job.command, job.unit == AUTO_CLEAN.unit);
+    #[cfg(target_os = "macos")]
+    return crate::macos::agent_enable(job.unit, job.command, job.unit == AUTO_CLEAN.unit);
     #[allow(unreachable_code)]
     let dir = unit_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -172,6 +181,8 @@ pub fn enable(job: &Job) -> Result<(), String> {
 pub fn disable(job: &Job) -> Result<(), String> {
     #[cfg(windows)]
     return crate::windows::task_disable(job.unit);
+    #[cfg(target_os = "macos")]
+    return crate::macos::agent_disable(job.unit);
     #[allow(unreachable_code)]
     let _ = systemctl(&["disable", "--now", &format!("{}.timer", job.unit)]);
     let dir = unit_dir();
@@ -183,6 +194,8 @@ pub fn disable(job: &Job) -> Result<(), String> {
 pub fn is_enabled(job: &Job) -> bool {
     #[cfg(windows)]
     return crate::windows::task_enabled(job.unit);
+    #[cfg(target_os = "macos")]
+    return crate::macos::agent_enabled(job.unit);
     #[allow(unreachable_code)]
     systemctl(&["is-enabled", &format!("{}.timer", job.unit)]).is_ok_and(|s| s == "enabled")
 }
@@ -191,6 +204,12 @@ pub fn is_enabled(job: &Job) -> bool {
 pub fn next_run(job: &Job) -> Option<String> {
     #[cfg(windows)]
     return crate::windows::task_next_run(job.unit);
+    // launchd doesn't tell when an agent runs next.
+    #[cfg(target_os = "macos")]
+    return {
+        let _ = job;
+        None
+    };
     #[allow(unreachable_code)]
     let v = systemctl(&["show", "-P", "NextElapseUSecRealtime", &format!("{}.timer", job.unit)]).ok()?;
     (!v.is_empty() && v != "n/a").then_some(v)
@@ -203,6 +222,9 @@ pub const ICON_SVG: &str = include_str!("../assets/aero-cleaner.svg");
 pub fn install_launcher() -> Result<(), String> {
     #[cfg(windows)]
     return crate::windows::install_shortcut();
+    // The .app bundle is the launcher.
+    #[cfg(target_os = "macos")]
+    return Ok(());
     #[allow(unreachable_code)]
     // The icon goes into the user's icon theme folder so "Icon=aero-cleaner" resolves.
     let icon_dir = home().join(".local/share/icons/hicolor/scalable/apps");
@@ -225,7 +247,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(unix)] // uses Linux tools or Unix-only file features
+    #[cfg(target_os = "linux")]
     fn units_are_well_formed() {
         let (service, timer) = unit_files(&AUTO_CLEAN);
         assert!(service.contains("Type=oneshot") && service.contains("clean --auto"));
@@ -236,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)] // uses Linux tools or Unix-only file features
+    #[cfg(target_os = "linux")] // needs systemd-analyze
     fn systemd_accepts_the_units() {
         let dir = std::env::temp_dir().join(format!("aero-units-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();

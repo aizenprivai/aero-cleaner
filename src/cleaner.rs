@@ -1,12 +1,13 @@
 //! Cleaning backend: what can be cleaned, how big it is, and how to clean it.
 //!
 //! User-level items are deleted directly from Rust. System-level items need
-//! one password prompt: on Linux they run as a shell script through `pkexec`;
-//! on Windows an elevated copy of AeroClean (one UAC prompt) deletes them
-//! natively, from a fixed list of categories.
+//! one password prompt: on Linux they run as a shell script through `pkexec`
+//! (on macOS through osascript's administrator prompt); on Windows an
+//! elevated copy of AeroClean (one UAC prompt) deletes them natively, from a
+//! fixed list of categories.
 
 use std::fs;
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -22,7 +23,7 @@ pub enum Kind {
     Flatpak,
     AptCache,
     Autoremove,
-    #[cfg_attr(windows, allow(dead_code))]
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     Journal,
     OldLogs,
     CrashReports,
@@ -30,8 +31,9 @@ pub enum Kind {
     /// Windows: Delivery Optimization cache.
     #[cfg_attr(not(windows), allow(dead_code))]
     DeliveryOpt,
-    /// Windows: blue screen dumps and system error reports.
-    #[cfg_attr(not(windows), allow(dead_code))]
+    /// Windows: blue screen dumps and system error reports. macOS: system
+    /// crash reports in /Library/Logs/DiagnosticReports.
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
     SystemCrash,
 }
 
@@ -44,7 +46,7 @@ pub struct Category {
     pub default_on: bool,
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::Trash, name: "Trash", desc: "Files you already moved to the trash", icon: "🗑", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
@@ -58,6 +60,23 @@ pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::OldLogs, name: "Rotated log files", desc: "Old compressed logs in /var/log (*.gz, *.1, *.old)", icon: "📄", root: true, default_on: true },
     Category { kind: Kind::CrashReports, name: "Crash reports", desc: "Crash dumps in /var/crash", icon: "💥", root: true, default_on: true },
     Category { kind: Kind::VarTmp, name: "Old temporary files", desc: "Files in /var/tmp untouched for 7+ days", icon: "⏳", root: true, default_on: true },
+];
+
+// On macOS, "AptCache" and "Autoremove" are Homebrew's download cache and
+// unused dependencies; both are the user's own, so they need no password.
+#[cfg(target_os = "macos")]
+pub const CATEGORIES: &[Category] = &[
+    Category { kind: Kind::Trash, name: "Trash", desc: "Files you already moved to the Trash (emptied through Finder)", icon: "🗑", root: false, default_on: true },
+    Category { kind: Kind::AppCache, name: "App & browser cache", desc: "~/Library/Caches (close your browser first)", icon: "🌐", root: false, default_on: true },
+    Category { kind: Kind::Thumbnails, name: "Quick Look thumbnails", desc: "File previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
+    Category { kind: Kind::CrashReports, name: "Crash reports", desc: "App crash reports in ~/Library/Logs/DiagnosticReports", icon: "💥", root: false, default_on: true },
+    Category { kind: Kind::DevCache, name: "Developer caches", desc: "Xcode DerivedData, simulator caches, Cargo, npm and Gradle downloads (rebuilt on demand)", icon: "🔧", root: false, default_on: false },
+    Category { kind: Kind::AptCache, name: "Homebrew downloads", desc: "Installers Homebrew keeps after installing", icon: "🍺", root: false, default_on: true },
+    Category { kind: Kind::Autoremove, name: "Unused Homebrew packages", desc: "Dependencies nothing needs anymore (brew autoremove)", icon: "📦", root: false, default_on: false },
+    Category { kind: Kind::RecentFiles, name: "Recent items", desc: "The \"Recent Items\" lists of the Apple menu and apps (privacy)", icon: "🕘", root: false, default_on: false },
+    Category { kind: Kind::OldLogs, name: "Old system logs", desc: "Rotated logs in /private/var/log (*.gz, *.bz2, *.0...)", icon: "📄", root: true, default_on: true },
+    Category { kind: Kind::SystemCrash, name: "System crash reports", desc: "Reports in /Library/Logs/DiagnosticReports", icon: "🔥", root: true, default_on: true },
+    Category { kind: Kind::VarTmp, name: "Old temporary files", desc: "Files in /private/var/tmp untouched for 7+ days", icon: "⏳", root: true, default_on: true },
 ];
 
 #[cfg(windows)]
@@ -88,7 +107,7 @@ fn home() -> PathBuf {
     crate::platform::home()
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 fn user_paths(kind: Kind) -> Vec<PathBuf> {
     let h = home();
     match kind {
@@ -103,6 +122,30 @@ fn user_paths(kind: Kind) -> Vec<PathBuf> {
         }
         Kind::DevCache => vec![h.join(".cargo/registry/cache"), h.join(".npm/_cacache"), h.join(".gradle/caches")],
         Kind::RecentFiles => vec![h.join(".local/share/recently-used.xbel")],
+        _ => vec![],
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn user_paths(kind: Kind) -> Vec<PathBuf> {
+    let h = home();
+    match kind {
+        Kind::Trash => vec![h.join(".Trash")],
+        Kind::AppCache => vec![h.join("Library/Caches")],
+        Kind::Thumbnails => crate::macos::user_cache_dir().map(|d| d.join("com.apple.QuickLook.thumbnailcache")).into_iter().collect(),
+        Kind::CrashReports => vec![h.join("Library/Logs/DiagnosticReports")],
+        Kind::DevCache => vec![
+            h.join("Library/Developer/Xcode/DerivedData"),
+            h.join("Library/Developer/CoreSimulator/Caches"),
+            h.join(".cargo/registry/cache"),
+            h.join(".npm/_cacache"),
+            h.join(".gradle/caches"),
+        ],
+        Kind::AptCache => vec![crate::macos::brew_cache()],
+        // Only the "Recent" lists: the same folder also holds Finder's sidebar favorites.
+        Kind::RecentFiles => fs::read_dir(h.join("Library/Application Support/com.apple.sharedfilelist"))
+            .map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy().contains("Recent"))).collect())
+            .unwrap_or_default(),
         _ => vec![],
     }
 }
@@ -160,6 +203,7 @@ fn system_paths(kind: Kind) -> (Vec<PathBuf>, fn(&Path, &fs::Metadata) -> bool) 
 /// Paths excluded from a category because another category covers them.
 fn user_skips(kind: Kind) -> Vec<PathBuf> {
     match kind {
+        Kind::AppCache if crate::platform::IS_MACOS => vec![home().join("Library/Caches/Homebrew")],
         Kind::AppCache => vec![home().join(".cache/thumbnails")],
         _ => vec![],
     }
@@ -208,20 +252,31 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<Str
             lines.extend(kept);
             lines
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        Kind::Autoremove => {
+            let pkgs = crate::macos::brew_unused();
+            if pkgs.is_empty() { vec!["No packages to remove".into()] } else { vec![format!("Removes: {}", pkgs.join(", "))] }
+        }
+        #[cfg(target_os = "macos")]
+        Kind::OldLogs => vec!["Deletes *.gz, *.bz2 and *.0-style files in /private/var/log".into()],
+        #[cfg(target_os = "macos")]
+        Kind::SystemCrash => vec!["Deletes everything in /Library/Logs/DiagnosticReports".into()],
+        #[cfg(target_os = "macos")]
+        Kind::VarTmp => vec!["Deletes files in /private/var/tmp untouched for 7+ days".into()],
+        #[cfg(target_os = "linux")]
         Kind::Autoremove => {
             let out = run_c("apt-get", &["-s", "autoremove", "--purge"]);
             let pkgs: Vec<&str> = out.lines().filter_map(|l| l.strip_prefix("Purg ").or_else(|| l.strip_prefix("Remv "))).filter_map(|l| l.split_whitespace().next()).collect();
             if pkgs.is_empty() { vec!["No packages to remove".into()] } else { vec![format!("Removes: {}", pkgs.join(", "))] }
         }
         Kind::Flatpak => vec!["Runs: flatpak uninstall --unused".into()],
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::AptCache => vec!["Deletes downloaded .deb files in /var/cache/apt/archives".into()],
         Kind::Journal => vec![format!("Deletes system log entries older than {journal_days} days")],
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::OldLogs => vec!["Deletes *.gz, *.old and *.1-style files in /var/log".into()],
         Kind::CrashReports => vec!["Deletes everything in /var/crash".into()],
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::VarTmp => vec!["Deletes files in /var/tmp untouched for 7+ days".into()],
         _ => vec![],
     }
@@ -229,7 +284,9 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<Str
 
 /// Categories cleaned by emptying plain folders in the user's profile.
 fn uses_user_paths(kind: Kind) -> bool {
-    matches!(kind, Kind::Trash | Kind::Thumbnails | Kind::AppCache | Kind::DevCache | Kind::RecentFiles) || (cfg!(windows) && kind == Kind::CrashReports)
+    matches!(kind, Kind::Trash | Kind::Thumbnails | Kind::AppCache | Kind::DevCache | Kind::RecentFiles)
+        || (!crate::platform::IS_LINUX && kind == Kind::CrashReports)
+        || (crate::platform::IS_MACOS && kind == Kind::AptCache)
 }
 
 /// Names of web browsers that are currently running.
@@ -237,6 +294,8 @@ pub fn running_browsers() -> Vec<&'static str> {
     const BROWSERS: &[(&str, &str)] = &[
         ("firefox", "Firefox"), ("firefox-bin", "Firefox"), ("librewolf", "LibreWolf"), ("brave", "Brave"),
         ("chrome", "Chrome"), ("chromium", "Chromium"), ("vivaldi-bin", "Vivaldi"), ("opera", "Opera"), ("msedge", "Edge"),
+        // macOS app names (lowercased by platform::running_processes).
+        ("google chrome", "Chrome"), ("brave browser", "Brave"), ("microsoft edge", "Edge"), ("vivaldi", "Vivaldi"), ("safari", "Safari"),
     ];
     let mut found = Vec::new();
     for proc in crate::platform::running_processes() {
@@ -273,6 +332,7 @@ fn all(_: &Path, _: &fs::Metadata) -> bool {
 fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
     let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
     name.ends_with(".gz")
+        || name.ends_with(".bz2")
         || name.ends_with(".old")
         || name.rsplit('.').next().is_some_and(|ext| !ext.is_empty() && ext.chars().all(|c| c.is_ascii_digit()) && name.contains('.'))
 }
@@ -336,6 +396,22 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             let (paths, filter) = system_paths(kind);
             ok(paths.iter().map(|p| path_size(p, &[], &filter)).sum())
         }
+        // Reading ~/.Trash needs Full Disk Access, but Finder can still empty it.
+        #[cfg(target_os = "macos")]
+        Kind::Trash if fs::read_dir(home().join(".Trash")).is_err() => ScanResult { size: None, note: "size hidden by macOS".into(), available: true },
+        #[cfg(target_os = "macos")]
+        Kind::AptCache | Kind::Autoremove if crate::macos::brew().is_none() => ScanResult { size: None, note: "Homebrew not installed".into(), available: false },
+        #[cfg(target_os = "macos")]
+        Kind::Autoremove => {
+            let count = crate::macos::brew_unused().len();
+            ScanResult { size: Some(0), note: format!("{count} package{}", if count == 1 { "" } else { "s" }), available: true }
+        }
+        #[cfg(target_os = "macos")]
+        Kind::OldLogs => ok(path_size(Path::new("/private/var/log"), &[], &is_rotated_log)),
+        #[cfg(target_os = "macos")]
+        Kind::SystemCrash => ok(path_size(Path::new("/Library/Logs/DiagnosticReports"), &[], &all)),
+        #[cfg(target_os = "macos")]
+        Kind::VarTmp => ok(path_size(Path::new("/private/var/tmp"), &[], &older_than_7_days)),
         k if uses_user_paths(k) => {
             let skips = skips_for(kind, exclusions);
             ok(user_paths(kind).iter().map(|p| path_size(p, &skips, &all)).sum())
@@ -346,9 +422,9 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             }
             ScanResult { size: None, note: "size unknown until removed".into(), available: true }
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::AptCache => ok(path_size(Path::new("/var/cache/apt/archives"), &[], &|p, _| p.extension().is_some_and(|e| e == "deb"))),
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::Autoremove => {
             let out = run_c("apt-get", &["-s", "autoremove", "--purge"]);
             let count = out.lines().filter(|l| l.starts_with("Purg ") || l.starts_with("Remv ")).count();
@@ -366,10 +442,10 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             let size = out.split("take up ").nth(1).and_then(|r| r.split(" in the").next()).and_then(parse_size);
             ScanResult { size, note: "up to".into(), available: true }
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::OldLogs => ok(path_size(Path::new("/var/log"), &[PathBuf::from("/var/log/journal")], &is_rotated_log)),
         Kind::CrashReports => ok(path_size(Path::new("/var/crash"), &[], &all)),
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         Kind::VarTmp => ok(path_size(Path::new("/var/tmp"), &[], &older_than_7_days)),
         _ => ScanResult { size: None, note: String::new(), available: false },
     }
@@ -467,6 +543,25 @@ pub fn kind_from_name(name: &str) -> Option<Kind> {
     CATEGORIES.iter().map(|c| c.kind).find(|k| format!("{k:?}") == name)
 }
 
+#[cfg(target_os = "macos")]
+fn root_script(kind: Kind, _journal_days: u32) -> Option<String> {
+    macos_root_script(kind)
+}
+
+/// macOS system items. Uses only `find` options that BSD and GNU find share,
+/// so the test can run them anywhere.
+#[cfg(any(target_os = "macos", test))]
+fn macos_root_script(kind: Kind) -> Option<String> {
+    let s = match kind {
+        Kind::OldLogs => "echo '>> Deleting old system logs'; find /private/var/log -type f \\( -name '*.gz' -o -name '*.bz2' -o -name '*.old' -o -name '*.[0-9]' -o -name '*.[0-9][0-9]' \\) -print -delete | wc -l | tr -d ' ' | sed 's/$/ files removed/'",
+        Kind::SystemCrash => "echo '>> Deleting system crash reports'; find /Library/Logs/DiagnosticReports -mindepth 1 -delete",
+        Kind::VarTmp => "echo '>> Deleting old temp files'; find /private/var/tmp -mindepth 1 -type f -mtime +7 -delete",
+        _ => return None,
+    };
+    Some(s.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
 fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
     let s = match kind {
         Kind::AptCache => "echo '>> Cleaning APT cache'; apt-get clean",
@@ -507,6 +602,17 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dy
             }
             continue;
         }
+        // Finder can empty the Trash even without Full Disk Access; if it
+        // refuses (Automation permission denied), delete what we can read.
+        #[cfg(target_os = "macos")]
+        if kind == Kind::Trash && !exclusions.iter().any(|x| x.starts_with(home().join(".Trash"))) && crate::macos::empty_trash().is_ok() {
+            continue;
+        }
+        #[cfg(target_os = "macos")]
+        if kind == Kind::Autoremove {
+            log(crate::macos::brew_autoremove());
+            continue;
+        }
         if kind == Kind::Flatpak {
             let out = run_c("flatpak", &["uninstall", "--unused", "-y", "--noninteractive"]);
             log(out.lines().last().unwrap_or("done").to_string());
@@ -544,11 +650,20 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dy
         }
         let _ = fs::remove_file(&log_file);
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        log("Asking for administrator password...".into());
+        match crate::macos::run_as_admin(&script) {
+            Ok(out) => out.lines().filter(|l| !l.trim().is_empty()).for_each(|l| log(l.to_string())),
+            Err(e) if e == "cancelled" => log("Password prompt was cancelled, system items were skipped.".into()),
+            Err(e) => log(format!("System cleanup failed: {e}")),
+        }
+    }
+    #[cfg(target_os = "linux")]
     unix_root_clean(&script, log);
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn unix_root_clean(script: &str, log: &dyn Fn(String)) {
     log("Asking for administrator password...".into());
     let child = Command::new("pkexec").args(["/bin/sh", "-c", script]).stdout(Stdio::piped()).stderr(Stdio::null()).spawn();
@@ -630,7 +745,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)] // uses Linux tools or Unix-only file features
+    #[cfg(target_os = "linux")] // copies /bin/sleep, which macOS code signing may refuse to run
     fn detects_running_browser_by_process_name() {
         let dir = std::env::temp_dir().join(format!("aero-browser-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -667,7 +782,28 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)] // uses Linux tools or Unix-only file features
+    #[cfg(unix)]
+    fn macos_scripts_are_valid_and_spare_current_logs() {
+        for k in [Kind::OldLogs, Kind::SystemCrash, Kind::VarTmp] {
+            let s = macos_root_script(k).unwrap();
+            assert!(Command::new("sh").args(["-n", "-c", &s]).status().unwrap().success(), "bad shell for {k:?}");
+        }
+        let base = std::env::temp_dir().join(format!("aero-maclogs-{}", std::process::id()));
+        fs::create_dir_all(base.join("asl")).unwrap();
+        for f in ["system.log", "system.log.0.gz", "wifi.log.1.bz2", "install.log", "fsck_apfs.log.0", "asl/2026.asl"] {
+            fs::write(base.join(f), "x").unwrap();
+        }
+        let script = macos_root_script(Kind::OldLogs).unwrap().replace("/private/var/log", base.to_str().unwrap());
+        let out = Command::new("sh").args(["-c", &script]).output().unwrap();
+        let text = String::from_utf8_lossy(&out.stdout).to_string();
+        assert!(text.contains("\n3 files removed"), "unexpected output: {text}");
+        assert!(base.join("system.log").exists() && base.join("install.log").exists() && base.join("asl/2026.asl").exists());
+        assert!(!base.join("system.log.0.gz").exists() && !base.join("wifi.log.1.bz2").exists() && !base.join("fsck_apfs.log.0").exists());
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")] // GNU find syntax
     fn old_logs_script_works_with_gnu_find() {
         let base = std::env::temp_dir().join(format!("aero-logs-{}", std::process::id()));
         fs::create_dir_all(base.join("journal")).unwrap();

@@ -137,6 +137,25 @@ pub fn detect_linux(home: &Path) -> Vec<Browser> {
     .collect()
 }
 
+/// macOS layout: profiles in ~/Library/Application Support/<vendor>,
+/// caches in ~/Library/Caches/<vendor>. Process names are the app names,
+/// lowercased. (Safari's data is protected by macOS, so it isn't listed.)
+pub fn detect_macos(home: &Path) -> Vec<Browser> {
+    let a = |p: &str| home.join("Library/Application Support").join(p);
+    let k = |p: &str| Some(home.join("Library/Caches").join(p));
+    [
+        chromium("Brave", "brave browser", a("BraveSoftware/Brave-Browser"), k("BraveSoftware/Brave-Browser")),
+        chromium("Chrome", "google chrome", a("Google/Chrome"), k("Google/Chrome")),
+        chromium("Chromium", "chromium", a("Chromium"), k("Chromium")),
+        chromium("Vivaldi", "vivaldi", a("Vivaldi"), k("Vivaldi")),
+        chromium("Edge", "microsoft edge", a("Microsoft Edge"), k("Microsoft Edge")),
+        firefox(a("Firefox/Profiles"), home.join("Library/Caches/Firefox/Profiles")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
 /// Windows layout: profiles (and caches) in %LOCALAPPDATA%\<vendor>\User Data.
 pub fn detect_windows(local: &Path, roaming: &Path) -> Vec<Browser> {
     let u = |p: &str| local.join(p).join("User Data");
@@ -154,7 +173,9 @@ pub fn detect_windows(local: &Path, roaming: &Path) -> Vec<Browser> {
 }
 
 pub fn detect() -> Vec<Browser> {
-    if crate::platform::IS_WINDOWS {
+    if crate::platform::IS_MACOS {
+        detect_macos(&crate::platform::home())
+    } else if crate::platform::IS_WINDOWS {
         detect_windows(&crate::platform::local_app_data(), &crate::platform::roaming_app_data())
     } else {
         detect_linux(&crate::platform::home())
@@ -230,6 +251,33 @@ mod tests {
         clean(b, &[Part::Cache]).unwrap();
         assert!(!home.join(".cache/google-chrome/Default/Cache/data_0").exists());
         assert!(home.join(".cache/google-chrome/Default").exists(), "cache folder itself kept");
+        fs::remove_dir_all(&home).unwrap();
+    }
+
+    #[test]
+    fn macos_layout_finds_profiles_and_caches() {
+        let home = std::env::temp_dir().join(format!("aero-brm-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&home);
+        let prof = home.join("Library/Application Support/Google/Chrome/Default");
+        fs::create_dir_all(&prof).unwrap();
+        fs::write(prof.join("Preferences"), "{}").unwrap();
+        fs::write(prof.join("History"), vec![0u8; 70]).unwrap();
+        let cache = home.join("Library/Caches/Google/Chrome/Default/Cache");
+        fs::create_dir_all(&cache).unwrap();
+        fs::write(cache.join("data_1"), vec![0u8; 250]).unwrap();
+        let ff = home.join("Library/Application Support/Firefox/Profiles/abc.default-release");
+        fs::create_dir_all(&ff).unwrap();
+        fs::write(ff.join("prefs.js"), "").unwrap();
+        fs::write(ff.join("cookies.sqlite"), vec![0u8; 30]).unwrap();
+        fs::create_dir_all(home.join("Library/Caches/Firefox/Profiles/abc.default-release/cache2")).unwrap();
+        fs::write(home.join("Library/Caches/Firefox/Profiles/abc.default-release/cache2/x"), vec![0u8; 90]).unwrap();
+
+        let found = detect_macos(&home);
+        let names: Vec<_> = found.iter().map(|b| (b.name, b.process)).collect();
+        assert_eq!(names, vec![("Chrome", "google chrome"), ("Firefox", "firefox")]);
+        let size = |b: &Browser, part| b.parts.iter().find(|(p, _)| *p == part).unwrap().1.as_ref().map(|d| d.1);
+        assert_eq!((size(&found[0], Part::Cache), size(&found[0], Part::History)), (Some(250), Some(70)));
+        assert_eq!((size(&found[1], Part::Cache), size(&found[1], Part::Cookies)), (Some(90), Some(30)));
         fs::remove_dir_all(&home).unwrap();
     }
 
