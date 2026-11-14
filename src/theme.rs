@@ -146,10 +146,7 @@ pub fn all() -> Vec<Theme> {
 }
 
 fn config_file() -> Option<PathBuf> {
-    let dir = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
-    Some(dir.join("aero-cleaner").join("theme"))
+    Some(crate::platform::config_dir().join("theme"))
 }
 
 /// Index of the saved theme, or 0 (Frutiger Aero).

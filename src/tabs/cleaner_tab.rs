@@ -88,7 +88,8 @@ impl App {
                 for i in (0..CATEGORIES.len()).filter(|&i| !CATEGORIES[i].root) {
                     self.row(ui, i);
                 }
-                Self::section(ui, "SYSTEM  (asks for your password once)", &self.themes[self.theme]);
+                let title = if crate::platform::IS_WINDOWS { "SYSTEM  (asks for administrator permission once)" } else { "SYSTEM  (asks for your password once)" };
+                Self::section(ui, title, &self.themes[self.theme]);
                 for i in (0..CATEGORIES.len()).filter(|&i| CATEGORIES[i].root) {
                     self.row(ui, i);
                 }

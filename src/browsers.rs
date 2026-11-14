@@ -64,7 +64,10 @@ fn subdirs_with(dir: &Path, marker: &str) -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
-fn chromium(name: &'static str, process: &'static str, config: PathBuf, cache: PathBuf) -> Option<Browser> {
+/// `cache` is the separate cache root (Linux: ~/.cache/<browser>). When None
+/// (Windows), the cache lives inside each profile as `<profile>/Cache`: never
+/// the profile folder itself, which also holds bookmarks and passwords.
+fn chromium(name: &'static str, process: &'static str, config: PathBuf, cache: Option<PathBuf>) -> Option<Browser> {
     let profiles = subdirs_with(&config, "Preferences");
     if profiles.is_empty() {
         return None;
@@ -74,7 +77,10 @@ fn chromium(name: &'static str, process: &'static str, config: PathBuf, cache: P
     let mut history = Vec::new();
     for prof in &profiles {
         let pname = prof.file_name().unwrap();
-        cache_paths.push(cache.join(pname));
+        cache_paths.push(match &cache {
+            Some(root) => root.join(pname),
+            None => prof.join("Cache"),
+        });
         for d in ["GPUCache", "Service Worker/CacheStorage", "Service Worker/ScriptCache", "Code Cache"] {
             cache_paths.push(prof.join(d));
         }
@@ -93,8 +99,7 @@ fn chromium(name: &'static str, process: &'static str, config: PathBuf, cache: P
     })
 }
 
-fn firefox(home: &Path) -> Option<Browser> {
-    let root = home.join(".mozilla/firefox");
+fn firefox(root: PathBuf, cache_root: PathBuf) -> Option<Browser> {
     let profiles = subdirs_with(&root, "prefs.js");
     if profiles.is_empty() {
         return None;
@@ -102,7 +107,7 @@ fn firefox(home: &Path) -> Option<Browser> {
     let mut cache_paths = Vec::new();
     let mut cookies = Vec::new();
     for prof in &profiles {
-        cache_paths.push(home.join(".cache/mozilla/firefox").join(prof.file_name().unwrap()));
+        cache_paths.push(cache_root.join(prof.file_name().unwrap()));
         for f in ["cookies.sqlite", "cookies.sqlite-wal", "cookies.sqlite-shm", "webappsstore.sqlite", "storage/default"] {
             cookies.push(prof.join(f));
         }
@@ -115,26 +120,49 @@ fn firefox(home: &Path) -> Option<Browser> {
     })
 }
 
-pub fn detect(home: &Path) -> Vec<Browser> {
+/// Linux layout: profiles in ~/.config/<browser>, caches in ~/.cache/<browser>.
+pub fn detect_linux(home: &Path) -> Vec<Browser> {
     let c = |p: &str| home.join(".config").join(p);
-    let k = |p: &str| home.join(".cache").join(p);
+    let k = |p: &str| Some(home.join(".cache").join(p));
     [
         chromium("Brave", "brave", c("BraveSoftware/Brave-Browser"), k("BraveSoftware/Brave-Browser")),
         chromium("Chrome", "chrome", c("google-chrome"), k("google-chrome")),
         chromium("Chromium", "chromium", c("chromium"), k("chromium")),
         chromium("Vivaldi", "vivaldi-bin", c("vivaldi"), k("vivaldi")),
         chromium("Edge", "msedge", c("microsoft-edge"), k("microsoft-edge")),
-        firefox(home),
+        firefox(home.join(".mozilla/firefox"), home.join(".cache/mozilla/firefox")),
     ]
     .into_iter()
     .flatten()
     .collect()
 }
 
+/// Windows layout: profiles (and caches) in %LOCALAPPDATA%\<vendor>\User Data.
+pub fn detect_windows(local: &Path, roaming: &Path) -> Vec<Browser> {
+    let u = |p: &str| local.join(p).join("User Data");
+    [
+        chromium("Brave", "brave", u("BraveSoftware/Brave-Browser"), None),
+        chromium("Chrome", "chrome", u("Google/Chrome"), None),
+        chromium("Chromium", "chrome", u("Chromium"), None),
+        chromium("Vivaldi", "vivaldi", u("Vivaldi"), None),
+        chromium("Edge", "msedge", u("Microsoft/Edge"), None),
+        firefox(roaming.join("Mozilla/Firefox/Profiles"), local.join("Mozilla/Firefox/Profiles")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+pub fn detect() -> Vec<Browser> {
+    if crate::platform::IS_WINDOWS {
+        detect_windows(&crate::platform::local_app_data(), &crate::platform::roaming_app_data())
+    } else {
+        detect_linux(&crate::platform::home())
+    }
+}
+
 pub fn is_running(process: &str) -> bool {
-    fs::read_dir("/proc")
-        .map(|rd| rd.flatten().any(|e| fs::read_to_string(e.path().join("comm")).is_ok_and(|c| c.trim() == process)))
-        .unwrap_or(false)
+    crate::platform::running_processes().iter().any(|p| p == process)
 }
 
 /// Deletes the given parts. Refuses while the browser runs, because it would
@@ -187,7 +215,7 @@ mod tests {
         // Not a profile (no Preferences): ignored.
         fs::create_dir_all(home.join(".config/google-chrome/Crashpad")).unwrap();
 
-        let found = detect(&home);
+        let found = detect_linux(&home);
         assert_eq!(found.len(), 1);
         let b = &found[0];
         assert_eq!((b.name, b.profiles), ("Chrome", 1));
@@ -203,5 +231,28 @@ mod tests {
         assert!(!home.join(".cache/google-chrome/Default/Cache/data_0").exists());
         assert!(home.join(".cache/google-chrome/Default").exists(), "cache folder itself kept");
         fs::remove_dir_all(&home).unwrap();
+    }
+
+    #[test]
+    fn windows_layout_targets_cache_inside_profile_only() {
+        let base = std::env::temp_dir().join(format!("aero-brw-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let (local, roaming) = (base.join("Local"), base.join("Roaming"));
+        let prof = local.join("Google/Chrome/User Data/Default");
+        fs::create_dir_all(prof.join("Cache/Cache_Data")).unwrap();
+        fs::write(prof.join("Preferences"), "{}").unwrap();
+        fs::write(prof.join("Bookmarks"), "keep me").unwrap();
+        fs::write(prof.join("Login Data"), "passwords").unwrap();
+        fs::write(prof.join("Cache/Cache_Data/f_000001"), vec![0u8; 300]).unwrap();
+        let found = detect_windows(&local, &roaming);
+        assert_eq!(found.len(), 1);
+        let cache = found[0].parts.iter().find(|(p, _)| *p == Part::Cache).unwrap().1.as_ref().unwrap();
+        assert!(cache.0.iter().all(|p| p != &prof), "never the whole profile");
+        assert!(cache.0.contains(&prof.join("Cache")));
+        assert_eq!(cache.1, 300);
+        clean(&found[0], &[Part::Cache]).unwrap();
+        assert!(prof.join("Bookmarks").exists() && prof.join("Login Data").exists() && prof.join("Preferences").exists());
+        assert!(!prof.join("Cache/Cache_Data").exists());
+        fs::remove_dir_all(&base).unwrap();
     }
 }

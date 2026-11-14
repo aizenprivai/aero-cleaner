@@ -8,23 +8,26 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install build dependencies
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev
       - name: Run tests
         run: cargo test --release
 
-  # On a version tag (e.g. v1.0.0): build the .deb and attach it to a GitHub release.
-  release:
+  # The jobs below only run for a version tag (e.g. v1.1.0).
+  build-deb:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -36,7 +39,57 @@ jobs:
           git config user.name "AeroClean"
           git config user.email "noreply@github.com"
           packaging/build-deb.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: target/deb/*.deb
+
+  build-windows:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build .exe
+        run: cargo build --profile dist
+      - name: Package .zip
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          $name = "AeroClean-$version-windows-x64"
+          New-Item -ItemType Directory -Path "dist/$name" | Out-Null
+          Copy-Item target/dist/aero-cleaner.exe "dist/$name/AeroClean.exe"
+          Copy-Item LICENSE "dist/$name/LICENSE.txt"
+          @"
+          AeroClean $version for Windows 10 and 11
+
+          Double-click AeroClean.exe. No installation needed; on first launch it adds itself to the Start Menu.
+          Windows SmartScreen may warn that the app is from an unknown publisher (the .exe isn't code-signed yet): click "More info" then "Run anyway".
+          Cleaning system items asks for administrator permission once per clean.
+
+          https://github.com/${{ github.repository }}  -  MIT License
+          "@ | Set-Content "dist/$name/README.txt"
+          Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.zip
+
+  publish:
+    needs: [build-deb, build-windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" target/deb/*.deb --title "AeroClean ${{ github.ref_name }}" --generate-notes
+        run: |
+          (cd assets && sha256sum * > SHA256SUMS)
+          gh release create "${{ github.ref_name }}" assets/* --repo "${{ github.repository }}" --title "AeroClean ${{ github.ref_name }}" --generate-notes

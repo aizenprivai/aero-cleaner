@@ -22,8 +22,7 @@ impl App {
     pub(crate) fn start_browser_scan(&mut self) {
         self.browsers.scanning = true;
         let tx = self.notifier();
-        let home = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default());
-        std::thread::spawn(move || tx.send(Msg::BrowsersDone(browsers::detect(&home))));
+        std::thread::spawn(move || tx.send(Msg::BrowsersDone(browsers::detect())));
     }
 
     pub(crate) fn browsers_tab(&mut self, ui: &mut egui::Ui, area: Rect, spin: f32, time: f64) {
@@ -89,7 +88,7 @@ impl App {
                         let cy = rect.center().y;
                         aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, on, hovered, th.go, th.accent);
                         let (icon, hue) = match part {
-                            Part::Cache => ("🗂", th.user_orb),
+                            Part::Cache => ("🗄", th.user_orb),
                             Part::Cookies => ("🍪", th.root_orb),
                             Part::History => ("🕘", th.accent),
                         };

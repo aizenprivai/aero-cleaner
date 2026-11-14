@@ -6,17 +6,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-fn home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
-}
-
-fn config_dir() -> PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config")).join("aero-cleaner")
-}
-
-fn data_dir() -> PathBuf {
-    std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".local/share")).join("aero-cleaner")
-}
+use crate::platform::{config_dir, data_dir, home};
 
 pub struct Settings {
     pub reduce_motion: bool,
@@ -145,6 +135,10 @@ pub fn record(freed: u64, what: &str) {
 
 /// Folders people commonly want to keep: browser caches (keeps sites fast).
 pub fn browser_cache_dirs() -> Vec<PathBuf> {
+    // On Windows, browser caches aren't part of the Cleaner's "Temporary files".
+    if crate::platform::IS_WINDOWS {
+        return vec![];
+    }
     let c = home().join(".cache");
     ["mozilla", "BraveSoftware", "google-chrome", "chromium", "vivaldi", "librewolf"]
         .iter()

@@ -1,3 +1,6 @@
+// No console window behind the app on Windows.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod aero;
 mod automation;
 mod boot;
@@ -7,10 +10,13 @@ mod devclean;
 mod diskmap;
 mod dupes;
 mod i18n;
+mod platform;
 mod settings;
 mod tabs;
 mod theme;
 mod tools;
+#[cfg(windows)]
+mod windows;
 
 use aero::{bold, embossed, regular};
 use cleaner::{format_bytes, Kind, ScanResult, CATEGORIES};
@@ -427,16 +433,18 @@ impl eframe::App for App {
         let sidebar = Rect::from_min_max(pos2(inner.min.x - 6.0, nav_top), pos2(inner.min.x + 164.0, inner.max.y));
         aero::surface(&p, sidebar, 16.0, th, false, None);
         let groups: [(&str, &[(Tab, &str, &str)]); 3] = [
-            ("CLEAN", &[(Tab::Cleaner, "🧹", "Cleaner"), (Tab::Browsers, "🌐", "Browsers"), (Tab::Developer, "🛠", "Developer")]),
+            ("CLEAN", &[(Tab::Cleaner, "🚿", "Cleaner"), (Tab::Browsers, "🌐", "Browsers"), (Tab::Developer, "🛠", "Developer")]),
             ("FIND SPACE", &[(Tab::BigFiles, "🐘", "Big files"), (Tab::Duplicates, "📑", "Duplicates"), (Tab::DiskMap, "🗺", "Disk map")]),
             ("SYSTEM", &[(Tab::Boot, "⏱", "Boot time"), (Tab::Startup, "🚀", "Startup"), (Tab::Themes, "🎨", "Themes"), (Tab::Settings, "⚙", "Settings")]),
         ];
+        // Boot analysis relies on systemd, so it's Linux-only for now.
+        let hidden = |tab: Tab| platform::IS_WINDOWS && tab == Tab::Boot;
         let mut y = nav_top + 8.0;
         let mut new_tab = self.tab;
         for (title, entries) in groups {
             embossed(&p, pos2(sidebar.min.x + 14.0, y + 9.0), Align2::LEFT_CENTER, title, bold(11.5), th.soft);
             y += 22.0;
-            for &(tab, icon, label) in entries {
+            for &(tab, icon, label) in entries.iter().filter(|e| !hidden(e.0)) {
                 let r = Rect::from_min_size(pos2(sidebar.min.x + 6.0, y), vec2(sidebar.width() - 12.0, 36.0));
                 if aero::nav_item(ui, r, icon, label, self.tab == tab, &self.themes[self.theme]).clicked() {
                     new_tab = tab;
@@ -519,8 +527,9 @@ fn setup_fonts(ctx: &egui::Context) {
             Err(_) => false,
         }
     };
-    let have_regular = add("noto", "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf");
-    let have_bold = add("noto-bold", "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf");
+    let [regular_file, bold_file] = platform::font_files();
+    let have_regular = add("noto", regular_file);
+    let have_bold = add("noto-bold", bold_file);
     if have_regular {
         fonts.families.entry(FontFamily::Proportional).or_default().insert(0, "noto".into());
     }
@@ -553,6 +562,13 @@ fn main() -> eframe::Result {
             automation::notify(&i18n::tr("AeroClean cleaned up ✨"), &i18n::tr(&summary), None);
             return Ok(());
         }
+        // Windows: the elevated copy started by the Cleaner (one UAC prompt).
+        #[cfg(windows)]
+        Some("--elevated-clean") if args.len() == 3 => {
+            let kinds: Vec<cleaner::Kind> = args[2].split(',').filter_map(cleaner::kind_from_name).collect();
+            cleaner::elevated_clean(&kinds, std::path::Path::new(&args[1]));
+            return Ok(());
+        }
         Some("check-disk") => {
             automation::check_disk(&Settings::load());
             return Ok(());
@@ -563,15 +579,34 @@ fn main() -> eframe::Result {
         }
         _ => {}
     }
-    // Install/refresh the user launcher (icon + right-click actions) once.
-    // Skipped when the .deb package provides the system-wide launcher.
-    let launcher = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/applications/aero-cleaner.desktop");
-    let packaged = std::path::Path::new("/usr/share/applications/aero-cleaner.desktop").exists();
-    if !packaged && !std::fs::read_to_string(&launcher).unwrap_or_default().contains("Icon=aero-cleaner") {
+    // Install/refresh the launcher once: a Start Menu shortcut on Windows; on
+    // Linux the user .desktop file (skipped when the .deb provides one).
+    if platform::IS_WINDOWS {
         let _ = automation::install_launcher();
+    } else {
+        let launcher = platform::home().join(".local/share/applications/aero-cleaner.desktop");
+        let packaged = std::path::Path::new("/usr/share/applications/aero-cleaner.desktop").exists();
+        if !packaged && !std::fs::read_to_string(&launcher).unwrap_or_default().contains("Icon=aero-cleaner") {
+            let _ = automation::install_launcher();
+        }
     }
 
+    // wgpu (DirectX 12 / Vulkan / Metal) first; if the GPU or driver can't
+    // provide it (old GPUs, VMs, remote desktop, Wine), fall back to OpenGL.
+    // AERO_RENDERER=glow forces OpenGL.
+    let force_glow = std::env::var("AERO_RENDERER").is_ok_and(|v| v == "glow");
+    if !force_glow {
+        match run_gui(eframe::Renderer::Wgpu) {
+            Ok(()) => return Ok(()),
+            Err(e) => eprintln!("wgpu renderer failed ({e}), retrying with OpenGL"),
+        }
+    }
+    run_gui(eframe::Renderer::Glow)
+}
+
+fn run_gui(renderer: eframe::Renderer) -> eframe::Result {
     let options = eframe::NativeOptions {
+        renderer,
         viewport: egui::ViewportBuilder::default()
             .with_title("AeroClean")
             .with_app_id("aero-cleaner")

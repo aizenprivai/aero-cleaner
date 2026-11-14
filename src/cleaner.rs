@@ -1,10 +1,12 @@
 //! Cleaning backend: what can be cleaned, how big it is, and how to clean it.
 //!
-//! User-level items are deleted directly from Rust. System-level items are
-//! collected into one shell script and run through `pkexec`, so the user only
-//! sees a single password prompt.
+//! User-level items are deleted directly from Rust. System-level items need
+//! one password prompt: on Linux they run as a shell script through `pkexec`;
+//! on Windows an elevated copy of AeroClean (one UAC prompt) deletes them
+//! natively, from a fixed list of categories.
 
 use std::fs;
+#[cfg(not(windows))]
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -20,10 +22,17 @@ pub enum Kind {
     Flatpak,
     AptCache,
     Autoremove,
+    #[cfg_attr(windows, allow(dead_code))]
     Journal,
     OldLogs,
     CrashReports,
     VarTmp,
+    /// Windows: Delivery Optimization cache.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    DeliveryOpt,
+    /// Windows: blue screen dumps and system error reports.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    SystemCrash,
 }
 
 pub struct Category {
@@ -35,6 +44,7 @@ pub struct Category {
     pub default_on: bool,
 }
 
+#[cfg(not(windows))]
 pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::Trash, name: "Trash", desc: "Files you already moved to the trash", icon: "🗑", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
@@ -50,6 +60,22 @@ pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::VarTmp, name: "Old temporary files", desc: "Files in /var/tmp untouched for 7+ days", icon: "⏳", root: true, default_on: true },
 ];
 
+#[cfg(windows)]
+pub const CATEGORIES: &[Category] = &[
+    Category { kind: Kind::Trash, name: "Recycle Bin", desc: "Files you already deleted to the Recycle Bin", icon: "🗑", root: false, default_on: true },
+    Category { kind: Kind::AppCache, name: "Temporary files", desc: "Your temp folder and graphics shader caches", icon: "⏳", root: false, default_on: true },
+    Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Explorer image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
+    Category { kind: Kind::CrashReports, name: "Crash dumps", desc: "App crash dumps and error reports in your profile", icon: "💥", root: false, default_on: true },
+    Category { kind: Kind::DevCache, name: "Developer caches", desc: "Cargo, npm, pip and Gradle download caches (re-downloaded on demand)", icon: "🔧", root: false, default_on: false },
+    Category { kind: Kind::RecentFiles, name: "Recent items", desc: "The \"Recent\" list and jump lists (privacy)", icon: "🕘", root: false, default_on: false },
+    Category { kind: Kind::VarTmp, name: "Windows temporary files", desc: "Files in Windows\\Temp untouched for 7+ days", icon: "🖥", root: true, default_on: true },
+    Category { kind: Kind::AptCache, name: "Windows Update downloads", desc: "Update files Windows has already installed", icon: "💿", root: true, default_on: true },
+    Category { kind: Kind::DeliveryOpt, name: "Delivery Optimization cache", desc: "Update pieces shared with other PCs", icon: "📡", root: true, default_on: true },
+    Category { kind: Kind::SystemCrash, name: "System crash dumps", desc: "Blue screen dumps and system error reports", icon: "🔥", root: true, default_on: true },
+    Category { kind: Kind::OldLogs, name: "Old Windows logs", desc: "Log files in Windows\\Logs older than 30 days", icon: "📄", root: true, default_on: true },
+    Category { kind: Kind::Autoremove, name: "Superseded Windows components", desc: "Old versions of updated system files (DISM, can take several minutes)", icon: "📚", root: true, default_on: false },
+];
+
 pub struct ScanResult {
     /// Bytes that cleaning would free, if it can be measured.
     pub size: Option<u64>,
@@ -59,9 +85,10 @@ pub struct ScanResult {
 }
 
 fn home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/root"))
+    crate::platform::home()
 }
 
+#[cfg(not(windows))]
 fn user_paths(kind: Kind) -> Vec<PathBuf> {
     let h = home();
     match kind {
@@ -77,6 +104,56 @@ fn user_paths(kind: Kind) -> Vec<PathBuf> {
         Kind::DevCache => vec![h.join(".cargo/registry/cache"), h.join(".npm/_cacache"), h.join(".gradle/caches")],
         Kind::RecentFiles => vec![h.join(".local/share/recently-used.xbel")],
         _ => vec![],
+    }
+}
+
+#[cfg(windows)]
+fn user_paths(kind: Kind) -> Vec<PathBuf> {
+    use crate::platform::{local_app_data, roaming_app_data};
+    let (h, local) = (home(), local_app_data());
+    match kind {
+        Kind::AppCache => {
+            let temp = std::env::var_os("TEMP").map(PathBuf::from).unwrap_or_else(|| local.join("Temp"));
+            let mut v = vec![temp, local.join("D3DSCache")];
+            for d in ["NVIDIA\\DXCache", "NVIDIA\\GLCache", "AMD\\DxCache", "AMD\\GLCache", "Intel\\ShaderCache"] {
+                v.push(local.join(d));
+            }
+            v
+        }
+        // Only the cache databases, never the rest of Explorer's folder.
+        Kind::Thumbnails => fs::read_dir(local.join("Microsoft\\Windows\\Explorer"))
+            .map(|rd| {
+                rd.flatten()
+                    .map(|e| e.path())
+                    .filter(|p| p.file_name().is_some_and(|n| {
+                        let n = n.to_string_lossy().to_lowercase();
+                        (n.starts_with("thumbcache_") || n.starts_with("iconcache_")) && n.ends_with(".db")
+                    }))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        Kind::CrashReports => vec![local.join("CrashDumps"), local.join("Microsoft\\Windows\\WER\\ReportArchive"), local.join("Microsoft\\Windows\\WER\\ReportQueue")],
+        Kind::DevCache => vec![h.join(".cargo\\registry\\cache"), local.join("npm-cache\\_cacache"), local.join("pip\\cache"), h.join(".gradle\\caches")],
+        Kind::RecentFiles => vec![roaming_app_data().join("Microsoft\\Windows\\Recent")],
+        _ => vec![],
+    }
+}
+
+/// Windows system folders per category, with which files to delete.
+#[cfg(windows)]
+fn system_paths(kind: Kind) -> (Vec<PathBuf>, fn(&Path, &fs::Metadata) -> bool) {
+    use crate::windows::{program_data, windows_dir};
+    let w = windows_dir();
+    match kind {
+        Kind::VarTmp => (vec![w.join("Temp")], older_than_7_days),
+        Kind::AptCache => (vec![w.join("SoftwareDistribution\\Download")], all),
+        Kind::DeliveryOpt => (vec![w.join("ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization\\Cache")], all),
+        Kind::SystemCrash => (
+            vec![w.join("Minidump"), w.join("MEMORY.DMP"), program_data().join("Microsoft\\Windows\\WER\\ReportArchive"), program_data().join("Microsoft\\Windows\\WER\\ReportQueue")],
+            all,
+        ),
+        Kind::OldLogs => (vec![w.join("Logs")], older_than_30_days),
+        _ => (vec![], all),
     }
 }
 
@@ -99,7 +176,15 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<Str
     let home = home();
     let pretty = |p: &Path| p.to_string_lossy().replacen(&*home.to_string_lossy(), "~", 1);
     match kind {
-        Kind::Trash | Kind::Thumbnails | Kind::AppCache | Kind::DevCache | Kind::RecentFiles => {
+        #[cfg(windows)]
+        Kind::Trash => vec!["Empties the Recycle Bin on all drives".into()],
+        #[cfg(windows)]
+        Kind::Autoremove => vec!["Runs: DISM /Online /Cleanup-Image /StartComponentCleanup".into()],
+        #[cfg(windows)]
+        Kind::VarTmp | Kind::AptCache | Kind::DeliveryOpt | Kind::SystemCrash | Kind::OldLogs => {
+            system_paths(kind).0.iter().filter(|p| p.exists()).map(|p| format!("Deletes {}", p.display())).collect()
+        }
+        k if uses_user_paths(k) => {
             let skips = skips_for(kind, exclusions);
             let mut entries: Vec<(PathBuf, u64)> = Vec::new();
             for root in user_paths(kind) {
@@ -123,18 +208,28 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<Str
             lines.extend(kept);
             lines
         }
+        #[cfg(not(windows))]
         Kind::Autoremove => {
             let out = run_c("apt-get", &["-s", "autoremove", "--purge"]);
             let pkgs: Vec<&str> = out.lines().filter_map(|l| l.strip_prefix("Purg ").or_else(|| l.strip_prefix("Remv "))).filter_map(|l| l.split_whitespace().next()).collect();
             if pkgs.is_empty() { vec!["No packages to remove".into()] } else { vec![format!("Removes: {}", pkgs.join(", "))] }
         }
         Kind::Flatpak => vec!["Runs: flatpak uninstall --unused".into()],
+        #[cfg(not(windows))]
         Kind::AptCache => vec!["Deletes downloaded .deb files in /var/cache/apt/archives".into()],
         Kind::Journal => vec![format!("Deletes system log entries older than {journal_days} days")],
+        #[cfg(not(windows))]
         Kind::OldLogs => vec!["Deletes *.gz, *.old and *.1-style files in /var/log".into()],
         Kind::CrashReports => vec!["Deletes everything in /var/crash".into()],
+        #[cfg(not(windows))]
         Kind::VarTmp => vec!["Deletes files in /var/tmp untouched for 7+ days".into()],
+        _ => vec![],
     }
+}
+
+/// Categories cleaned by emptying plain folders in the user's profile.
+fn uses_user_paths(kind: Kind) -> bool {
+    matches!(kind, Kind::Trash | Kind::Thumbnails | Kind::AppCache | Kind::DevCache | Kind::RecentFiles) || (cfg!(windows) && kind == Kind::CrashReports)
 }
 
 /// Names of web browsers that are currently running.
@@ -144,14 +239,10 @@ pub fn running_browsers() -> Vec<&'static str> {
         ("chrome", "Chrome"), ("chromium", "Chromium"), ("vivaldi-bin", "Vivaldi"), ("opera", "Opera"), ("msedge", "Edge"),
     ];
     let mut found = Vec::new();
-    if let Ok(rd) = fs::read_dir("/proc") {
-        for e in rd.flatten() {
-            if let Ok(comm) = fs::read_to_string(e.path().join("comm")) {
-                if let Some((_, name)) = BROWSERS.iter().find(|(c, _)| *c == comm.trim()) {
-                    if !found.contains(name) {
-                        found.push(*name);
-                    }
-                }
+    for proc in crate::platform::running_processes() {
+        if let Some((_, name)) = BROWSERS.iter().find(|(c, _)| *c == proc) {
+            if !found.contains(name) {
+                found.push(*name);
             }
         }
     }
@@ -178,6 +269,7 @@ fn all(_: &Path, _: &fs::Metadata) -> bool {
     true
 }
 
+#[cfg_attr(windows, allow(dead_code))]
 fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
     let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
     name.ends_with(".gz")
@@ -185,11 +277,20 @@ fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
         || name.rsplit('.').next().is_some_and(|ext| !ext.is_empty() && ext.chars().all(|c| c.is_ascii_digit()) && name.contains('.'))
 }
 
-fn older_than_7_days(_: &Path, md: &fs::Metadata) -> bool {
+fn older_than(md: &fs::Metadata, days: u64) -> bool {
     md.modified()
         .ok()
         .and_then(|m| SystemTime::now().duration_since(m).ok())
-        .is_some_and(|age| age > Duration::from_secs(7 * 86400))
+        .is_some_and(|age| age > Duration::from_secs(days * 86400))
+}
+
+fn older_than_7_days(_: &Path, md: &fs::Metadata) -> bool {
+    older_than(md, 7)
+}
+
+#[cfg_attr(not(windows), allow(dead_code))]
+fn older_than_30_days(_: &Path, md: &fs::Metadata) -> bool {
+    older_than(md, 30)
 }
 
 fn have(cmd: &str) -> bool {
@@ -225,7 +326,17 @@ fn parse_size(s: &str) -> Option<u64> {
 pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
     let ok = |size: u64| ScanResult { size: Some(size), note: String::new(), available: true };
     match kind {
-        Kind::Trash | Kind::Thumbnails | Kind::AppCache | Kind::DevCache | Kind::RecentFiles => {
+        #[cfg(windows)]
+        Kind::Trash => ScanResult { size: crate::windows::recycle_bin_size(), note: String::new(), available: true },
+        #[cfg(windows)]
+        Kind::Autoremove => ScanResult { size: None, note: "size unknown until removed".into(), available: true },
+        #[cfg(windows)]
+        Kind::VarTmp | Kind::AptCache | Kind::DeliveryOpt | Kind::SystemCrash | Kind::OldLogs => {
+            // Some of these folders are admin-only, so this is a lower bound.
+            let (paths, filter) = system_paths(kind);
+            ok(paths.iter().map(|p| path_size(p, &[], &filter)).sum())
+        }
+        k if uses_user_paths(k) => {
             let skips = skips_for(kind, exclusions);
             ok(user_paths(kind).iter().map(|p| path_size(p, &skips, &all)).sum())
         }
@@ -235,7 +346,9 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             }
             ScanResult { size: None, note: "size unknown until removed".into(), available: true }
         }
+        #[cfg(not(windows))]
         Kind::AptCache => ok(path_size(Path::new("/var/cache/apt/archives"), &[], &|p, _| p.extension().is_some_and(|e| e == "deb"))),
+        #[cfg(not(windows))]
         Kind::Autoremove => {
             let out = run_c("apt-get", &["-s", "autoremove", "--purge"]);
             let count = out.lines().filter(|l| l.starts_with("Purg ") || l.starts_with("Remv ")).count();
@@ -253,9 +366,12 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             let size = out.split("take up ").nth(1).and_then(|r| r.split(" in the").next()).and_then(parse_size);
             ScanResult { size, note: "up to".into(), available: true }
         }
+        #[cfg(not(windows))]
         Kind::OldLogs => ok(path_size(Path::new("/var/log"), &[PathBuf::from("/var/log/journal")], &is_rotated_log)),
         Kind::CrashReports => ok(path_size(Path::new("/var/crash"), &[], &all)),
+        #[cfg(not(windows))]
         Kind::VarTmp => ok(path_size(Path::new("/var/tmp"), &[], &older_than_7_days)),
+        _ => ScanResult { size: None, note: String::new(), available: false },
     }
 }
 
@@ -289,6 +405,68 @@ fn clear(p: &Path, skips: &[PathBuf]) -> usize {
     failed
 }
 
+/// Deletes the files under `p` that match `filter`, then removes folders left
+/// empty. Never follows symlinks/junctions. Returns how many items failed.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn clear_filtered(p: &Path, filter: fn(&Path, &fs::Metadata) -> bool) -> usize {
+    let Ok(md) = fs::symlink_metadata(p) else { return 0 };
+    if md.is_file() {
+        return if filter(p, &md) { fs::remove_file(p).is_err() as usize } else { 0 };
+    }
+    if !md.is_dir() {
+        return 0;
+    }
+    let Ok(rd) = fs::read_dir(p) else { return 1 };
+    let mut failed = 0;
+    for e in rd.flatten() {
+        let path = e.path();
+        failed += clear_filtered(&path, filter);
+        if path.symlink_metadata().is_ok_and(|m| m.is_dir()) {
+            let _ = fs::remove_dir(&path); // only succeeds when empty
+        }
+    }
+    failed
+}
+
+/// Runs inside the elevated copy of AeroClean on Windows: cleans the given
+/// system categories and appends progress lines to `log_file`.
+#[cfg(windows)]
+pub fn elevated_clean(kinds: &[Kind], log_file: &Path) {
+    use std::io::Write;
+    let mut out = fs::OpenOptions::new().create(true).append(true).open(log_file).ok();
+    let mut log = |line: String| {
+        if let Some(f) = out.as_mut() {
+            let _ = writeln!(f, "{line}");
+            let _ = f.flush();
+        }
+    };
+    for &kind in kinds {
+        let Some(cat) = CATEGORIES.iter().find(|c| c.kind == kind && c.root) else { continue };
+        log(format!(">> {}", cat.name));
+        if kind == Kind::Autoremove {
+            let ok = crate::windows::command("dism.exe")
+                .args(["/Online", "/Cleanup-Image", "/StartComponentCleanup"])
+                .status()
+                .is_ok_and(|s| s.success());
+            if !ok {
+                log("DISM reported an error".into());
+            }
+            continue;
+        }
+        let (paths, filter) = system_paths(kind);
+        let failed: usize = paths.iter().map(|p| clear_filtered(p, filter)).sum();
+        if failed > 0 {
+            log(format!("   {failed} item(s) in use, skipped"));
+        }
+    }
+}
+
+/// Category from its name (`format!("{:?}", kind)`), for passing between processes.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn kind_from_name(name: &str) -> Option<Kind> {
+    CATEGORIES.iter().map(|c| c.kind).find(|k| format!("{k:?}") == name)
+}
+
 fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
     let s = match kind {
         Kind::AptCache => "echo '>> Cleaning APT cache'; apt-get clean",
@@ -316,7 +494,19 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dy
             need_root = true;
             continue;
         }
+        #[cfg(windows)]
+        if cat.root {
+            need_root = true;
+            continue;
+        }
         log(format!(">> {}", cat.name));
+        #[cfg(windows)]
+        if kind == Kind::Trash {
+            if let Err(e) = crate::windows::empty_recycle_bin() {
+                log(format!("Could not empty the Recycle Bin: {e}"));
+            }
+            continue;
+        }
         if kind == Kind::Flatpak {
             let out = run_c("flatpak", &["uninstall", "--unused", "-y", "--noninteractive"]);
             log(out.lines().last().unwrap_or("done").to_string());
@@ -332,8 +522,36 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dy
     if !need_root {
         return;
     }
+    #[cfg(windows)]
+    {
+        let _ = (script, journal_days);
+        let names: Vec<String> = kinds.iter().filter(|k| CATEGORIES.iter().any(|c| c.kind == **k && c.root)).map(|k| format!("{k:?}")).collect();
+        let log_file = std::env::temp_dir().join(format!("aero-cleaner-{}.log", std::process::id()));
+        let _ = fs::remove_file(&log_file);
+        log("Asking for administrator permission...".into());
+        let args = vec!["--elevated-clean".to_string(), log_file.display().to_string(), names.join(",")];
+        match crate::windows::run_elevated(&args) {
+            Ok(code) => {
+                for line in fs::read_to_string(&log_file).unwrap_or_default().lines() {
+                    log(line.to_string());
+                }
+                if code != 0 {
+                    log(format!("System cleanup finished with errors (code {code})"));
+                }
+            }
+            Err(e) if e == "cancelled" => log("Permission was refused, system items were skipped.".into()),
+            Err(e) => log(format!("System cleanup failed: {e}")),
+        }
+        let _ = fs::remove_file(&log_file);
+    }
+    #[cfg(not(windows))]
+    unix_root_clean(&script, log);
+}
+
+#[cfg(not(windows))]
+fn unix_root_clean(script: &str, log: &dyn Fn(String)) {
     log("Asking for administrator password...".into());
-    let child = Command::new("pkexec").args(["/bin/sh", "-c", &script]).stdout(Stdio::piped()).stderr(Stdio::null()).spawn();
+    let child = Command::new("pkexec").args(["/bin/sh", "-c", script]).stdout(Stdio::piped()).stderr(Stdio::null()).spawn();
     let mut child = match child {
         Ok(c) => c,
         Err(e) => return log(format!("Could not run pkexec: {e}")),
@@ -370,6 +588,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn clear_removes_contents_but_not_symlink_targets() {
         let base = std::env::temp_dir().join(format!("aero-test-{}", std::process::id()));
         let target = base.join("outside");
@@ -411,6 +630,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn detects_running_browser_by_process_name() {
         let dir = std::env::temp_dir().join(format!("aero-browser-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -436,6 +656,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn root_scripts_are_valid_shell() {
         for c in CATEGORIES {
             if let Some(s) = root_script(c.kind, 3) {
@@ -446,6 +667,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn old_logs_script_works_with_gnu_find() {
         let base = std::env::temp_dir().join(format!("aero-logs-{}", std::process::id()));
         fs::create_dir_all(base.join("journal")).unwrap();

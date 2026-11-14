@@ -9,19 +9,19 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, SystemTime};
 
-fn home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
-}
-
-/// The installed binary if present, so timers keep working after rebuilds.
-fn exe() -> PathBuf {
-    let installed = home().join(".local/bin/aero-cleaner");
-    if installed.exists() { installed } else { std::env::current_exe().unwrap_or(installed) }
-}
+use crate::platform::{exe, home};
 
 /// Shows a desktop notification. With `action`, waits for a click and
-/// returns true if the action button was pressed.
+/// returns true if the action button was pressed (Linux only; Windows toasts
+/// from a background task can't report clicks back).
 pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
+    #[cfg(windows)]
+    {
+        let _ = action;
+        crate::windows::toast(title, body);
+        return false;
+    }
+    #[allow(unreachable_code)]
     let mut cmd = Command::new("notify-send");
     cmd.args(["--app-name=AeroClean", "--icon=aero-cleaner", title, body]);
     if let Some(a) = action {
@@ -36,6 +36,10 @@ pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
 /// Opens the main window in its own systemd scope, so it outlives the
 /// short-lived timer service that launched it.
 pub fn launch_gui(args: &[&str]) {
+    if crate::platform::IS_WINDOWS {
+        let _ = Command::new(exe()).args(args).spawn();
+        return;
+    }
     let ok = Command::new("systemd-run")
         .args(["--user", "--collect", "--quiet"])
         .arg(exe())
@@ -79,7 +83,7 @@ pub fn auto_clean(settings: &Settings) -> String {
 }
 
 fn warning_stamp() -> PathBuf {
-    home().join(".local/share/aero-cleaner/last-disk-warning")
+    crate::platform::data_dir().join("last-disk-warning")
 }
 
 /// True when free space is below the threshold and no warning was shown in
@@ -153,6 +157,9 @@ pub fn unit_files(job: &Job) -> (String, String) {
 }
 
 pub fn enable(job: &Job) -> Result<(), String> {
+    #[cfg(windows)]
+    return crate::windows::task_enable(job.unit, job.command, job.unit == AUTO_CLEAN.unit);
+    #[allow(unreachable_code)]
     let dir = unit_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let (service, timer) = unit_files(job);
@@ -163,6 +170,9 @@ pub fn enable(job: &Job) -> Result<(), String> {
 }
 
 pub fn disable(job: &Job) -> Result<(), String> {
+    #[cfg(windows)]
+    return crate::windows::task_disable(job.unit);
+    #[allow(unreachable_code)]
     let _ = systemctl(&["disable", "--now", &format!("{}.timer", job.unit)]);
     let dir = unit_dir();
     let _ = fs::remove_file(dir.join(format!("{}.service", job.unit)));
@@ -171,11 +181,17 @@ pub fn disable(job: &Job) -> Result<(), String> {
 }
 
 pub fn is_enabled(job: &Job) -> bool {
+    #[cfg(windows)]
+    return crate::windows::task_enabled(job.unit);
+    #[allow(unreachable_code)]
     systemctl(&["is-enabled", &format!("{}.timer", job.unit)]).is_ok_and(|s| s == "enabled")
 }
 
 /// Human-readable next run time, e.g. "Mon 2026-11-16 00:42:00 CET".
 pub fn next_run(job: &Job) -> Option<String> {
+    #[cfg(windows)]
+    return crate::windows::task_next_run(job.unit);
+    #[allow(unreachable_code)]
     let v = systemctl(&["show", "-P", "NextElapseUSecRealtime", &format!("{}.timer", job.unit)]).ok()?;
     (!v.is_empty() && v != "n/a").then_some(v)
 }
@@ -185,6 +201,9 @@ pub fn next_run(job: &Job) -> Option<String> {
 pub const ICON_SVG: &str = include_str!("../assets/aero-cleaner.svg");
 
 pub fn install_launcher() -> Result<(), String> {
+    #[cfg(windows)]
+    return crate::windows::install_shortcut();
+    #[allow(unreachable_code)]
     // The icon goes into the user's icon theme folder so "Icon=aero-cleaner" resolves.
     let icon_dir = home().join(".local/share/icons/hicolor/scalable/apps");
     fs::create_dir_all(&icon_dir).map_err(|e| e.to_string())?;
@@ -206,6 +225,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn units_are_well_formed() {
         let (service, timer) = unit_files(&AUTO_CLEAN);
         assert!(service.contains("Type=oneshot") && service.contains("clean --auto"));
@@ -216,6 +236,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn systemd_accepts_the_units() {
         let dir = std::env::temp_dir().join(format!("aero-units-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();

@@ -2,7 +2,7 @@
 
 <h1 align="center">AeroClean</h1>
 
-<p align="center">A system cleaner for Linux Mint and Ubuntu with a glossy 2000s <b>Frutiger Aero</b> look.<br>
+<p align="center">A system cleaner for <b>Linux</b> (Mint, Ubuntu) and <b>Windows 10/11</b> with a glossy 2000s <b>Frutiger Aero</b> look.<br>
 Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English and French.</p>
 
 ![Cleaner](docs/screenshots/cleaner.png)
@@ -37,6 +37,19 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 
 ![Themes](docs/screenshots/themes.png)
 
+## Linux and Windows
+
+Both versions share the same app, themes, languages, Duplicates, Disk map, Big files, Developer cleanup and Browsers screens. The rest is native to each system:
+
+| | Linux | Windows |
+|---|---|---|
+| User items | Trash, `~/.cache`, thumbnails, Flatpak runtimes | Recycle Bin, `%TEMP%`, shader caches, Explorer thumbnail cache, crash dumps |
+| System items | APT cache, unused packages, journal, logs, `/var` temp | Windows Update downloads, Delivery Optimization, Windows Temp, crash dumps, old logs, DISM component cleanup |
+| Permission | One password prompt (pkexec) | One UAC prompt (an elevated copy of AeroClean, no scripts) |
+| Startup apps | `.desktop` autostart overrides | Registry and Startup folder, toggled like Task Manager |
+| Automation | systemd user timers, notifications | Task Scheduler, toast notifications |
+| Boot time | ✅ | not yet |
+
 ## Safety
 
 - Deletion never follows symbolic links, and files in use are skipped, never forced.
@@ -47,7 +60,9 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 
 ## Install
 
-**From a release:** download `aero-cleaner_<version>_amd64.deb` from the Releases page, then:
+**Windows:** download `AeroClean-<version>-windows-x64.zip` from the Releases page, unzip it, and run `AeroClean.exe`. No installation is needed; the first launch adds AeroClean to the Start Menu. SmartScreen may warn about an unknown publisher (the `.exe` isn't code-signed yet): click **More info**, then **Run anyway**.
+
+**Linux, from a release:** download `aero-cleaner_<version>_amd64.deb` from the Releases page, then:
 
 ```sh
 sudo apt install ./aero-cleaner_*_amd64.deb
@@ -61,7 +76,11 @@ cp target/release/aero-cleaner ~/.local/bin/
 aero-cleaner   # the first run adds AeroClean to your menu
 ```
 
-**Build the .deb yourself:** `packaging/build-deb.sh` (needs `librsvg2-bin`). The package is written to `target/deb/`.
+**Build the packages yourself:**
+- `packaging/build-deb.sh` builds the `.deb` (needs `librsvg2-bin`).
+- `packaging/build-windows.sh` cross-compiles the Windows `.zip` from Linux (needs `mingw-w64` and `rustup target add x86_64-pc-windows-gnu`).
+
+Packages are written to `target/deb/` and `target/windows/`.
 
 ## Command line
 
@@ -77,7 +96,7 @@ Right-click AeroClean in the menu for **Quick clean** and **Disk map**.
 ## Development
 
 ```sh
-cargo test                        # 21 tests
+cargo test                        # 22 tests on Linux, 16 on Windows (run in CI on both)
 AERO_I18N_MISSING=1 cargo run     # with language=fr, prints untranslated strings
 ```
 
@@ -85,6 +104,7 @@ AERO_I18N_MISSING=1 cargo run     # with language=fr, prints untranslated string
 |---|---|
 | `src/cleaner.rs`, `browsers.rs`, `devclean.rs`, `dupes.rs`, `diskmap.rs`, `boot.rs`, `automation.rs`, `tools.rs` | Backends (no UI) |
 | `src/tabs/` | One file per screen |
+| `src/platform.rs`, `windows.rs` | Linux/Windows differences, Windows-only features |
 | `src/aero.rs`, `theme.rs` | Frutiger Aero drawing kit and themes |
 | `src/i18n.rs` | French translation |
 

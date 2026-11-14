@@ -62,7 +62,7 @@ impl App {
                 for (i, f) in self.big.iter().enumerate() {
                     let duplicate = self.big.iter().filter(|g| key(g) == key(f)).count() > 1;
                     // Files under hidden folders (~/.local, ~/.var...) usually belong to an app.
-                    let app_file = f.path.strip_prefix(&home).ok().is_some_and(|rel| rel.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')));
+                    let app_file = f.path.strip_prefix(&home).ok().is_some_and(crate::platform::is_app_data);
                     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width() - 14.0, 54.0), Sense::hover());
                     let rect = rect.translate(vec2(4.0, 0.0));
                     let p = ui.painter();
@@ -106,7 +106,11 @@ impl App {
                         match tools::trash(&f.path) {
                             Ok(()) => {
                                 remove = Some(i);
-                                status = Some(format!("Moved {name} to the Trash. Empty the Trash in the Cleaner tab to free {}.", format_bytes(f.size)));
+                                status = Some(if crate::platform::IS_WINDOWS {
+                                    format!("Moved {name} to the Recycle Bin. Empty it in the Cleaner tab to free {}.", format_bytes(f.size))
+                                } else {
+                                    format!("Moved {name} to the Trash. Empty the Trash in the Cleaner tab to free {}.", format_bytes(f.size))
+                                });
                             }
                             Err(e) => status = Some(format!("Could not move {name} to the Trash: {e}")),
                         }

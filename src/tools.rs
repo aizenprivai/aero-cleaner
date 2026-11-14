@@ -3,21 +3,17 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::time::SystemTime;
 
 fn home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+    crate::platform::home()
 }
 
 // ---------- Disk usage ----------
 
-/// (total, available) bytes on the root filesystem.
+/// (total, available) bytes on the system drive.
 pub fn disk_usage() -> Option<(u64, u64)> {
-    let out = Command::new("df").args(["-B1", "--output=size,avail", "/"]).output().ok()?;
-    let text = String::from_utf8_lossy(&out.stdout);
-    let mut nums = text.lines().nth(1)?.split_whitespace().map(|n| n.parse::<u64>());
-    Some((nums.next()?.ok()?, nums.next()?.ok()?))
+    crate::platform::disk_usage()
 }
 
 // ---------- Big files ----------
@@ -61,20 +57,13 @@ pub fn find_big_files(min: u64, limit: usize, progress: &dyn Fn(u64)) -> Vec<Big
     found
 }
 
-/// Moves a file to the desktop Trash (recoverable).
+/// Moves a file to the Trash / Recycle Bin (recoverable).
 pub fn trash(path: &Path) -> Result<(), String> {
-    let out = Command::new("gio").arg("trash").arg("--").arg(path).stderr(Stdio::piped()).output().map_err(|e| e.to_string())?;
-    if out.status.success() {
-        Ok(())
-    } else {
-        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
-    }
+    crate::platform::move_to_trash(path)
 }
 
 pub fn open_folder(path: &Path) {
-    if let Some(dir) = path.parent() {
-        let _ = Command::new("xdg-open").arg(dir).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
-    }
+    crate::platform::open_folder(path)
 }
 
 pub fn age(t: Option<SystemTime>) -> String {
@@ -164,6 +153,14 @@ fn localized(kv: &BTreeMap<String, String>, key: &str) -> Option<String> {
 }
 
 pub fn startup_entries() -> Vec<StartupEntry> {
+    #[cfg(windows)]
+    return crate::windows::startup_entries();
+    #[cfg(not(windows))]
+    linux_startup_entries()
+}
+
+#[cfg_attr(windows, allow(dead_code))]
+fn linux_startup_entries() -> Vec<StartupEntry> {
     let mut files: BTreeMap<String, (Option<String>, Option<String>)> = BTreeMap::new();
     for (dir, is_user) in [(PathBuf::from(SYSTEM_DIR), false), (user_dir(), true)] {
         let Ok(rd) = fs::read_dir(dir) else { continue };
@@ -220,6 +217,14 @@ fn set_key(text: &str, key: &str, value: &str) -> String {
 /// Enables or disables an autostart entry for this user only. System files
 /// are never modified: a user copy in ~/.config/autostart overrides them.
 pub fn set_startup(file: &str, enabled: bool) -> Result<(), String> {
+    #[cfg(windows)]
+    return crate::windows::set_startup(file, enabled);
+    #[cfg(not(windows))]
+    linux_set_startup(file, enabled)
+}
+
+#[cfg_attr(windows, allow(dead_code))]
+fn linux_set_startup(file: &str, enabled: bool) -> Result<(), String> {
     let user_path = user_dir().join(file);
     let text = fs::read_to_string(&user_path)
         .or_else(|_| fs::read_to_string(Path::new(SYSTEM_DIR).join(file)))

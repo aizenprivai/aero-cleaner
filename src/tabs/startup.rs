@@ -44,7 +44,7 @@ impl App {
                     clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(&e.name), bold(15.0), th.text);
                     clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(&e.comment), regular(12.0), th.soft);
                     let (badge, color) = if e.critical {
-                        ("needed by desktop", rgba(150, 160, 172, 255))
+                        (if crate::platform::IS_WINDOWS { "all users" } else { "needed by desktop" }, rgba(150, 160, 172, 255))
                     } else if e.enabled {
                         ("starts at login", th.go)
                     } else {
@@ -56,7 +56,12 @@ impl App {
                     aero::rrect_outline(p, br, 10.0, Stroke::new(1.0, aero::darken(color, 0.25)));
                     p.galley(br.center() - tag.size() / 2.0, tag, aero::darken(color, 0.6));
                     if e.critical {
-                        resp.on_hover_text(crate::i18n::tr("Part of the desktop. Turning it off could break things, so it's locked."));
+                        let tip = if crate::platform::IS_WINDOWS {
+                            "Installed for all users. Change it in Task Manager (needs admin)."
+                        } else {
+                            "Part of the desktop. Turning it off could break things, so it's locked."
+                        };
+                        resp.on_hover_text(crate::i18n::tr(tip));
                     } else if hovered {
                         resp.on_hover_cursor(egui::CursorIcon::PointingHand);
                     }

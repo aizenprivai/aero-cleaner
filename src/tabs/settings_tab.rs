@@ -86,7 +86,7 @@ impl App {
 
                 // ----- Automation -----
                 Self::section(ui, "AUTOMATION", th);
-                let resp = toggle_row(ui, row_w, 0.0, self.auto.clean_on, "🗓", "Weekly automatic clean",
+                let resp = toggle_row(ui, row_w, 0.0, self.auto.clean_on, "📅", "Weekly automatic clean",
                     "Thumbnails and app caches, once a week. Never asks for a password.", th);
                 let resp = resp.on_hover_text(crate::i18n::tr("Browser caches are skipped if a browser is open at that moment. Folders to keep are respected."));
                 toggle_clean = resp.clicked();
@@ -107,8 +107,12 @@ impl App {
                 let run_r = Rect::from_min_size(rect.min + vec2(0.0, 4.0), vec2(250.0, 36.0));
                 let label = if self.auto.running { "Cleaning..." } else { "▶ Run automatic clean now" };
                 run_now = aero::aqua_button(ui, run_r, label, th.go, !self.auto.running).clicked();
-                ui.painter().text(pos2(run_r.max.x + 14.0, run_r.center().y), Align2::LEFT_CENTER,
-                    crate::i18n::tr("Tip: right-click AeroClean in the menu for Quick clean and Disk map."), regular(12.0), th.soft);
+                let tip = if crate::platform::IS_WINDOWS {
+                    "Runs through Windows Task Scheduler, under the AeroClean folder."
+                } else {
+                    "Tip: right-click AeroClean in the menu for Quick clean and Disk map."
+                };
+                ui.painter().text(pos2(run_r.max.x + 14.0, run_r.center().y), Align2::LEFT_CENTER, crate::i18n::tr(tip), regular(12.0), th.soft);
 
                 // ----- Cleaning -----
                 Self::section(ui, "CLEANING", th);
@@ -196,7 +200,8 @@ impl App {
                 let (rect, _) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
                 let rect = rect.translate(vec2(4.0, 0.0));
                 let keep_r = Rect::from_min_size(rect.min + vec2(0.0, 2.0), vec2(230.0, 36.0));
-                if aero::aqua_button(ui, keep_r, "🌐 Keep browser caches", th.go, true).on_hover_text(crate::i18n::tr("Websites stay fast to load, but those caches won't be cleaned")).clicked() {
+                // Browser caches aren't part of the Windows cleaner, so the shortcut is Linux-only.
+                if !crate::platform::IS_WINDOWS && aero::aqua_button(ui, keep_r, "🌐 Keep browser caches", th.go, true).on_hover_text(crate::i18n::tr("Websites stay fast to load, but those caches won't be cleaned")).clicked() {
                     let dirs = settings::browser_cache_dirs();
                     let added = dirs.iter().filter(|d| self.settings.add_exclusion(&d.to_string_lossy()).is_ok()).count();
                     self.settings_msg = if dirs.is_empty() { "No browser caches found.".into() } else { format!("Added {added} browser cache folder(s).") };

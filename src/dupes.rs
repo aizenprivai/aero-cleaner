@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::hash::Hasher;
 use std::io::Read;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -26,8 +27,9 @@ impl DupeGroup {
     }
 }
 
+/// Hidden or app-owned folders: dot-folders, plus AppData on Windows.
 fn is_hidden(p: &Path) -> bool {
-    p.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.'))
+    p.file_name().is_some_and(|n| crate::platform::is_app_data(Path::new(n)))
 }
 
 /// Hash of the first `limit` bytes (or the whole file when `limit` is None).
@@ -80,7 +82,12 @@ pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progres
                 }
             } else if md.is_file() && md.len() >= min_size.max(1) {
                 // Hard links share storage, so they aren't wasted space.
-                if seen_inodes.insert((md.dev(), md.ino())) {
+                #[cfg(unix)]
+                let key = (md.dev(), md.ino());
+                // Windows: hard links are rare in user folders; treat each path as unique.
+                #[cfg(not(unix))]
+                let key = (0u64, seen_inodes.len() as u64);
+                if seen_inodes.insert(key) {
                     by_size.entry(md.len()).or_default().push(path);
                 }
                 count += 1;
@@ -118,7 +125,7 @@ pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progres
     groups
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))] // the test relies on Unix hard-link semantics
 mod tests {
     use super::*;
 

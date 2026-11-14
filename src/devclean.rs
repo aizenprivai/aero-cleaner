@@ -23,7 +23,7 @@ impl DevKind {
 
     pub fn icon(self) -> &'static str {
         match self {
-            DevKind::Rust => "🦀",
+            DevKind::Rust => "🔩",
             DevKind::Node => "📦",
             DevKind::Python => "🐍",
         }
@@ -123,7 +123,7 @@ pub fn scan(root: &Path, progress: &dyn Fn(usize)) -> Vec<DevItem> {
                 continue; // never look inside a build folder
             }
             let name = e.file_name().to_string_lossy().to_string();
-            if name.starts_with('.') || name == "node_modules" {
+            if crate::platform::is_app_data(Path::new(&name)) || name == "node_modules" {
                 continue;
             }
             stack.push(path);
@@ -175,7 +175,7 @@ mod tests {
         fs::write(base.join("py/.venv/pyvenv.cfg"), "home=/usr").unwrap();
 
         let items = scan(&base, &|_| {});
-        let mut kinds: Vec<(DevKind, String)> = items.iter().map(|i| (i.kind, i.path.strip_prefix(&base).unwrap().display().to_string())).collect();
+        let mut kinds: Vec<(DevKind, String)> = items.iter().map(|i| (i.kind, i.path.strip_prefix(&base).unwrap().display().to_string().replace('\\', "/"))).collect();
         kinds.sort_by(|a, b| a.1.cmp(&b.1));
         assert_eq!(
             kinds,

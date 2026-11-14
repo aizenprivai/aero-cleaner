@@ -141,7 +141,7 @@ impl App {
                     let p = ui.painter();
                     aero::surface(p, rect, 14.0, th, false, None);
                     let cy = rect.center().y;
-                    aero::orb(p, pos2(rect.min.x + 26.0, cy), 15.0, th.root_orb, "🤖");
+                    aero::orb(p, pos2(rect.min.x + 26.0, cy), 15.0, th.root_orb, "📱");
                     p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Waydroid Android image"), bold(15.0), th.text);
                     p.text(
                         pos2(rect.min.x + 52.0, cy + 11.0),
