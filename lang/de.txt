@@ -1366,3 +1366,59 @@ Make your own theme starting from this one
 = Ein eigenes Design auf Basis von diesem erstellen
 ⚠ {} wasn't loaded: {}
 = ⚠ {} wurde nicht geladen: {}
+
+# ----- Sharing and the gallery -----
+Theme gallery
+= Design-Galerie
+Your themes
+= Deine Designs
+⬅ Your themes
+= ⬅ Deine Designs
+Back to your themes
+= Zurück zu deinen Designs
+🌐 Gallery
+= 🌐 Galerie
+Themes shared by the community (downloads only when you open it)
+= Von der Community geteilte Designs (wird erst beim Öffnen geladen)
+Add a theme file someone shared (or drag it onto the window)
+= Eine geteilte Design-Datei hinzufügen (oder aufs Fenster ziehen)
+Couldn't open the gallery: {}
+= Die Galerie konnte nicht geöffnet werden: {}
+Choose a theme file (.aerotheme)
+= Wähle eine Design-Datei (.aerotheme)
+Opening the gallery...
+= Galerie wird geöffnet...
+The gallery couldn't be reached. Are you online?
+= Die Galerie ist nicht erreichbar. Bist du online?
+🔄 Try again
+= 🔄 Erneut versuchen
+Previewing "{}" on the whole app
+= Vorschau von „{}" in der ganzen App
+⬇ Install
+= ⬇ Installieren
+Back
+= Zurück
+Preview after download
+= Vorschau nach dem Download
+by {}
+= von {}
+👁 Preview
+= 👁 Vorschau
+✔ Installed
+= ✔ Installiert
+Share yours: send a pull request to github.com/{}
+= Teile deins: schicke einen Pull-Request an github.com/{}
+The gallery is empty for now.
+= Die Galerie ist noch leer.
+Added "{}" to your themes
+= „{}" wurde zu deinen Designs hinzugefügt
+Couldn't import the theme: {}
+= Das Design konnte nicht importiert werden: {}
+Couldn't import the theme: the file is too big
+= Das Design konnte nicht importiert werden: Die Datei ist zu groß
+Couldn't install the theme: {}
+= Das Design konnte nicht installiert werden: {}
+Save one file to share, with any pictures inside
+= Eine einzige Datei zum Teilen speichern, Bilder inklusive
+Saved {} (ready to share)
+= Gespeichert: {} (bereit zum Teilen)

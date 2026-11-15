@@ -3,14 +3,19 @@
 use super::prelude::*;
 
 impl App {
-    pub(crate) fn themes_tab(&mut self, ui: &mut egui::Ui, area: Rect, t: f32) {
+    pub(crate) fn themes_tab(&mut self, ui: &mut egui::Ui, area: Rect, t: f32, spin: f32) {
+        let area = self.themes_top_bar(ui, area);
+        if self.gallery.open {
+            self.gallery_view(ui, area, t, spin);
+            return;
+        }
         let gap = 18.0;
         let cols = 3;
         // While the Studio is open, its live preview isn't a card, and the
         // theme being edited stays marked.
         let count = self.studio.as_ref().map(|s| s.preview_index).unwrap_or(self.themes.len());
         let chosen = self.studio.as_ref().map(|s| s.return_index).unwrap_or(self.theme);
-        let editing = self.studio.is_some();
+        let editing = self.studio.is_some() || self.gallery.preview.is_some();
         // Theme files that couldn't be read get a line at the bottom.
         let problem = self.theme_problems.first().map(|(path, why)| {
             let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();

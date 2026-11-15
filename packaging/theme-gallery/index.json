@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "themes": [
+    {
+      "file": "themes/cherry-cola.aerotheme",
+      "name": "Cherry Cola",
+      "author": "AeroClean",
+      "description": "Fizzy reds on smoked glass",
+      "sha256": "4cd5ac339595af81cc42149b3553e25f022bd96bf74cbb01fcdc300cf52d3253",
+      "size": 431
+    },
+    {
+      "file": "themes/lagoon-glass.aerotheme",
+      "name": "Lagoon Glass",
+      "author": "AeroClean",
+      "description": "Turquoise water, white sand and a school of fish",
+      "sha256": "fc91281e304ad0646d65e1a63bccd3410b53ca109a9fc0342454b7403626b946",
+      "size": 693
+    },
+    {
+      "file": "themes/mint-chip.aerotheme",
+      "name": "Mint Chip",
+      "author": "AeroClean",
+      "description": "Fresh mint, soft clouds and flat buttons",
+      "sha256": "f50115c35dbf1856b7998f05fef6e9762331084eb14e910a8be07651a98ea896",
+      "size": 705
+    }
+  ]
+}

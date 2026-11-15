@@ -1,0 +1,37 @@
+format = 1
+
+[meta]
+name = "Lagoon Glass"
+author = "AeroClean"
+description = "Turquoise water, white sand and a school of fish"
+base = "Aqua Abyss"
+
+[colors]
+accent = "#13a3b5"
+go = "#f2a33a"
+logo = "#13a3b5"
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#a6efe9"], [0.4, "#3fc9cf"], [0.8, "#138ea3"], [1.0, "#0b6378"]]
+
+[[scene.layers]]
+type = "rays"
+x = 0.7
+y = -0.2
+strength = 55
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#fbf3dc"], [0.12, "#f0e2bb"], [0.3, "#dcc694"], [1.0, "#bfa66f"]]
+front = [[0.0, "#fffaea"], [0.1, "#f6ebcb"], [0.3, "#e4d2a3"], [1.0, "#c9b27c"]]
+
+[[scene.layers]]
+type = "fish"
+color = "#ffcf3d"
+count = 10
+y = 0.5
+
+[[scene.layers]]
+type = "bubbles"
+count = 14

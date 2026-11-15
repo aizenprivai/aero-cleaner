@@ -353,6 +353,27 @@ impl App {
                             close = Some(None);
                         }
                     }
+                    if ui
+                        .add_enabled(st.error.is_empty(), egui::Button::new(crate::i18n::tr("📤 Export")))
+                        .on_hover_text(crate::i18n::tr("Save one file to share, with any pictures inside"))
+                        .clicked()
+                    {
+                        st.msg = match st.draft.build(&st.known).and_then(|p| crate::theme_share::export(&p.resolved, st.draft.file.as_deref())) {
+                            Ok(text) => {
+                                let home = crate::platform::home();
+                                let dir = [home.join("Documents"), home.clone()].into_iter().find(|d| d.is_dir()).unwrap_or(home);
+                                let path = dir.join(crate::theme::file_name(&st.draft.name()));
+                                match std::fs::write(&path, text) {
+                                    Ok(()) => {
+                                        tools::open_folder(&path);
+                                        crate::i18n::tr(format!("Saved {} (ready to share)", path.display()))
+                                    }
+                                    Err(e) => crate::i18n::tr(format!("Could not save: {e}")),
+                                }
+                            }
+                            Err(e) => crate::i18n::tr(format!("Could not save: {e}")),
+                        };
+                    }
                     if ui.button(crate::i18n::tr("📂 Themes folder")).clicked() {
                         let dir = crate::theme::user_dir();
                         let _ = std::fs::create_dir_all(&dir);

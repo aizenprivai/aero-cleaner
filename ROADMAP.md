@@ -162,7 +162,7 @@
 - **Undo/redo**, Reset to base, Duplicate, and a **🎲 Randomize** that shuffles within harmonious palettes.
 - **Live file editing:** themes are saved as readable files; edit one in any text editor and AeroClean updates as you save, with errors shown in the app.
 
-### Milestone 4 – Sharing
+### ✅ Milestone 4 – Sharing
 - **Export and import** a single `.aerotheme` file (theme plus its images), or drag one onto the window.
 - **Online gallery:** a community GitHub repository of themes with an index and preview images; the app shows a gallery, downloads only when you click, verifies the file, and shows a preview before applying.
 - Contributions arrive as pull requests; that repository's CI runs `aero-cleaner theme check` on every submission.

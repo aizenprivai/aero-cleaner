@@ -21,6 +21,8 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 # Theme files (.aerotheme, TOML).
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
+# Pictures embedded in shared theme files.
+base64 = "0.22"
 # Reading GitHub release information and checking downloads in the updater.
 serde_json = "1"
 sha2 = "0.10"

@@ -144,7 +144,7 @@ fn trusted_download(url: &str) -> bool {
     url.starts_with(&format!("{REPO}/releases/download/")) && !url.contains("..")
 }
 
-fn get(url: &str, out: Option<&std::path::Path>) -> Result<Vec<u8>, String> {
+pub(crate) fn get(url: &str, out: Option<&std::path::Path>) -> Result<Vec<u8>, String> {
     let agent = format!("AeroClean/{CURRENT}");
     let target = out.map(|p| p.to_string_lossy().to_string());
     let mut curl: Vec<&str> = vec!["-fsSL", "--max-time", "600", "-A", &agent];

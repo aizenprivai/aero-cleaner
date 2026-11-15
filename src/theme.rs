@@ -329,6 +329,7 @@ const KNOWN: &[(&str, &[&str])] = &[
     ("motion", &["speed", "transition"]),
     ("sound", &["pack", "volume"]),
     ("scene", &["layers"]),
+    ("files", &[]),
 ];
 const LAYER_KEYS: &[(&str, &[&str])] = &[
     ("sky", &["stops"]),
@@ -567,6 +568,9 @@ fn unknown_settings(t: &toml::Table) -> Vec<String> {
             continue;
         };
         let Some(sec) = v.as_table() else { continue };
+        if k == "files" {
+            continue; // embedded pictures, any names
+        }
         for key in sec.keys().filter(|key| !keys.contains(&key.as_str())) {
             out.push(format!("unknown setting {k}.{key} is ignored"));
         }
@@ -771,11 +775,6 @@ pub fn save_name(name: &str) {
     }
 }
 
-/// A theme's complete settings as a file (base included), for sharing.
-pub fn export_text(resolved: &toml::Table) -> String {
-    format!("# An AeroClean theme. Put it in AeroClean's themes folder, or run: aero-cleaner theme apply <file>\n{}", toml::to_string(resolved).unwrap_or_default())
-}
-
 /// File name for a theme in the themes folder ("Ocean Breeze" -> "ocean-breeze.aerotheme").
 pub fn file_name(name: &str) -> String {
     let slug: String = name.chars().map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { '-' }).collect();
@@ -800,22 +799,33 @@ fn cli_in(args: &[&str], dir: &Path) -> Result<String, String> {
         }
         ["check", file] => {
             let text = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
-            let p = parse(&text, &lib.resolved, Some(PathBuf::from(file)), false).map_err(|e| format!("{file}: {e}"))?;
-            let mut out = vec![format!("{file}: OK, \"{}\" with {} scene layers", p.theme.name, p.theme.scene.len())];
-            out.extend(p.warnings.iter().map(|w| format!("  warning: {w}")));
+            // A shared file (pictures inside) gets the import checks.
+            let (name, warnings) = if text.contains("[files]") {
+                let u = crate::theme_share::unpack(&text, &lib).map_err(|e| format!("{file}: {e}"))?;
+                (format!("\"{}\" with {} embedded picture(s)", u.name, u.pictures.len()), u.warnings)
+            } else {
+                let p = parse(&text, &lib.resolved, Some(PathBuf::from(file)), false).map_err(|e| format!("{file}: {e}"))?;
+                (format!("\"{}\" with {} scene layers", p.theme.name, p.theme.scene.len()), p.warnings)
+            };
+            let mut out = vec![format!("{file}: OK, {name}")];
+            out.extend(warnings.iter().map(|w| format!("  warning: {w}")));
             Ok(out.join("\n"))
         }
         ["apply", what] => {
             let path = Path::new(what);
             let name = if path.is_file() {
-                let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-                let p = parse(&text, &lib.resolved, None, false).map_err(|e| format!("{what}: {e}"))?;
-                std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-                let dest = dir.join(file_name(&p.theme.name));
-                if dest != path {
-                    std::fs::write(&dest, &text).map_err(|e| e.to_string())?;
+                // Already in the themes folder: just use it. Otherwise import a copy.
+                let inside = path.parent().and_then(|p| p.canonicalize().ok()) == dir.canonicalize().ok();
+                if inside {
+                    lib.themes
+                        .iter()
+                        .find(|t| t.file.as_deref().and_then(|f| f.canonicalize().ok()) == path.canonicalize().ok())
+                        .map(|t| t.name.clone())
+                        .ok_or_else(|| format!("{what} couldn't be read (see: aero-cleaner theme check {what})"))?
+                } else {
+                    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+                    crate::theme_share::import(&text, dir, &lib).map_err(|e| format!("{what}: {e}"))?.0
                 }
-                p.theme.name
             } else {
                 let i = find(what).ok_or_else(|| format!("there's no theme called \"{what}\" (see: aero-cleaner theme list)"))?;
                 lib.themes[i].name.clone()
@@ -827,10 +837,12 @@ fn cli_in(args: &[&str], dir: &Path) -> Result<String, String> {
             let i = find(name).ok_or_else(|| format!("there's no theme called \"{name}\""))?;
             let (tname, resolved) = &lib.resolved[i];
             let out = args.get(2).map(PathBuf::from).unwrap_or_else(|| PathBuf::from(file_name(tname)));
-            std::fs::write(&out, export_text(resolved)).map_err(|e| format!("{}: {e}", out.display()))?;
-            Ok(format!("Saved {}", out.display()))
+            let text = crate::theme_share::export(resolved, lib.themes[i].file.as_deref())?;
+            std::fs::write(&out, text).map_err(|e| format!("{}: {e}", out.display()))?;
+            Ok(format!("Saved {} (ready to share)", out.display()))
         }
-        _ => Err("usage: aero-cleaner theme list | check <file> | apply <name or file> | export <name> [file]".into()),
+        ["index", folder] => crate::theme_share::build_index(Path::new(folder)),
+        _ => Err("usage: aero-cleaner theme list | check <file> | apply <name or file> | export <name> [file] | index <folder>".into()),
     }
 }
 
@@ -908,7 +920,7 @@ mod tests {
         assert_eq!(lib.problems.len(), 1, "the broken file is reported, not fatal");
         // Export round-trips.
         let (_, resolved) = lib.resolved.iter().find(|(n, _)| n == "Child").unwrap();
-        let again = parse(&export_text(resolved), &[], None, true).unwrap();
+        let again = parse(&crate::theme_share::export(resolved, None).unwrap(), &[], None, true).unwrap();
         assert_eq!(again.theme.go, Color32::from_rgb(255, 0, 255));
         std::fs::remove_dir_all(&dir).unwrap();
     }

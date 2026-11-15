@@ -27,6 +27,7 @@ mod similar;
 mod tabs;
 mod theme;
 mod theme_edit;
+mod theme_share;
 mod tools;
 mod update;
 mod walk;
@@ -78,6 +79,10 @@ enum Msg {
     /// The eyedropper's color, and a background picture chosen in the Studio.
     StudioPixel(egui::Color32),
     StudioPicture(Option<String>),
+    /// The gallery's themes (with small ones' verified text), an install's download, a file to import.
+    GalleryLoaded(Result<Vec<(theme_share::GalleryEntry, Option<String>)>, String>),
+    GalleryInstall(Result<String, String>),
+    ImportTheme(Option<String>),
     /// The "Check now" answer.
     Release(Result<update::Release, String>),
     UpdateProgress(u64, u64),
@@ -180,6 +185,7 @@ struct App {
     anim_t: f64,
     /// The Theme Studio, while it's open.
     studio: Option<tabs::Studio>,
+    gallery: tabs::GalleryState,
     /// Theme files that couldn't be read, and why.
     theme_problems: Vec<(std::path::PathBuf, String)>,
     /// The themes folder's files and dates, to reload when one changes.
@@ -234,6 +240,7 @@ impl App {
             history: settings::history(),
             anim_t: 0.0,
             studio: None,
+            gallery: Default::default(),
             theme_problems: theme::load_library(&theme::user_dir()).problems,
             theme_files: theme_folder_state(),
             theme_check_at: 0.0,
@@ -538,6 +545,9 @@ impl App {
                     let ctx = self.ctx.clone();
                     self.studio_picked_color(&ctx, c);
                 }
+                Msg::GalleryLoaded(r) => self.gallery_loaded(r),
+                Msg::GalleryInstall(r) => self.gallery_install(r),
+                Msg::ImportTheme(path) => self.import_theme_file(path),
                 Msg::StudioPicture(path) => {
                     let ctx = self.ctx.clone();
                     self.studio_picture(&ctx, path);
@@ -611,6 +621,12 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let time = ui.input(|i| i.time);
         self.poll(time);
+        // A theme file dropped on the window: import it.
+        let dropped: Vec<std::path::PathBuf> = ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).collect());
+        if let Some(path) = dropped.into_iter().find(|p| p.extension().is_some_and(|e| e == "aerotheme")) {
+            self.tab = Tab::Themes;
+            self.import_theme_file(Some(path.to_string_lossy().into_owned()));
+        }
         let screen = ui.max_rect();
         if self.celebrate.is_some_and(|c| time - c > 3.5) {
             self.celebrate = None;
@@ -729,6 +745,9 @@ impl eframe::App for App {
         if self.tab != self.shown_tab {
             self.shown_tab = self.tab;
             self.tab_changed_at = time;
+            if self.tab != Tab::Themes {
+                self.end_gallery_preview();
+            }
         }
         let progress = if self.settings.reduce_motion { 1.0 } else { ((time - self.tab_changed_at) / 0.22).clamp(0.0, 1.0) as f32 };
         let eased = 1.0 - (1.0 - progress).powi(3);
@@ -754,7 +773,7 @@ impl eframe::App for App {
             Tab::BigFiles => self.big_tab(ui, area, spin),
             Tab::Boot => self.boot_tab(ui, area, spin),
             Tab::Startup => self.startup_tab(ui, area),
-            Tab::Themes => self.themes_tab(ui, area, t),
+            Tab::Themes => self.themes_tab(ui, area, t, spin),
             Tab::Settings => self.settings_tab(ui, area),
         }
 
@@ -852,6 +871,10 @@ fn setup_fonts_with(ctx: &egui::Context, builtin: bool) {
 }
 
 /// The themes folder's `.aerotheme` files with their modification times.
+pub(crate) fn theme_folder_state_pub() -> Vec<(std::path::PathBuf, std::time::SystemTime)> {
+    theme_folder_state()
+}
+
 fn theme_folder_state() -> Vec<(std::path::PathBuf, std::time::SystemTime)> {
     let mut v: Vec<_> = std::fs::read_dir(theme::user_dir())
         .map(|rd| rd.flatten().filter(|e| e.path().extension().is_some_and(|x| x == "aerotheme")).filter_map(|e| Some((e.path(), e.metadata().ok()?.modified().ok()?))).collect())
@@ -955,7 +978,8 @@ Usage:
   aero-cleaner theme list      list themes (built-in and yours)
   aero-cleaner theme check <file>           check a theme file and explain any problem
   aero-cleaner theme apply <name or file>   use a theme (a file is added to your themes)
-  aero-cleaner theme export <name> [file]   save a theme's full settings as a file
+  aero-cleaner theme export <name> [file]   save a theme as one shareable file (pictures inside)
+  aero-cleaner theme index <folder>         print a gallery index.json for the themes in a folder
   aero-cleaner check-disk      notify if free disk space is below the alert threshold";
 
 fn main() -> eframe::Result {
@@ -1515,6 +1539,14 @@ mod ui_tests {
         assert_eq!(h.state().theme, 0, "back to the theme you had");
     }
 
+    fn dir_shots() -> std::path::PathBuf {
+        std::path::PathBuf::from(std::env::var("AERO_SHOTS").unwrap_or_else(|_| "target/screenshots".into()))
+    }
+
+    fn dir_out(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
+        dir.join(name)
+    }
+
     /// The Studio's four tabs, for a human to look at (needs a GPU):
     /// `AERO_SHOTS=dir cargo test studio_screenshots -- --ignored`
     #[test]
@@ -1528,6 +1560,28 @@ mod ui_tests {
             setup_fonts(&cc.egui_ctx);
             App::new(&cc.egui_ctx)
         });
+        // The gallery, with the sample themes from packaging/theme-gallery.
+        {
+            let lib = theme::load_library(std::path::Path::new("/nonexistent"));
+            let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("packaging/theme-gallery");
+            let index = theme_share::parse_index(&std::fs::read_to_string(dir.join("index.json")).unwrap()).unwrap();
+            let st = h.state_mut();
+            st.tab = Tab::Themes;
+            st.gallery.open = true;
+            st.gallery.entries = index
+                .into_iter()
+                .map(|e| {
+                    let text = std::fs::read_to_string(dir.join(&e.file)).unwrap();
+                    let prev = theme_share::preview_theme(&text, &lib);
+                    (e, Some(text), prev)
+                })
+                .collect();
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir_out(&dir_shots(), "gallery.png")).unwrap();
+            h.state_mut().gallery.open = false;
+        }
         let i = h.state().themes.iter().position(|t| t.name == "Koi Pond").unwrap();
         let st = h.state_mut();
         st.theme = i;

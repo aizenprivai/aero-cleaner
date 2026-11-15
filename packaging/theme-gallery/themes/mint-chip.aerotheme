@@ -1,0 +1,36 @@
+format = 1
+
+[meta]
+name = "Mint Chip"
+author = "AeroClean"
+description = "Fresh mint, soft clouds and flat buttons"
+
+[colors]
+accent = "#2fae84"
+go = "#5a8f3a"
+user_orb = "#36b38a"
+root_orb = "#8a6a4a"
+logo = "#2fae84"
+glass = "#effbf5"
+text = "#123d30"
+soft = "#3b6b5a"
+bubble = "#e8fff4"
+
+[material]
+corners = 0.6
+gloss = 0.4
+buttons = "soft"
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#7fd8b6"], [0.45, "#b9eedb"], [0.8, "#e4f8f0"], [1.0, "#f6fffb"]]
+
+[[scene.layers]]
+type = "clouds"
+count = 6
+y = 0.2
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#9fd9a8"], [0.12, "#7cc489"], [0.3, "#5ba76a"], [1.0, "#3f8a50"]]
+front = [[0.0, "#c3ead0"], [0.1, "#a2d9b2"], [0.3, "#7fc193"], [1.0, "#5fa576"]]
