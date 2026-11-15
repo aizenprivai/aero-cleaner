@@ -13,6 +13,10 @@ use std::sync::{Mutex, OnceLock};
 
 static FRENCH: AtomicBool = AtomicBool::new(false);
 
+/// Tests that switch the (global) language hold this, so they don't race.
+#[cfg(test)]
+pub static LANGUAGE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// "auto" follows the system language; "en" and "fr" force one.
 pub fn set_language(setting: &str) {
     let fr = match setting {
@@ -605,6 +609,7 @@ mod tests {
 
     #[test]
     fn templates_and_case() {
+        let _lang = LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         FRENCH.store(true, Ordering::Relaxed);
         assert_eq!(tr("Trash"), "Corbeille");
         assert_eq!(tr("    Removes: vim, nano"), "    Supprime : vim, nano", "spaces kept");

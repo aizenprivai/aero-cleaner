@@ -83,7 +83,7 @@ enum Phase {
     Cleaning,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum Tab {
     Cleaner,
     Browsers,
@@ -707,4 +707,69 @@ fn run_gui(renderer: eframe::Renderer) -> eframe::Result {
             Ok(Box::new(App::new(&cc.egui_ctx)))
         }),
     )
+}
+
+/// The real app, driven headlessly (no window, no GPU) through egui_kittest.
+#[cfg(test)]
+mod ui_tests {
+    use super::*;
+    use egui_kittest::Harness;
+
+    const ALL_TABS: [Tab; 10] = [Tab::Cleaner, Tab::Browsers, Tab::Developer, Tab::BigFiles, Tab::Duplicates, Tab::DiskMap, Tab::Boot, Tab::Startup, Tab::Themes, Tab::Settings];
+
+    fn harness() -> Harness<'static, App> {
+        Harness::builder().with_size(vec2(1080.0, 800.0)).build_eframe(|cc| {
+            setup_fonts(&cc.egui_ctx);
+            App::new(&cc.egui_ctx)
+        })
+    }
+
+    #[test]
+    fn every_screen_draws_in_every_theme_and_language() {
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut h = harness();
+        let themes = h.state().themes.len();
+        for lang in ["en", "fr"] {
+            i18n::set_language(lang);
+            for theme in 0..themes {
+                h.state_mut().theme = theme;
+                for tab in ALL_TABS {
+                    h.state_mut().tab = tab;
+                    // A couple of frames: the first one may start background work.
+                    h.run_steps(2);
+                }
+            }
+        }
+        i18n::set_language("en");
+    }
+
+    #[test]
+    fn ctrl_number_jumps_to_a_screen() {
+        let mut h = harness();
+        h.run_steps(1);
+        h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num3);
+        h.run_steps(1);
+        assert_eq!(h.state().tab, Tab::Developer);
+        // The last screen (Settings) is 0 on Linux and Windows, 9 on macOS.
+        let last = if platform::IS_MACOS { egui::Key::Num9 } else { egui::Key::Num0 };
+        h.key_press_modifiers(egui::Modifiers::COMMAND, last);
+        h.run_steps(1);
+        assert_eq!(h.state().tab, Tab::Settings);
+    }
+
+    #[test]
+    fn tab_key_focuses_controls_and_shows_the_ring() {
+        let mut h = harness();
+        h.state_mut().tab = Tab::Themes;
+        h.run_steps(2);
+        assert!(!h.state().keyboard_nav, "no ring before the keyboard is used");
+        h.key_press(egui::Key::Tab);
+        h.run_steps(1);
+        let focused = h.ctx.memory(|m| m.focused());
+        assert!(focused.is_some(), "Tab should focus a control");
+        assert!(h.state().keyboard_nav);
+        h.key_press(egui::Key::Tab);
+        h.run_steps(1);
+        assert_ne!(h.ctx.memory(|m| m.focused()), focused, "Tab moves to the next control");
+    }
 }

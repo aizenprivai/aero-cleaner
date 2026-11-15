@@ -38,7 +38,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev
       - name: Run tests
-        run: cargo test --release
+        # Debug build on purpose: integer overflow checks are on.
+        run: cargo test
 
   # The jobs below only run for a version tag (e.g. v1.1.0).
   build-deb:

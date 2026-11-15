@@ -197,7 +197,10 @@ pub fn surface(painter: &Painter, rect: Rect, r: f32, theme: &Theme, hovered: bo
         (rgba(255, 255, 255, a), with_alpha(tint.unwrap_or(Color32::WHITE), a / 2), rgba(255, 255, 255, 70))
     } else {
         let a = if hovered { 215 } else { 155 };
-        (rgba(255, 255, 255, a), with_alpha(tint.unwrap_or(lighten(theme.glass, 0.4)), a * 3 / 5), rgba(255, 255, 255, 240))
+        // The tint alphas the released look has always used (they used to
+        // come from an 8-bit `a * 3 / 5` that wrapped around in release builds).
+        let tint_a = if hovered { 26 } else { 41 };
+        (rgba(255, 255, 255, a), with_alpha(tint.unwrap_or(lighten(theme.glass, 0.4)), tint_a), rgba(255, 255, 255, 240))
     };
     rrect_grad(painter, rect, r, &[(0.0, top), (1.0, bottom)]);
     rrect_outline(painter, rect, r, Stroke::new(1.0, border));
