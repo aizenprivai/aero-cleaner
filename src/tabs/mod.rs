@@ -15,6 +15,7 @@ mod review;
 mod rules_ui;
 mod settings_tab;
 mod startup;
+mod studio;
 mod themes_tab;
 mod updater_ui;
 
@@ -27,6 +28,9 @@ pub(crate) use leftovers_tab::LeftoverState;
 pub(crate) use map_tab::MapState;
 pub(crate) use rules_ui::{RuleEditor, tilde};
 pub(crate) use settings_tab::AutoState;
+pub(crate) use studio::Studio;
+#[cfg(test)]
+pub(crate) use studio::StudioTab;
 pub(crate) use updater_ui::{UpdaterAction, UpdaterState};
 
 use prelude::*;

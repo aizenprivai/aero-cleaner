@@ -1152,3 +1152,217 @@ A summer night full of fireflies
 = Uma noite de verão cheia de vaga-lumes
 Snowfall over frosted hills
 = Neve sobre colinas geladas
+
+# ----- Theme Studio -----
+🎨 Theme Studio
+= 🎨 Estúdio de temas
+built on {}
+= baseado em {}
+↪ Redo
+= ↪ Refazer
+🎲 Randomize
+= 🎲 Aleatório
+New harmonious colors, sky and hills; text stays readable
+= Novas cores, céu e colinas harmoniosos; o texto continua legível
+Undo every change: back to the base theme
+= Desfaz todas as mudanças: volta ao tema base
+Duplicate
+= Duplicar
+Save as a new theme next time, keeping this one
+= Salvar como novo tema da próxima vez, mantendo este
+Colors
+= Cores
+Scene
+= Cena
+Material
+= Material
+Motion & Sound
+= Movimento e som
+Click anywhere in the app to pick its color (Esc cancels)
+= Clique em qualquer lugar do app para pegar a cor (Esc cancela)
+✔ Saved
+= ✔ Salvo
+Discard changes
+= Descartar mudanças
+Close
+= Fechar
+You have unsaved changes: click again to close without saving
+= Há mudanças não salvas: clique de novo para fechar sem salvar
+📂 Themes folder
+= 📂 Pasta de temas
+Could not save: {}
+= Não foi possível salvar: {}
+Picked {}
+= Cor pega: {}
+A theme called "{}" already exists; saving keeps both (the new one gets a number)
+= Já existe um tema chamado "{}"; ao salvar os dois são mantidos (o novo ganha um número)
+The theme file changed on disk: reloaded
+= O arquivo do tema mudou no disco: recarregado
+Text
+= Texto
+Soft text
+= Texto secundário
+Glass
+= Vidro
+Accent
+= Destaque
+Main buttons
+= Botões principais
+Your items
+= Seus itens
+System items
+= Itens do sistema
+Logo
+= Logo
+Bubbles
+= Bolhas
+Pick this color from anywhere in the app
+= Pegar esta cor de qualquer lugar do app
+Contrast with the glass behind it (4.5 or more reads comfortably)
+= Contraste com o vidro atrás (4,5 ou mais se lê com conforto)
+Build matching colors from the accent
+= Criar cores combinando a partir do destaque
+Complementary
+= Complementares
+Analogous
+= Análogas
+Triad
+= Tríade
+Preview as seen with
+= Prévia como vista com
+typical color vision
+= visão de cores típica
+protanopia
+= protanopia
+deuteranopia
+= deuteranopia
+tritanopia
+= tritanopia
+Scene weight
+= Peso da cena
+light
+= leve
+medium
+= média
+heavy: draws lighter on battery
+= pesada: mais leve na bateria
+Drag to reorder
+= Arraste para reordenar
+Show this layer
+= Mostrar esta camada
+Remove this layer
+= Remover esta camada
++ Add a layer
+= + Adicionar uma camada
+Picture…
+= Imagem…
+Sky
+= Céu
+Sun
+= Sol
+Moon
+= Lua
+Light rays
+= Raios de luz
+Stars
+= Estrelas
+Aurora
+= Aurora
+Hills
+= Colinas
+Clouds
+= Nuvens
+Fish
+= Peixes
+Fireflies
+= Vaga-lumes
+Petals
+= Pétalas
+Snow
+= Neve
+Leaves
+= Folhas
+Picture
+= Imagem
+Layer
+= Camada
+Opacity
+= Opacidade
+Speed
+= Velocidade
+Colors, top to bottom
+= Cores, de cima para baixo
+Horizontal
+= Horizontal
+Vertical
+= Vertical
+Color
+= Cor
+Brightness
+= Brilho
+How many
+= Quantidade
+Green, blue and violet curtains of light.
+= Cortinas de luz verdes, azuis e violetas.
+Back hill
+= Colina de trás
+Front hill
+= Colina da frente
+Height
+= Altura
+Size
+= Tamanho
+Frosted (softer, easier to read over)
+= Fosca (mais suave, mais fácil de ler por cima)
+Dark smoked glass
+= Vidro fumê escuro
+Roundness
+= Arredondamento
+Gloss
+= Brilho do vidro
+Glass opacity
+= Opacidade do vidro
+Buttons
+= Botões
+Aqua
+= Aqua
+Soft
+= Suave
+Flat
+= Plano
+Font
+= Fonte
+System
+= Sistema
+Built-in
+= Embutida
+Text size
+= Tamanho do texto
+Animation speed
+= Velocidade da animação
+Page transition
+= Transição de páginas
+None
+= Nenhuma
+Fade
+= Esmaecer
+Glassy slide
+= Deslize de vidro
+Reduce motion (in Settings) always turns animations and transitions off.
+= Reduzir movimento (nas Configurações) sempre desliga animações e transições.
+Sounds
+= Sons
+Sound packs come in a later update. Theme files can already name one.
+= Pacotes de sons chegam numa próxima atualização. Arquivos de tema já podem nomear um.
+Choose a picture for the background
+= Escolha uma imagem para o fundo
+✏ Edit
+= ✏ Editar
+🎨 Customize
+= 🎨 Personalizar
+Change this theme in the Theme Studio
+= Alterar este tema no Estúdio de temas
+Make your own theme starting from this one
+= Criar seu próprio tema a partir deste
+⚠ {} wasn't loaded: {}
+= ⚠ {} não foi carregado: {}

@@ -6,7 +6,19 @@ impl App {
     pub(crate) fn themes_tab(&mut self, ui: &mut egui::Ui, area: Rect, t: f32) {
         let gap = 18.0;
         let cols = 3;
-        let count = self.themes.len();
+        // While the Studio is open, its live preview isn't a card, and the
+        // theme being edited stays marked.
+        let count = self.studio.as_ref().map(|s| s.preview_index).unwrap_or(self.themes.len());
+        let chosen = self.studio.as_ref().map(|s| s.return_index).unwrap_or(self.theme);
+        let editing = self.studio.is_some();
+        // Theme files that couldn't be read get a line at the bottom.
+        let problem = self.theme_problems.first().map(|(path, why)| {
+            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            crate::i18n::tr(format!("⚠ {name} wasn't loaded: {why}"))
+        });
+        let full = area;
+        let area = if problem.is_some() { Rect::from_min_max(area.min, pos2(area.max.x, area.max.y - 30.0)) } else { area };
+        let mut customize = false;
         let rows = count.div_ceil(cols);
         let w = (area.width() - gap * (cols as f32 - 1.0)) / cols as f32;
         let h = (area.height() - gap * (rows as f32 - 1.0)) / rows as f32;
@@ -21,7 +33,7 @@ impl App {
             let resp = ui.interact(card, egui::Id::unique(("theme-card", i)), Sense::click());
             let cur = &self.themes[self.theme];
             let th = &self.themes[i];
-            let selected = i == self.theme;
+            let selected = i == chosen;
             let p = ui.painter().clone();
 
             aero::surface(&p, card, 16.0, cur, resp.hovered() && !selected, None);
@@ -52,12 +64,16 @@ impl App {
             aero::rrect_outline(&p, preview, 4.0, Stroke::new(1.0, rgba(255, 255, 255, 180)));
 
             embossed(&p, pos2(card.min.x + 14.0, card.max.y - 33.0), Align2::LEFT_CENTER, &th.name, bold(16.0), cur.text);
-            let room = card.width() - 28.0 - if selected { 30.0 } else { 0.0 };
+            let room = card.width() - 28.0 - if selected { 124.0 } else { 0.0 };
             aero::fit_text(&p, pos2(card.min.x + 14.0, card.max.y - 14.0), Align2::LEFT_CENTER, &crate::i18n::tr(&th.desc), regular(12.0), cur.soft, room);
             if selected {
-                aero::orb(&p, pos2(card.max.x - 22.0, card.max.y - 26.0), 12.0, cur.go, "✔");
+                // Your own themes are edited; built-in ones start a new theme.
+                let label = if th.file.is_some() { "✏ Edit" } else { "🎨 Customize" };
+                let tip = if th.file.is_some() { "Change this theme in the Theme Studio" } else { "Make your own theme starting from this one" };
+                let r = Rect::from_min_size(pos2(card.max.x - 126.0, card.max.y - 40.0), vec2(116.0, 30.0));
+                customize = aero::aqua_button(ui, r, label, cur.accent, !editing).on_hover_text(crate::i18n::tr(tip)).clicked();
             }
-            if resp.clicked() {
+            if resp.clicked() && !editing {
                 picked = Some(i);
             }
             if !selected {
@@ -65,6 +81,16 @@ impl App {
             }
         }
 
+        if let Some(text) = problem {
+            let th = &self.themes[self.theme];
+            aero::fit_text(ui.painter(), pos2(full.min.x + 8.0, full.max.y - 12.0), Align2::LEFT_CENTER, &text, regular(12.5), rgba(210, 70, 40, 255), full.width() - 16.0);
+            let _ = th;
+        }
+        if customize {
+            let ctx = ui.ctx().clone();
+            self.open_studio(&ctx);
+            return;
+        }
         if let Some(i) = picked {
             self.theme = i;
             theme::save(&self.themes[i]);

@@ -26,6 +26,7 @@ mod settings;
 mod similar;
 mod tabs;
 mod theme;
+mod theme_edit;
 mod tools;
 mod update;
 mod walk;
@@ -74,6 +75,9 @@ enum Msg {
     HealthDone(Vec<health::DiskHealth>),
     LeftoversDone(Vec<leftovers::Leftover>),
     UndoList(Vec<holding::Held>),
+    /// The eyedropper's color, and a background picture chosen in the Studio.
+    StudioPixel(egui::Color32),
+    StudioPicture(Option<String>),
     /// The "Check now" answer.
     Release(Result<update::Release, String>),
     UpdateProgress(u64, u64),
@@ -174,6 +178,16 @@ struct App {
     history: Vec<HistoryEntry>,
     /// Animation clock; only advances while animations are running.
     anim_t: f64,
+    /// The Theme Studio, while it's open.
+    studio: Option<tabs::Studio>,
+    /// Theme files that couldn't be read, and why.
+    theme_problems: Vec<(std::path::PathBuf, String)>,
+    /// The themes folder's files and dates, to reload when one changes.
+    theme_files: Vec<(std::path::PathBuf, std::time::SystemTime)>,
+    theme_check_at: f64,
+    /// When the shown screen last changed, for page transitions.
+    tab_changed_at: f64,
+    shown_tab: Tab,
     review: Option<Review>,
     excl_input: String,
     settings_msg: String,
@@ -219,6 +233,12 @@ impl App {
             settings: Settings::load(),
             history: settings::history(),
             anim_t: 0.0,
+            studio: None,
+            theme_problems: theme::load_library(&theme::user_dir()).problems,
+            theme_files: theme_folder_state(),
+            theme_check_at: 0.0,
+            tab_changed_at: -10.0,
+            shown_tab: Tab::Overview,
             review: None,
             excl_input: String::new(),
             settings_msg: String::new(),
@@ -389,6 +409,27 @@ impl App {
     }
 
     fn poll(&mut self, time: f64) {
+        // A theme file changed on disk (edited in a text editor): reload.
+        if time - self.theme_check_at > 1.5 {
+            self.theme_check_at = time;
+            let now = theme_folder_state();
+            if now != self.theme_files {
+                self.theme_files = now;
+                self.reload_themes(None);
+                let ctx = self.ctx.clone();
+                if let Some(st) = self.studio.as_mut()
+                    && !st.draft.dirty
+                    && let Some(f) = st.draft.file.clone()
+                    && let Ok(d) = theme_edit::Draft::open(&f)
+                {
+                    st.draft = d;
+                    st.changed = true;
+                    st.msg = crate::i18n::tr("The theme file changed on disk: reloaded");
+                }
+                self.studio_rebuild(&ctx);
+                self.apply_visuals(&ctx);
+            }
+        }
         while let Ok(msg) = self.rx.try_recv() {
             match msg {
                 Msg::Size(i, r) => self.items[i].result = Some(r),
@@ -492,6 +533,14 @@ impl App {
                         }
                         Err(e) => self.updater.error = e,
                     }
+                }
+                Msg::StudioPixel(c) => {
+                    let ctx = self.ctx.clone();
+                    self.studio_picked_color(&ctx, c);
+                }
+                Msg::StudioPicture(path) => {
+                    let ctx = self.ctx.clone();
+                    self.studio_picture(&ctx, path);
                 }
                 Msg::UndoList(list) => {
                     self.undo_list = Some(list);
@@ -676,6 +725,23 @@ impl eframe::App for App {
         }
 
         let area = Rect::from_min_max(pos2(sidebar.max.x + 14.0, nav_top), pos2(inner.max.x + 6.0, inner.max.y));
+        // Page transition: the new screen fades or slides in.
+        if self.tab != self.shown_tab {
+            self.shown_tab = self.tab;
+            self.tab_changed_at = time;
+        }
+        let progress = if self.settings.reduce_motion { 1.0 } else { ((time - self.tab_changed_at) / 0.22).clamp(0.0, 1.0) as f32 };
+        let eased = 1.0 - (1.0 - progress).powi(3);
+        let transition = self.themes[self.theme].transition;
+        let area = if transition == theme::Transition::Slide { area.translate(vec2((1.0 - eased) * 36.0, 0.0)) } else { area };
+        if progress < 1.0 && transition != theme::Transition::None {
+            ui.ctx().request_repaint();
+        }
+        let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(ui.max_rect()));
+        if transition != theme::Transition::None && progress < 1.0 {
+            ui.multiply_opacity(eased);
+        }
+        let ui = &mut ui;
         match self.tab {
             Tab::Overview => self.overview_tab(ui, area),
             Tab::Cleaner => self.cleaner_tab(ui, area, spin, time),
@@ -697,6 +763,9 @@ impl eframe::App for App {
         }
         if self.rule_editor.is_some() {
             self.rule_editor_sheet(ui.ctx(), screen);
+        }
+        if self.studio.is_some() {
+            self.studio_panel(ui.ctx(), screen);
         }
         self.focus_ring(ui.ctx());
 
@@ -780,6 +849,15 @@ fn setup_fonts_with(ctx: &egui::Context, builtin: bool) {
     }
     fonts.families.insert(FontFamily::Name("bold".into()), bold_family);
     ctx.set_fonts(fonts);
+}
+
+/// The themes folder's `.aerotheme` files with their modification times.
+fn theme_folder_state() -> Vec<(std::path::PathBuf, std::time::SystemTime)> {
+    let mut v: Vec<_> = std::fs::read_dir(theme::user_dir())
+        .map(|rd| rd.flatten().filter(|e| e.path().extension().is_some_and(|x| x == "aerotheme")).filter_map(|e| Some((e.path(), e.metadata().ok()?.modified().ok()?))).collect())
+        .unwrap_or_default();
+    v.sort();
+    v
 }
 
 /// Scenes heavier than this draw lighter on battery (the built-in themes are well under).
@@ -1319,6 +1397,153 @@ mod ui_tests {
         st.tab = Tab::Overview;
         h.run_steps(3);
         h.render().unwrap().save(dir.join("layer-gallery.png")).unwrap();
+    }
+
+    /// Every symbol the code draws (arrows, emoji...) has a glyph in the
+    /// fonts, so no screen can crash on a missing character.
+    #[test]
+    fn every_symbol_in_the_code_has_a_glyph() {
+        let h = harness();
+        let sources = [
+            include_str!("aero.rs"),
+            include_str!("automation.rs"),
+            include_str!("bleachbit.rs"),
+            include_str!("boot.rs"),
+            include_str!("browsers.rs"),
+            include_str!("cleaner.rs"),
+            include_str!("devclean.rs"),
+            include_str!("diskhistory.rs"),
+            include_str!("diskmap.rs"),
+            include_str!("distro.rs"),
+            include_str!("dupes.rs"),
+            include_str!("health.rs"),
+            include_str!("helper.rs"),
+            include_str!("holding.rs"),
+            include_str!("i18n.rs"),
+            include_str!("leftovers.rs"),
+            include_str!("macos.rs"),
+            include_str!("main.rs"),
+            include_str!("overview.rs"),
+            include_str!("platform.rs"),
+            include_str!("report.rs"),
+            include_str!("rules.rs"),
+            include_str!("settings.rs"),
+            include_str!("similar.rs"),
+            include_str!("tabs/big_files.rs"),
+            include_str!("tabs/boot_tab.rs"),
+            include_str!("tabs/browsers_tab.rs"),
+            include_str!("tabs/cleaner_tab.rs"),
+            include_str!("tabs/dev_tab.rs"),
+            include_str!("tabs/dupes_tab.rs"),
+            include_str!("tabs/history_tab.rs"),
+            include_str!("tabs/leftovers_tab.rs"),
+            include_str!("tabs/map_tab.rs"),
+            include_str!("tabs/mod.rs"),
+            include_str!("tabs/overview_tab.rs"),
+            include_str!("tabs/prelude.rs"),
+            include_str!("tabs/review.rs"),
+            include_str!("tabs/rules_ui.rs"),
+            include_str!("tabs/settings_tab.rs"),
+            include_str!("tabs/startup.rs"),
+            include_str!("tabs/studio.rs"),
+            include_str!("tabs/themes_tab.rs"),
+            include_str!("tabs/updater_ui.rs"),
+            include_str!("theme.rs"),
+            include_str!("theme_edit.rs"),
+            include_str!("tools.rs"),
+            include_str!("update.rs"),
+            include_str!("walk.rs"),
+            include_str!("windows.rs"),
+        ];
+        let mut missing = std::collections::BTreeSet::new();
+        for src in sources {
+            // Characters inside string literals only (not comments).
+            let mut in_str = false;
+            let mut prev = ' ';
+            for c in src.chars() {
+                if c == '"' && prev != '\\' {
+                    in_str = !in_str;
+                } else if in_str && c as u32 >= 0x2000 && !h.ctx.fonts_mut(|f| f.has_glyph(&egui::FontId::proportional(14.0), c)) {
+                    missing.insert(format!("{c} (U+{:04X})", c as u32));
+                }
+                prev = c;
+            }
+        }
+        assert!(missing.is_empty(), "no glyph for: {missing:?}");
+    }
+
+    /// The Theme Studio, used like a person would: open, randomize, undo, close.
+    #[test]
+    fn theme_studio_edits_live_and_closes_cleanly() {
+        use egui_kittest::kittest::Queryable;
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let mut h = harness();
+        h.state_mut().tab = Tab::Themes;
+        h.state_mut().theme = 0; // Frutiger Aero: built in, so Customize makes a new theme
+        h.run_steps(2);
+        let before = h.state().themes.len();
+        h.get_by_label("Customize").click();
+        h.run_steps(3);
+        let st = h.state().studio.as_ref().expect("the Studio opened");
+        assert_eq!(st.draft.base(), "Frutiger Aero");
+        assert_eq!(h.state().themes.len(), before + 1, "a live preview entry");
+        assert_eq!(h.state().theme, before, "the app shows the preview");
+        let accent = h.state().themes[before].accent;
+
+        h.get_by_label("🎲 Randomize").click();
+        h.run_steps(3);
+        assert!(h.state().studio.as_ref().unwrap().draft.dirty);
+        assert_ne!(h.state().themes[before].accent, accent, "the preview changed live");
+        h.get_by_label("↩ Undo").click();
+        h.run_steps(3);
+        assert_eq!(h.state().themes[before].accent, accent, "undo restores it");
+
+        for tab in [tabs::StudioTab::Scene, tabs::StudioTab::Material, tabs::StudioTab::Motion, tabs::StudioTab::Colors] {
+            h.state_mut().studio.as_mut().unwrap().tab = tab;
+            h.state_mut().studio.as_mut().unwrap().expanded = Some(0);
+            h.run_steps(2);
+        }
+        // Unsaved changes: Close asks once more.
+        h.get_by_label("Close").click();
+        h.run_steps(2);
+        assert!(h.state().studio.is_some(), "first click only warns");
+        h.get_by_label("Discard changes").click();
+        h.run_steps(2);
+        assert!(h.state().studio.is_none());
+        assert_eq!(h.state().themes.len(), before, "the preview entry is gone");
+        assert_eq!(h.state().theme, 0, "back to the theme you had");
+    }
+
+    /// The Studio's four tabs, for a human to look at (needs a GPU):
+    /// `AERO_SHOTS=dir cargo test studio_screenshots -- --ignored`
+    #[test]
+    #[ignore]
+    fn studio_screenshots() {
+        let dir = std::path::PathBuf::from(std::env::var("AERO_SHOTS").unwrap_or_else(|_| "target/screenshots".into()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language(&std::env::var("AERO_SHOT_LANG").unwrap_or_else(|_| "en".into()));
+        let mut h = Harness::builder().with_size(vec2(1080.0, 800.0)).wgpu().build_eframe(|cc| {
+            setup_fonts(&cc.egui_ctx);
+            App::new(&cc.egui_ctx)
+        });
+        let i = h.state().themes.iter().position(|t| t.name == "Koi Pond").unwrap();
+        let st = h.state_mut();
+        st.theme = i;
+        st.tab = Tab::Cleaner;
+        st.disk = Some((512_000_000_000, 214_000_000_000));
+        let ctx = h.ctx.clone();
+        h.state_mut().open_studio(&ctx);
+        for (tab, name) in [(tabs::StudioTab::Colors, "colors"), (tabs::StudioTab::Scene, "scene"), (tabs::StudioTab::Material, "material"), (tabs::StudioTab::Motion, "motion")] {
+            let st = h.state_mut().studio.as_mut().unwrap();
+            st.tab = tab;
+            st.expanded = Some(2);
+            for _ in 0..5 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join(format!("studio-{name}.png"))).unwrap();
+        }
     }
 
     #[test]

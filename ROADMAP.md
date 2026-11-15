@@ -155,7 +155,7 @@
 - Every layer has opacity, speed, color and on/off; some have more (cloud count, fish school size, hill heights, parallax).
 - **Performance budget:** each layer reports its cost; the editor shows a live "scene weight" meter, and heavy scenes are simplified on battery.
 
-### Milestone 3 – Theme Studio (the editor)
+### ✅ Milestone 3 – Theme Studio (the editor)
 - **Customize** on the Themes screen opens the Studio: the real app as a live preview on one side, and a panel with **Colors · Scene · Material · Motion & Sound** tabs on the other.
 - **Colors:** pickers with harmony helpers (complementary, analogous, triad), a contrast badge on every text color, a color-blindness preview, and an eyedropper that picks from the preview.
 - **Scene builder:** add, remove, reorder (drag) and tune layers like stickers.

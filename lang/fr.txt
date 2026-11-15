@@ -1152,3 +1152,217 @@ A summer night full of fireflies
 = Une nuit d'été pleine de lucioles
 Snowfall over frosted hills
 = Chute de neige sur des collines givrées
+
+# ----- Theme Studio -----
+🎨 Theme Studio
+= 🎨 Studio de thèmes
+built on {}
+= basé sur {}
+↪ Redo
+= ↪ Rétablir
+🎲 Randomize
+= 🎲 Au hasard
+New harmonious colors, sky and hills; text stays readable
+= De nouvelles couleurs harmonieuses, ciel et collines ; le texte reste lisible
+Undo every change: back to the base theme
+= Annule tous les changements : retour au thème de base
+Duplicate
+= Dupliquer
+Save as a new theme next time, keeping this one
+= Enregistrer comme nouveau thème la prochaine fois, en gardant celui-ci
+Colors
+= Couleurs
+Scene
+= Scène
+Material
+= Matière
+Motion & Sound
+= Mouvement et son
+Click anywhere in the app to pick its color (Esc cancels)
+= Cliquez n'importe où dans l'appli pour prendre sa couleur (Échap annule)
+✔ Saved
+= ✔ Enregistré
+Discard changes
+= Abandonner les changements
+Close
+= Fermer
+You have unsaved changes: click again to close without saving
+= Changements non enregistrés : cliquez encore pour fermer sans enregistrer
+📂 Themes folder
+= 📂 Dossier des thèmes
+Could not save: {}
+= Impossible d'enregistrer : {}
+Picked {}
+= Couleur prise : {}
+A theme called "{}" already exists; saving keeps both (the new one gets a number)
+= Un thème nommé « {} » existe déjà ; en enregistrant, les deux sont gardés (le nouveau reçoit un numéro)
+The theme file changed on disk: reloaded
+= Le fichier du thème a changé sur le disque : rechargé
+Text
+= Texte
+Soft text
+= Texte secondaire
+Glass
+= Verre
+Accent
+= Accent
+Main buttons
+= Boutons principaux
+Your items
+= Vos éléments
+System items
+= Éléments système
+Logo
+= Logo
+Bubbles
+= Bulles
+Pick this color from anywhere in the app
+= Prendre cette couleur n'importe où dans l'appli
+Contrast with the glass behind it (4.5 or more reads comfortably)
+= Contraste avec le verre derrière (4,5 ou plus se lit confortablement)
+Build matching colors from the accent
+= Créer des couleurs assorties à partir de l'accent
+Complementary
+= Complémentaires
+Analogous
+= Analogues
+Triad
+= Triade
+Preview as seen with
+= Aperçu tel que vu avec
+typical color vision
+= une vision des couleurs habituelle
+protanopia
+= protanopie
+deuteranopia
+= deutéranopie
+tritanopia
+= tritanopie
+Scene weight
+= Poids de la scène
+light
+= légère
+medium
+= moyenne
+heavy: draws lighter on battery
+= lourde : allégée sur batterie
+Drag to reorder
+= Glisser pour réordonner
+Show this layer
+= Afficher ce calque
+Remove this layer
+= Supprimer ce calque
++ Add a layer
+= + Ajouter un calque
+Picture…
+= Image…
+Sky
+= Ciel
+Sun
+= Soleil
+Moon
+= Lune
+Light rays
+= Rayons de lumière
+Stars
+= Étoiles
+Aurora
+= Aurore
+Hills
+= Collines
+Clouds
+= Nuages
+Fish
+= Poissons
+Fireflies
+= Lucioles
+Petals
+= Pétales
+Snow
+= Neige
+Leaves
+= Feuilles
+Picture
+= Image
+Layer
+= Calque
+Opacity
+= Opacité
+Speed
+= Vitesse
+Colors, top to bottom
+= Couleurs, de haut en bas
+Horizontal
+= Horizontal
+Vertical
+= Vertical
+Color
+= Couleur
+Brightness
+= Luminosité
+How many
+= Combien
+Green, blue and violet curtains of light.
+= Des voiles de lumière verts, bleus et violets.
+Back hill
+= Colline arrière
+Front hill
+= Colline avant
+Height
+= Hauteur
+Size
+= Taille
+Frosted (softer, easier to read over)
+= Givrée (plus douce, texte plus lisible par-dessus)
+Dark smoked glass
+= Verre fumé sombre
+Roundness
+= Arrondi
+Gloss
+= Brillance
+Glass opacity
+= Opacité du verre
+Buttons
+= Boutons
+Aqua
+= Aqua
+Soft
+= Doux
+Flat
+= Plat
+Font
+= Police
+System
+= Système
+Built-in
+= Intégrée
+Text size
+= Taille du texte
+Animation speed
+= Vitesse des animations
+Page transition
+= Transition des pages
+None
+= Aucune
+Fade
+= Fondu
+Glassy slide
+= Glissement vitré
+Reduce motion (in Settings) always turns animations and transitions off.
+= Réduire les animations (dans les Paramètres) coupe toujours animations et transitions.
+Sounds
+= Sons
+Sound packs come in a later update. Theme files can already name one.
+= Les packs de sons arrivent dans une prochaine mise à jour. Les fichiers de thème peuvent déjà en nommer un.
+Choose a picture for the background
+= Choisissez une image pour l'arrière-plan
+✏ Edit
+= ✏ Modifier
+🎨 Customize
+= 🎨 Personnaliser
+Change this theme in the Theme Studio
+= Modifier ce thème dans le Studio de thèmes
+Make your own theme starting from this one
+= Créer votre propre thème à partir de celui-ci
+⚠ {} wasn't loaded: {}
+= ⚠ {} n'a pas été chargé : {}

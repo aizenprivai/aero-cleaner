@@ -226,7 +226,6 @@ pub struct Theme {
     pub font: FontChoice,
     /// Animation speed factor.
     pub motion_speed: f32,
-    #[allow(dead_code)] // page transitions arrive with the Studio
     pub transition: Transition,
     #[allow(dead_code)] // sounds are milestone 8
     pub sound: (String, f32),
@@ -778,7 +777,7 @@ pub fn export_text(resolved: &toml::Table) -> String {
 }
 
 /// File name for a theme in the themes folder ("Ocean Breeze" -> "ocean-breeze.aerotheme").
-fn file_name(name: &str) -> String {
+pub fn file_name(name: &str) -> String {
     let slug: String = name.chars().map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { '-' }).collect();
     let slug = slug.split('-').filter(|p| !p.is_empty()).collect::<Vec<_>>().join("-");
     format!("{}.aerotheme", if slug.is_empty() { "theme".into() } else { slug })
