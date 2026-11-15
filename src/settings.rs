@@ -27,16 +27,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings {
-            reduce_motion: false,
-            exclusions: vec![],
-            auto_trash: false,
-            low_disk_percent: 10,
-            journal_days: 3,
-            big_min_mb: 100,
-            selected: None,
-            language: "auto".into(),
-        }
+        Settings { reduce_motion: false, exclusions: vec![], auto_trash: false, low_disk_percent: 10, journal_days: 3, big_min_mb: 100, selected: None, language: "auto".into() }
     }
 }
 
@@ -144,9 +135,5 @@ pub fn browser_cache_dirs() -> Vec<PathBuf> {
         return ["Firefox", "BraveSoftware", "Google/Chrome", "Chromium", "Vivaldi", "Microsoft Edge"].iter().map(|d| c.join(d)).filter(|p| p.exists()).collect();
     }
     let c = home().join(".cache");
-    ["mozilla", "BraveSoftware", "google-chrome", "chromium", "vivaldi", "librewolf"]
-        .iter()
-        .map(|d| c.join(d))
-        .filter(|p| p.exists())
-        .collect()
+    ["mozilla", "BraveSoftware", "google-chrome", "chromium", "vivaldi", "librewolf"].iter().map(|d| c.join(d)).filter(|p| p.exists()).collect()
 }

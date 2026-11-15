@@ -2,10 +2,8 @@
 //! buttons, bubbles and a sunny sky. Everything is drawn with meshes since
 //! egui has no built-in gradients.
 
-use eframe::egui::{
-    pos2, Align2, Color32, FontFamily, FontId, Mesh, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2,
-};
 use crate::theme::Theme;
+use eframe::egui::{Align2, Color32, FontFamily, FontId, Mesh, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2, pos2};
 use std::f32::consts::TAU;
 
 pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color32 {
@@ -95,10 +93,16 @@ pub fn rrect_grad(painter: &Painter, rect: Rect, r: f32, stops: &[(f32, Color32)
 }
 
 pub fn circle_grad(painter: &Painter, c: Pos2, r: f32, stops: &[(f32, Color32)]) {
-    fill_vgrad(painter, c.y - r, c.y + r, |y| {
-        let dx = (r * r - (y - c.y) * (y - c.y)).max(0.0).sqrt();
-        (c.x - dx, c.x + dx)
-    }, stops);
+    fill_vgrad(
+        painter,
+        c.y - r,
+        c.y + r,
+        |y| {
+            let dx = (r * r - (y - c.y) * (y - c.y)).max(0.0).sqrt();
+            (c.x - dx, c.x + dx)
+        },
+        stops,
+    );
 }
 
 /// Radial gradient disc from `inner` (center) to `outer` (edge).
@@ -226,11 +230,7 @@ pub fn aqua_button(ui: &mut Ui, rect: Rect, label: &str, base: Color32, enabled:
     rrect_grad(p, gloss, r * 0.8, &[(0.0, rgba(255, 255, 255, 215)), (1.0, rgba(255, 255, 255, 35))]);
     rrect_outline(p, rect, r, Stroke::new(1.2, darken(c, 0.4)));
     shadowed(p, rect.center() + Vec2::new(0.0, 1.0), Align2::CENTER_CENTER, label, bold((rect.height() * 0.33).clamp(12.0, 17.0)), Color32::WHITE);
-    if enabled {
-        resp.on_hover_cursor(eframe::egui::CursorIcon::PointingHand)
-    } else {
-        resp
-    }
+    if enabled { resp.on_hover_cursor(eframe::egui::CursorIcon::PointingHand) } else { resp }
 }
 
 /// A glossy colored sphere ("orb") with a glyph in the middle.

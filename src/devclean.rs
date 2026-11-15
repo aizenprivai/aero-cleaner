@@ -49,9 +49,7 @@ pub struct DevItem {
 
 impl DevItem {
     pub fn is_stale(&self) -> bool {
-        self.project_touched
-            .and_then(|t| SystemTime::now().duration_since(t).ok())
-            .is_some_and(|age| age > Duration::from_secs(30 * 86400))
+        self.project_touched.and_then(|t| SystemTime::now().duration_since(t).ok()).is_some_and(|age| age > Duration::from_secs(30 * 86400))
     }
 }
 
@@ -113,7 +111,7 @@ pub fn scan(root: &Path, progress: &dyn Fn(usize)) -> Vec<DevItem> {
                 continue;
             }
             dirs += 1;
-            if dirs % 500 == 0 {
+            if dirs.is_multiple_of(500) {
                 progress(dirs);
             }
             if let Some(kind) = classify(&path) {
@@ -177,10 +175,7 @@ mod tests {
         let items = scan(&base, &|_| {});
         let mut kinds: Vec<(DevKind, String)> = items.iter().map(|i| (i.kind, i.path.strip_prefix(&base).unwrap().display().to_string().replace('\\', "/"))).collect();
         kinds.sort_by(|a, b| a.1.cmp(&b.1));
-        assert_eq!(
-            kinds,
-            vec![(DevKind::Rust, "proj/target".into()), (DevKind::Python, "py/.venv".into()), (DevKind::Node, "web/node_modules".into())]
-        );
+        assert_eq!(kinds, vec![(DevKind::Rust, "proj/target".into()), (DevKind::Python, "py/.venv".into()), (DevKind::Node, "web/node_modules".into())]);
         let rust = items.iter().find(|i| i.kind == DevKind::Rust).unwrap();
         assert!(rust.size >= 1000);
         delete(rust).unwrap();

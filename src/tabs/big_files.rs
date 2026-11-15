@@ -11,9 +11,9 @@ impl App {
         std::thread::spawn(move || {
             let progress_tx = tx.clone();
             let files = tools::find_big_files(min, 100, &move |n| {
-                let _ = progress_tx.send(Msg::BigProgress(n));
+                progress_tx.send(Msg::BigProgress(n));
             });
-            let _ = tx.send(Msg::BigDone(files));
+            tx.send(Msg::BigDone(files));
         });
     }
 
@@ -28,7 +28,10 @@ impl App {
             ui,
             area,
             "Big files",
-            &format!("The 100 largest files over {} in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.", format_bytes(self.settings.big_min_mb * 1_000_000)),
+            &format!(
+                "The 100 largest files over {} in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.",
+                format_bytes(self.settings.big_min_mb * 1_000_000)
+            ),
             Some((label, !scanning)),
         );
         if clicked {
@@ -87,13 +90,19 @@ impl App {
                         if !show {
                             continue;
                         }
-                        let tag = text_clip.layout_no_wrap(crate::i18n::tr(label.to_string()), regular(10.5), aero::darken(color, 0.6));
+                        let tag = text_clip.layout_no_wrap(crate::i18n::tr(label), regular(10.5), aero::darken(color, 0.6));
                         let br = Rect::from_min_size(pos2(bx, cy - 17.0), vec2(tag.size().x + 12.0, 16.0));
                         aero::rrect_grad(&text_clip, br, 8.0, &[(0.0, aero::lighten(color, 0.65)), (1.0, aero::lighten(color, 0.3))]);
                         text_clip.galley(br.center() - tag.size() / 2.0, tag, aero::darken(color, 0.6));
                         bx = br.max.x + 6.0;
                     }
-                    text_clip.text(pos2(rect.min.x + 56.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(format!("{dir}  ·  {}", tools::age(f.modified))), regular(12.0), th.soft);
+                    text_clip.text(
+                        pos2(rect.min.x + 56.0, cy + 11.0),
+                        Align2::LEFT_CENTER,
+                        crate::i18n::tr(format!("{dir}  ·  {}", tools::age(f.modified))),
+                        regular(12.0),
+                        th.soft,
+                    );
                     embossed(p, pos2(rect.max.x - 200.0, cy), Align2::RIGHT_CENTER, &format_bytes(f.size), bold(16.0), th.text);
 
                     let open_r = Rect::from_min_size(pos2(rect.max.x - 184.0, cy - 15.0), vec2(80.0, 30.0));

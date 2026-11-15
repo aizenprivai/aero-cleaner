@@ -30,13 +30,7 @@ impl App {
     }
 
     fn start_dev_delete(&mut self) {
-        let chosen: Vec<DevItem> = self
-            .dev
-            .items
-            .drain(..)
-            .zip(self.dev.selected.drain(..))
-            .filter_map(|(item, on)| on.then_some(item))
-            .collect();
+        let chosen: Vec<DevItem> = self.dev.items.drain(..).zip(self.dev.selected.drain(..)).filter_map(|(item, on)| on.then_some(item)).collect();
         self.dev.deleting = true;
         let tx = self.notifier();
         std::thread::spawn(move || {
@@ -95,11 +89,7 @@ impl App {
                 ui.spacing_mut().item_spacing.y = 6.0;
                 let row_w = ui.available_width() - 14.0;
                 let total: u64 = self.dev.items.iter().map(|i| i.size).sum();
-                let header = if self.dev.msg.is_empty() {
-                    format!("{} FOLDERS  ·  {} IN TOTAL", self.dev.items.len(), format_bytes(total))
-                } else {
-                    self.dev.msg.to_uppercase()
-                };
+                let header = if self.dev.msg.is_empty() { format!("{} FOLDERS  ·  {} IN TOTAL", self.dev.items.len(), format_bytes(total)) } else { self.dev.msg.to_uppercase() };
                 let (hr, _) = ui.allocate_exact_size(vec2(row_w, 34.0), Sense::hover());
                 embossed(ui.painter(), pos2(hr.min.x + 8.0, hr.center().y + 2.0), Align2::LEFT_CENTER, &header, bold(14.0), th.soft);
                 let rr = Rect::from_min_size(pos2(hr.max.x - 96.0, hr.min.y + 3.0), vec2(96.0, 28.0));

@@ -151,10 +151,7 @@ fn config_file() -> Option<PathBuf> {
 
 /// Index of the saved theme, or 0 (Frutiger Aero).
 pub fn load(themes: &[Theme]) -> usize {
-    config_file()
-        .and_then(|f| std::fs::read_to_string(f).ok())
-        .and_then(|name| themes.iter().position(|t| t.name == name.trim()))
-        .unwrap_or(0)
+    config_file().and_then(|f| std::fs::read_to_string(f).ok()).and_then(|name| themes.iter().position(|t| t.name == name.trim())).unwrap_or(0)
 }
 
 pub fn save(theme: &Theme) {

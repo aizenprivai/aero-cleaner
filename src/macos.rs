@@ -129,13 +129,7 @@ pub fn brew_unused() -> Vec<String> {
 
 /// "==> Would autoremove 2 unneeded formulae:\nfoo\nbar" -> ["foo", "bar"].
 fn parse_autoremove(text: &str) -> Vec<String> {
-    text.lines()
-        .skip_while(|l| !l.starts_with("==> Would"))
-        .skip(1)
-        .take_while(|l| !l.starts_with("==>"))
-        .flat_map(|l| l.split_whitespace())
-        .map(str::to_string)
-        .collect()
+    text.lines().skip_while(|l| !l.starts_with("==> Would")).skip(1).take_while(|l| !l.starts_with("==>")).flat_map(|l| l.split_whitespace()).map(str::to_string).collect()
 }
 
 pub fn brew_autoremove() -> String {

@@ -28,11 +28,7 @@ pub fn is_french() -> bool {
 }
 
 pub fn system_is_french() -> bool {
-    ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
-        .iter()
-        .filter_map(|k| std::env::var(k).ok())
-        .find(|v| !v.is_empty())
-        .is_some_and(|v| v.starts_with("fr"))
+    ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"].iter().filter_map(|k| std::env::var(k).ok()).find(|v| !v.is_empty()).is_some_and(|v| v.starts_with("fr"))
 }
 
 struct Table {
@@ -109,10 +105,8 @@ fn translate(s: &str) -> Option<String> {
         return Some(fr.to_string());
     }
     let is_upper = s.chars().any(|c| c.is_alphabetic()) && !s.chars().any(|c| c.is_lowercase());
-    if is_upper {
-        if let Some(fr) = t.upper.get(s) {
-            return Some(fr.clone());
-        }
+    if is_upper && let Some(fr) = t.upper.get(s) {
+        return Some(fr.clone());
     }
     for (parts, fr) in &t.templates {
         if let Some(holes) = match_template(s, parts, false) {
@@ -120,10 +114,8 @@ fn translate(s: &str) -> Option<String> {
             let holes: Vec<String> = holes.iter().map(|h| t.exact.get(h.as_str()).map(|f| f.to_string()).unwrap_or_else(|| h.clone())).collect();
             return Some(fill(fr, &holes));
         }
-        if is_upper {
-            if let Some(holes) = match_template(s, parts, true) {
-                return Some(fill(fr, &holes).to_uppercase());
-            }
+        if is_upper && let Some(holes) = match_template(s, parts, true) {
+            return Some(fill(fr, &holes).to_uppercase());
         }
     }
     None
@@ -257,8 +249,10 @@ const FR: &[(&str, &str)] = &[
     // ----- Review sheet -----
     ("Ready to clean?", "Prêt à nettoyer ?"),
     ("{} items selected · about {} will be freed", "{} éléments sélectionnés · environ {} seront libérés"),
-    ("⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.",
-     "⚠ {} est ouvert. Fermez-le d'abord pour un nettoyage complet : les fichiers qu'il utilise seront ignorés et il devra peut-être recharger des pages."),
+    (
+        "⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.",
+        "⚠ {} est ouvert. Fermez-le d'abord pour un nettoyage complet : les fichiers qu'il utilise seront ignorés et il devra peut-être recharger des pages.",
+    ),
     ("Preparing the list...", "Préparation de la liste..."),
     ("Cancel", "Annuler"),
     ("kept: {}", "conservé : {}"),
@@ -272,8 +266,10 @@ const FR: &[(&str, &str)] = &[
     ("Deletes everything in /var/crash", "Supprime tout le contenu de /var/crash"),
     ("Deletes files in /var/tmp untouched for 7+ days", "Supprime les fichiers de /var/tmp inutilisés depuis 7 jours ou plus"),
     // ----- Big files -----
-    ("The 100 largest files over {} in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.",
-     "Les 100 plus gros fichiers de plus de {} dans votre dossier personnel. « Corbeille » déplace le fichier dans la corbeille : vous pouvez encore le récupérer."),
+    (
+        "The 100 largest files over {} in your home folder. \"Trash\" moves a file to the Trash, so you can still restore it.",
+        "Les 100 plus gros fichiers de plus de {} dans votre dossier personnel. « Corbeille » déplace le fichier dans la corbeille : vous pouvez encore le récupérer.",
+    ),
     ("🔍 Find big files", "🔍 Chercher"),
     ("🔍 Search again", "🔍 Relancer"),
     ("Looked at {} files...", "{} fichiers examinés..."),
@@ -286,17 +282,26 @@ const FR: &[(&str, &str)] = &[
     ("🗑 Trash", "🗑 Corbeille"),
     ("Open the folder that contains this file", "Ouvrir le dossier qui contient ce fichier"),
     ("Move to Trash (recoverable)", "Mettre à la corbeille (récupérable)"),
-    ("This file is inside an app's hidden folder. Trashing it may break that app.", "Ce fichier se trouve dans le dossier caché d'une appli. Le supprimer peut casser cette appli."),
+    (
+        "This file is inside an app's hidden folder. Trashing it may break that app.",
+        "Ce fichier se trouve dans le dossier caché d'une appli. Le supprimer peut casser cette appli.",
+    ),
     ("Moved {} to the Trash. Empty the Trash in the Cleaner tab to free {}.", "{} a été mis à la corbeille. Videz la corbeille dans Nettoyage pour libérer {}."),
     ("Could not move {} to the Trash: {}", "Impossible de mettre {} à la corbeille : {}"),
     // ----- Duplicates -----
     ("Duplicate files", "Fichiers en double"),
-    ("Files with exactly the same content, 1 MB or bigger. The oldest copy is marked as the original.", "Fichiers au contenu strictement identique, de 1 Mo ou plus. La copie la plus ancienne est l'originale."),
+    (
+        "Files with exactly the same content, 1 MB or bigger. The oldest copy is marked as the original.",
+        "Fichiers au contenu strictement identique, de 1 Mo ou plus. La copie la plus ancienne est l'originale.",
+    ),
     ("🔍 Find duplicates", "🔍 Chercher les doublons"),
     ("Starting...", "Démarrage..."),
     ("Comparing contents... {}%", "Comparaison des contenus... {} %"),
     ("Include hidden app folders", "Inclure les dossiers cachés des applis"),
-    ("Off by default: copies inside an app's own folders are usually needed by that app.", "Désactivé par défaut : les copies dans les dossiers d'une appli lui sont souvent nécessaires."),
+    (
+        "Off by default: copies inside an app's own folders are usually needed by that app.",
+        "Désactivé par défaut : les copies dans les dossiers d'une appli lui sont souvent nécessaires.",
+    ),
     ("PRESS \"FIND DUPLICATES\" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)", "CLIQUEZ SUR « CHERCHER LES DOUBLONS » (LA LECTURE DES FICHIERS PEUT PRENDRE UNE MINUTE)"),
     ("{} GROUPS  ·  {} WASTED", "{} GROUPES  ·  {} GASPILLÉS"),
     ("NO DUPLICATES FOUND. NICE AND TIDY!", "AUCUN DOUBLON. TOUT EST BIEN RANGÉ !"),
@@ -309,8 +314,10 @@ const FR: &[(&str, &str)] = &[
     ("Moved {} file(s); {} failed: {}", "{} fichier(s) déplacé(s) ; {} échec(s) : {}"),
     // ----- Developer -----
     ("Developer cleanup", "Nettoyage développeur"),
-    ("Build folders and packages inside your projects. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.",
-     "Dossiers de compilation et paquets de vos projets. Votre code n'est jamais touché, et tout revient à la prochaine compilation. Les projets inactifs depuis 30 jours sont présélectionnés."),
+    (
+        "Build folders and packages inside your projects. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.",
+        "Dossiers de compilation et paquets de vos projets. Votre code n'est jamais touché, et tout revient à la prochaine compilation. Les projets inactifs depuis 30 jours sont présélectionnés.",
+    ),
     ("🗑 Delete {}", "🗑 Supprimer {}"),
     ("Click again to delete", "Cliquez encore pour supprimer"),
     ("Deleting...", "Suppression..."),
@@ -328,20 +335,26 @@ const FR: &[(&str, &str)] = &[
     ("Deleting this is safe: it's {}.", "Vous pouvez le supprimer sans risque : il est {}."),
     ("NOT CLEANED HERE", "NON NETTOYÉ ICI"),
     ("Waydroid Android image", "Image Android de Waydroid"),
-    ("Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
-     "Nécessaire pour les applis Android. Si vous ne les utilisez pas : sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid"),
+    (
+        "Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
+        "Nécessaire pour les applis Android. Si vous ne les utilisez pas : sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
+    ),
     ("Freed {}", "{} libérés"),
     ("Freed {}, {} failed: {}", "{0} libérés, {1} échec(s) : {2}"),
     // ----- Disk map -----
-    ("What fills your home folder: the bigger the tile, the more space. Click a folder to look inside, right-click to go back.",
-     "Ce qui remplit votre dossier personnel : plus la tuile est grande, plus ça prend de place. Cliquez sur un dossier pour l'ouvrir, clic droit pour revenir."),
+    (
+        "What fills your home folder: the bigger the tile, the more space. Click a folder to look inside, right-click to go back.",
+        "Ce qui remplit votre dossier personnel : plus la tuile est grande, plus ça prend de place. Cliquez sur un dossier pour l'ouvrir, clic droit pour revenir.",
+    ),
     ("⬆ Up", "⬆ Remonter"),
     ("Measured {} items...", "{} éléments mesurés..."),
     ("{} small items", "{} petits éléments"),
     ("Click to look inside", "Cliquez pour voir le contenu"),
     // ----- Browsers -----
-    ("Clean each browser on its own terms: cache, cookies or history. The browser has to be closed while cleaning.",
-     "Nettoyez chaque navigateur à votre façon : cache, cookies ou historique. Le navigateur doit être fermé pendant le nettoyage."),
+    (
+        "Clean each browser on its own terms: cache, cookies or history. The browser has to be closed while cleaning.",
+        "Nettoyez chaque navigateur à votre façon : cache, cookies ou historique. Le navigateur doit être fermé pendant le nettoyage.",
+    ),
     ("🔄 Refresh", "🔄 Actualiser"),
     ("Looking for browsers...", "Recherche des navigateurs..."),
     ("No supported browser found (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox).", "Aucun navigateur pris en charge (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox)."),
@@ -353,8 +366,14 @@ const FR: &[(&str, &str)] = &[
     ("Browsing history", "Historique de navigation"),
     ("Saved copies of web pages. Safe: pages just load a bit slower once.", "Copies enregistrées des pages web. Sans risque : les pages chargent un peu plus lentement une fois."),
     ("Signs you out of websites and resets site preferences.", "Vous déconnecte des sites et réinitialise leurs préférences."),
-    ("Visited pages, top sites and address bar suggestions. Bookmarks are kept.", "Pages visitées, sites favoris et suggestions de la barre d'adresse. Les marque-pages sont conservés."),
-    ("Not supported for this browser (history shares a file with your bookmarks).", "Non pris en charge pour ce navigateur (l'historique partage un fichier avec vos marque-pages)."),
+    (
+        "Visited pages, top sites and address bar suggestions. Bookmarks are kept.",
+        "Pages visitées, sites favoris et suggestions de la barre d'adresse. Les marque-pages sont conservés.",
+    ),
+    (
+        "Not supported for this browser (history shares a file with your bookmarks).",
+        "Non pris en charge pour ce navigateur (l'historique partage un fichier avec vos marque-pages).",
+    ),
     ("✨ Clean {}", "✨ Nettoyer {}"),
     ("Click again: signs you out", "Encore : vous serez déconnecté"),
     ("Click again: erases history", "Encore : efface l'historique"),
@@ -362,8 +381,10 @@ const FR: &[(&str, &str)] = &[
     ("{} cleaned, {} item(s) skipped", "{} nettoyé, {} élément(s) ignoré(s)"),
     ("Close {} first.", "Fermez d'abord {}."),
     // ----- Boot -----
-    ("How long your PC takes to start, and which services slow it down. Changes apply at the next boot.",
-     "Le temps de démarrage de votre PC et les services qui le ralentissent. Les changements s'appliquent au prochain démarrage."),
+    (
+        "How long your PC takes to start, and which services slow it down. Changes apply at the next boot.",
+        "Le temps de démarrage de votre PC et les services qui le ralentissent. Les changements s'appliquent au prochain démarrage.",
+    ),
     ("Reading boot data...", "Lecture des données de démarrage..."),
     ("Boot data isn't available yet (the system may still be starting up).", "Données de démarrage pas encore disponibles (le système démarre peut-être encore)."),
     ("last boot, from power button to desktop", "dernier démarrage, du bouton d'allumage au bureau"),
@@ -394,8 +415,10 @@ const FR: &[(&str, &str)] = &[
     ("Password prompt was cancelled", "Mot de passe annulé"),
     // ----- Startup apps -----
     ("Startup apps", "Applications au démarrage"),
-    ("Apps that start when you log in. Turning off the ones you don't need makes login faster. Changes apply at your next login.",
-     "Les applis lancées à l'ouverture de session. Désactiver celles dont vous n'avez pas besoin accélère la connexion. Effet à la prochaine session."),
+    (
+        "Apps that start when you log in. Turning off the ones you don't need makes login faster. Changes apply at your next login.",
+        "Les applis lancées à l'ouverture de session. Désactiver celles dont vous n'avez pas besoin accélère la connexion. Effet à la prochaine session.",
+    ),
     ("{} OF {} APPS START AT LOGIN", "{} APPLIS SUR {} SE LANCENT À LA CONNEXION"),
     ("needed by desktop", "nécessaire au bureau"),
     ("starts at login", "lancée à la connexion"),
@@ -414,16 +437,25 @@ const FR: &[(&str, &str)] = &[
     ("Motion, automation, folders to keep, and your cleaning history.", "Animations, automatisation, dossiers à garder et historique de nettoyage."),
     ("MOTION", "ANIMATIONS"),
     ("Reduce motion", "Réduire les animations"),
-    ("Freeze the animated background to save battery. It already pauses when the window isn't active.", "Fige le fond animé pour économiser la batterie. Il se met déjà en pause quand la fenêtre n'est pas active."),
+    (
+        "Freeze the animated background to save battery. It already pauses when the window isn't active.",
+        "Fige le fond animé pour économiser la batterie. Il se met déjà en pause quand la fenêtre n'est pas active.",
+    ),
     ("AUTOMATION", "AUTOMATISATION"),
     ("Weekly automatic clean", "Nettoyage automatique hebdomadaire"),
     ("Thumbnails and app caches, once a week. Never asks for a password.", "Miniatures et caches des applis, une fois par semaine. Sans mot de passe."),
-    ("Browser caches are skipped if a browser is open at that moment. Folders to keep are respected.", "Les caches de navigateur sont ignorés si un navigateur est ouvert à ce moment-là. Les dossiers à garder sont respectés."),
+    (
+        "Browser caches are skipped if a browser is open at that moment. Folders to keep are respected.",
+        "Les caches de navigateur sont ignorés si un navigateur est ouvert à ce moment-là. Les dossiers à garder sont respectés.",
+    ),
     ("next: {}", "prochain : {}"),
     ("Also empty the Trash", "Vider aussi la corbeille"),
     ("Files you deleted more than a week ago can't be restored after this.", "Les fichiers supprimés ne pourront plus être récupérés ensuite."),
     ("Low disk space alert", "Alerte d'espace disque faible"),
-    ("Checks every hour and notifies you when less than {}% of the disk is free (at most once a day).", "Vérifie chaque heure et vous prévient sous {} % d'espace libre (une fois par jour max)."),
+    (
+        "Checks every hour and notifies you when less than {}% of the disk is free (at most once a day).",
+        "Vérifie chaque heure et vous prévient sous {} % d'espace libre (une fois par jour max).",
+    ),
     ("Change the threshold", "Changer le seuil"),
     ("▶ Run automatic clean now", "▶ Lancer le nettoyage auto"),
     ("Tip: right-click AeroClean in the menu for Quick clean and Disk map.", "Astuce : clic droit sur AeroClean dans le menu pour Nettoyage rapide et Carte du disque."),
@@ -509,7 +541,10 @@ const FR: &[(&str, &str)] = &[
     ("Quick Look thumbnails", "Vignettes Coup d'œil"),
     ("File previews, rebuilt automatically when needed", "Aperçus des fichiers, recréés automatiquement si besoin"),
     ("App crash reports in ~/Library/Logs/DiagnosticReports", "Rapports de plantage des apps dans ~/Library/Logs/DiagnosticReports"),
-    ("Xcode DerivedData, simulator caches, Cargo, npm and Gradle downloads (rebuilt on demand)", "DerivedData de Xcode, caches du simulateur, téléchargements Cargo, npm et Gradle (recréés à la demande)"),
+    (
+        "Xcode DerivedData, simulator caches, Cargo, npm and Gradle downloads (rebuilt on demand)",
+        "DerivedData de Xcode, caches du simulateur, téléchargements Cargo, npm et Gradle (recréés à la demande)",
+    ),
     ("Homebrew downloads", "Téléchargements Homebrew"),
     ("Installers Homebrew keeps after installing", "Installateurs que Homebrew garde après l'installation"),
     ("Unused Homebrew packages", "Paquets Homebrew inutilisés"),

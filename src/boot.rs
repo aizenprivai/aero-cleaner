@@ -83,10 +83,39 @@ pub fn last_boot() -> Option<BootTimes> {
 
 fn is_critical(unit: &str) -> bool {
     const PREFIXES: &[&str] = &[
-        "systemd-", "dbus", "NetworkManager.service", "polkit", "udisks2", "accounts-daemon", "lightdm", "gdm", "apparmor",
-        "user@", "getty", "plymouth", "keyboard-setup", "console-setup", "wpa_supplicant", "upower", "power-profiles-daemon",
-        "thermald", "gpu-manager", "switcheroo", "ufw", "kmod", "networkd-dispatcher", "rtkit", "avahi-daemon", "colord",
-        "packagekit", "fwupd", "ubuntu-system-adjustments", "setvtrgb", "grub", "secureboot", "snapd.apparmor",
+        "systemd-",
+        "dbus",
+        "NetworkManager.service",
+        "polkit",
+        "udisks2",
+        "accounts-daemon",
+        "lightdm",
+        "gdm",
+        "apparmor",
+        "user@",
+        "getty",
+        "plymouth",
+        "keyboard-setup",
+        "console-setup",
+        "wpa_supplicant",
+        "upower",
+        "power-profiles-daemon",
+        "thermald",
+        "gpu-manager",
+        "switcheroo",
+        "ufw",
+        "kmod",
+        "networkd-dispatcher",
+        "rtkit",
+        "avahi-daemon",
+        "colord",
+        "packagekit",
+        "fwupd",
+        "ubuntu-system-adjustments",
+        "setvtrgb",
+        "grub",
+        "secureboot",
+        "snapd.apparmor",
     ];
     PREFIXES.iter().any(|p| unit.starts_with(p))
 }
@@ -199,7 +228,10 @@ mod tests {
 
     #[test]
     fn parses_systemd_analyze_output() {
-        let t = parse_times("Startup finished in 14.130s (firmware) + 6.716s (loader) + 2.111s (kernel) + 9.476s (userspace) = 32.434s\ngraphical.target reached after 9.433s in userspace.").unwrap();
+        let t = parse_times(
+            "Startup finished in 14.130s (firmware) + 6.716s (loader) + 2.111s (kernel) + 9.476s (userspace) = 32.434s\ngraphical.target reached after 9.433s in userspace.",
+        )
+        .unwrap();
         assert_eq!(t, BootTimes { firmware: 14.13, loader: 6.716, kernel: 2.111, userspace: 9.476 });
         assert!((t.total() - 32.433).abs() < 0.01);
         let vm = parse_times("Startup finished in 1.2s (kernel) + 1min 3.5s (userspace) = 1min 4.7s").unwrap();

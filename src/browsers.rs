@@ -59,9 +59,7 @@ fn collect(paths: Vec<PathBuf>) -> Option<(Vec<PathBuf>, u64)> {
 }
 
 fn subdirs_with(dir: &Path, marker: &str) -> Vec<PathBuf> {
-    fs::read_dir(dir)
-        .map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.join(marker).exists()).collect())
-        .unwrap_or_default()
+    fs::read_dir(dir).map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.join(marker).exists()).collect()).unwrap_or_default()
 }
 
 /// `cache` is the separate cache root (Linux: ~/.cache/<browser>). When None

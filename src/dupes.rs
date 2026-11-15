@@ -91,7 +91,7 @@ pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progres
                     by_size.entry(md.len()).or_default().push(path);
                 }
                 count += 1;
-                if count % 1000 == 0 {
+                if count.is_multiple_of(1000) {
                     progress(format!("Looked at {count} files..."));
                 }
             }

@@ -7,6 +7,21 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev
+      - name: Formatting
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
   test:
     strategy:
       fail-fast: false
@@ -25,7 +40,7 @@ jobs:
 
   # The jobs below only run for a version tag (e.g. v1.1.0).
   build-deb:
-    needs: test
+    needs: [lint, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     steps:
@@ -45,7 +60,7 @@ jobs:
           path: target/deb/*.deb
 
   build-windows:
-    needs: test
+    needs: [lint, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     steps:
@@ -78,7 +93,7 @@ jobs:
           path: dist/*.zip
 
   build-macos:
-    needs: test
+    needs: [lint, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-latest
     steps:

@@ -1,6 +1,6 @@
 //! Folder size tree for the disk map, plus the "squarified" treemap layout.
 
-use eframe::egui::{pos2, Rect};
+use eframe::egui::{Rect, pos2};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,7 +28,7 @@ fn build(path: &Path, min_show: u64, progress: &dyn Fn(u64), counter: &mut u64) 
         let p = e.path();
         let Ok(md) = p.symlink_metadata() else { continue };
         *counter += 1;
-        if *counter % 5000 == 0 {
+        if (*counter).is_multiple_of(5000) {
             progress(*counter);
         }
         let child = if md.is_dir() {
@@ -47,13 +47,7 @@ fn build(path: &Path, min_show: u64, progress: &dyn Fn(u64), counter: &mut u64) 
         }
     }
     if small_size > 0 {
-        node.children.push(Node {
-            name: format!("{small_count} small items"),
-            path: path.to_path_buf(),
-            size: small_size,
-            is_dir: false,
-            children: vec![],
-        });
+        node.children.push(Node { name: format!("{small_count} small items"), path: path.to_path_buf(), size: small_size, is_dir: false, children: vec![] });
     }
     node.children.sort_by_key(|c| std::cmp::Reverse(c.size));
     node

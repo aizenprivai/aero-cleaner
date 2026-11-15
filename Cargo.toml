@@ -30,3 +30,9 @@ trash = "5"
 
 [build-dependencies]
 winresource = "0.1.34"
+
+[lints.clippy]
+# UI drawing helpers take many small parameters, and channel payloads are
+# tuples; splitting them up wouldn't make the code clearer.
+too_many_arguments = "allow"
+type_complexity = "allow"

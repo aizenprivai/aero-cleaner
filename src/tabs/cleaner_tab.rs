@@ -139,8 +139,7 @@ impl App {
                     continue;
                 }
                 let r = 4.0 + aero::hash(i, 8) * 12.0;
-                let pos = clean_btn.center()
-                    + vec2((aero::hash(i, 9) - 0.5) * 260.0 * a.min(1.2) + (a * 3.0 + i as f32).sin() * 10.0, -a * (140.0 + aero::hash(i, 10) * 200.0));
+                let pos = clean_btn.center() + vec2((aero::hash(i, 9) - 0.5) * 260.0 * a.min(1.2) + (a * 3.0 + i as f32).sin() * 10.0, -a * (140.0 + aero::hash(i, 10) * 200.0));
                 aero::bubble(&p, pos, r, (1.0 - a / 2.7).clamp(0.0, 1.0), bubble_tint);
             }
         }

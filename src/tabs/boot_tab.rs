@@ -111,13 +111,22 @@ impl App {
                 let p = ui.painter();
                 aero::surface(p, rect, 16.0, th, false, None);
                 if hist.len() < 2 {
-                    p.text(rect.center(), Align2::CENTER_CENTER, crate::i18n::tr("Your boot history builds up each time you restart. Come back after your next reboot!"), regular(13.0), th.soft);
+                    p.text(
+                        rect.center(),
+                        Align2::CENTER_CENTER,
+                        crate::i18n::tr("Your boot history builds up each time you restart. Come back after your next reboot!"),
+                        regular(13.0),
+                        th.soft,
+                    );
                 } else {
                     let max = hist.iter().map(|b| b.total()).fold(1.0f32, f32::max);
                     let slot = (rect.width() - 30.0) / hist.len() as f32;
                     for (i, b) in hist.iter().enumerate() {
                         let h = (rect.height() - 44.0) * b.total() / max;
-                        let col = Rect::from_min_max(pos2(rect.min.x + 15.0 + i as f32 * slot + slot * 0.2, rect.max.y - 22.0 - h), pos2(rect.min.x + 15.0 + (i as f32 + 0.8) * slot, rect.max.y - 22.0));
+                        let col = Rect::from_min_max(
+                            pos2(rect.min.x + 15.0 + i as f32 * slot + slot * 0.2, rect.max.y - 22.0 - h),
+                            pos2(rect.min.x + 15.0 + (i as f32 + 0.8) * slot, rect.max.y - 22.0),
+                        );
                         let c = if i == hist.len() - 1 { th.go } else { th.accent };
                         aero::rrect_grad(p, col, 5.0f32.min(col.width() / 2.0), &[(0.0, aero::lighten(c, 0.4)), (0.5, c), (1.0, aero::darken(c, 0.1))]);
                         p.text(pos2(col.center().x, col.min.y - 8.0), Align2::CENTER_CENTER, crate::i18n::tr(format!("{:.0}s", b.total())), bold(11.0), th.text);
@@ -144,7 +153,13 @@ impl App {
                     let btn = Rect::from_min_size(pos2(rect.max.x - 124.0, cy - 14.0), vec2(112.0, 28.0));
                     let busy = self.boot.busy_unit.as_deref() == Some(svc.unit.as_str());
                     if svc.toggleable() {
-                        let (label, color) = if busy { ("Waiting...", th.accent) } else if off { ("Turn on", th.accent) } else { ("Turn off", th.root_orb) };
+                        let (label, color) = if busy {
+                            ("Waiting...", th.accent)
+                        } else if off {
+                            ("Turn on", th.accent)
+                        } else {
+                            ("Turn off", th.root_orb)
+                        };
                         let tip = if off { "Start this service at boot again" } else { "Stop starting this service at boot (asks for your password)" };
                         if aero::aqua_button(ui, btn, label, color, self.boot.busy_unit.is_none()).on_hover_text(crate::i18n::tr(tip)).clicked() {
                             toggle = Some((svc.unit.clone(), off));
@@ -155,7 +170,7 @@ impl App {
                         } else {
                             ("on demand", "Started by a timer, socket or another service, not directly at boot.")
                         };
-                        let g = p.layout_no_wrap(crate::i18n::tr(text.to_string()), regular(11.5), th.soft);
+                        let g = p.layout_no_wrap(crate::i18n::tr(text), regular(11.5), th.soft);
                         let br = Rect::from_center_size(btn.center(), vec2(g.size().x + 18.0, 22.0));
                         aero::surface(p, br, 11.0, th, false, None);
                         p.galley(br.center() - g.size() / 2.0, g, th.soft);
@@ -170,8 +185,7 @@ impl App {
             self.boot.busy_unit = Some(unit.clone());
             let tx = self.notifier();
             std::thread::spawn(move || {
-                let res = boot::set_enabled(&unit, enable)
-                    .map(|_| format!("{} will {}start at boot", unit.trim_end_matches(".service"), if enable { "" } else { "no longer " }));
+                let res = boot::set_enabled(&unit, enable).map(|_| format!("{} will {}start at boot", unit.trim_end_matches(".service"), if enable { "" } else { "no longer " }));
                 tx.send(Msg::BootToggled(res));
             });
         }

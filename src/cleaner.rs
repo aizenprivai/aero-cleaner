@@ -51,11 +51,25 @@ pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::Trash, name: "Trash", desc: "Files you already moved to the trash", icon: "🗑", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
     Category { kind: Kind::AppCache, name: "App & browser cache", desc: "~/.cache and Flatpak app caches (close your browser first)", icon: "🌐", root: false, default_on: true },
-    Category { kind: Kind::DevCache, name: "Developer caches", desc: "Cargo, npm and Gradle download caches (re-downloaded on demand)", icon: "🔧", root: false, default_on: false },
+    Category {
+        kind: Kind::DevCache,
+        name: "Developer caches",
+        desc: "Cargo, npm and Gradle download caches (re-downloaded on demand)",
+        icon: "🔧",
+        root: false,
+        default_on: false,
+    },
     Category { kind: Kind::RecentFiles, name: "Recent files history", desc: "The \"recently opened\" list (privacy)", icon: "🕘", root: false, default_on: false },
     Category { kind: Kind::Flatpak, name: "Unused Flatpak runtimes", desc: "Runtimes no installed app needs anymore", icon: "📦", root: false, default_on: true },
     Category { kind: Kind::AptCache, name: "APT package cache", desc: "Downloaded .deb installers that are already installed", icon: "💿", root: true, default_on: true },
-    Category { kind: Kind::Autoremove, name: "Unused packages & old kernels", desc: "Packages nothing depends on anymore (apt autoremove)", icon: "🐧", root: true, default_on: false },
+    Category {
+        kind: Kind::Autoremove,
+        name: "Unused packages & old kernels",
+        desc: "Packages nothing depends on anymore (apt autoremove)",
+        icon: "🐧",
+        root: true,
+        default_on: false,
+    },
     Category { kind: Kind::Journal, name: "System journal", desc: "Old system logs, keeps the last {} days", icon: "📜", root: true, default_on: true },
     Category { kind: Kind::OldLogs, name: "Rotated log files", desc: "Old compressed logs in /var/log (*.gz, *.1, *.old)", icon: "📄", root: true, default_on: true },
     Category { kind: Kind::CrashReports, name: "Crash reports", desc: "Crash dumps in /var/crash", icon: "💥", root: true, default_on: true },
@@ -70,10 +84,21 @@ pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::AppCache, name: "App & browser cache", desc: "~/Library/Caches (close your browser first)", icon: "🌐", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Quick Look thumbnails", desc: "File previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
     Category { kind: Kind::CrashReports, name: "Crash reports", desc: "App crash reports in ~/Library/Logs/DiagnosticReports", icon: "💥", root: false, default_on: true },
-    Category { kind: Kind::DevCache, name: "Developer caches", desc: "Xcode DerivedData, simulator caches, Cargo, npm and Gradle downloads (rebuilt on demand)", icon: "🔧", root: false, default_on: false },
+    Category {
+        kind: Kind::DevCache,
+        name: "Developer caches",
+        desc: "Xcode DerivedData, simulator caches, Cargo, npm and Gradle downloads (rebuilt on demand)",
+        icon: "🔧",
+        root: false,
+        default_on: false,
+    },
     Category { kind: Kind::AptCache, name: "Homebrew downloads", desc: "Installers Homebrew keeps after installing", icon: "🍺", root: false, default_on: true },
-    Category { kind: Kind::Autoremove, name: "Unused Homebrew packages", desc: "Dependencies nothing needs anymore (brew autoremove)", icon: "📦", root: false, default_on: false },
-    Category { kind: Kind::RecentFiles, name: "Recent items", desc: "The \"Recent Items\" lists of the Apple menu and apps (privacy)", icon: "🕘", root: false, default_on: false },
+    Category {
+        kind: Kind::Autoremove, name: "Unused Homebrew packages", desc: "Dependencies nothing needs anymore (brew autoremove)", icon: "📦", root: false, default_on: false
+    },
+    Category {
+        kind: Kind::RecentFiles, name: "Recent items", desc: "The \"Recent Items\" lists of the Apple menu and apps (privacy)", icon: "🕘", root: false, default_on: false
+    },
     Category { kind: Kind::OldLogs, name: "Old system logs", desc: "Rotated logs in /private/var/log (*.gz, *.bz2, *.0...)", icon: "📄", root: true, default_on: true },
     Category { kind: Kind::SystemCrash, name: "System crash reports", desc: "Reports in /Library/Logs/DiagnosticReports", icon: "🔥", root: true, default_on: true },
     Category { kind: Kind::VarTmp, name: "Old temporary files", desc: "Files in /private/var/tmp untouched for 7+ days", icon: "⏳", root: true, default_on: true },
@@ -85,14 +110,28 @@ pub const CATEGORIES: &[Category] = &[
     Category { kind: Kind::AppCache, name: "Temporary files", desc: "Your temp folder and graphics shader caches", icon: "⏳", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Explorer image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
     Category { kind: Kind::CrashReports, name: "Crash dumps", desc: "App crash dumps and error reports in your profile", icon: "💥", root: false, default_on: true },
-    Category { kind: Kind::DevCache, name: "Developer caches", desc: "Cargo, npm, pip and Gradle download caches (re-downloaded on demand)", icon: "🔧", root: false, default_on: false },
+    Category {
+        kind: Kind::DevCache,
+        name: "Developer caches",
+        desc: "Cargo, npm, pip and Gradle download caches (re-downloaded on demand)",
+        icon: "🔧",
+        root: false,
+        default_on: false,
+    },
     Category { kind: Kind::RecentFiles, name: "Recent items", desc: "The \"Recent\" list and jump lists (privacy)", icon: "🕘", root: false, default_on: false },
     Category { kind: Kind::VarTmp, name: "Windows temporary files", desc: "Files in Windows\\Temp untouched for 7+ days", icon: "🖥", root: true, default_on: true },
     Category { kind: Kind::AptCache, name: "Windows Update downloads", desc: "Update files Windows has already installed", icon: "💿", root: true, default_on: true },
     Category { kind: Kind::DeliveryOpt, name: "Delivery Optimization cache", desc: "Update pieces shared with other PCs", icon: "📡", root: true, default_on: true },
     Category { kind: Kind::SystemCrash, name: "System crash dumps", desc: "Blue screen dumps and system error reports", icon: "🔥", root: true, default_on: true },
     Category { kind: Kind::OldLogs, name: "Old Windows logs", desc: "Log files in Windows\\Logs older than 30 days", icon: "📄", root: true, default_on: true },
-    Category { kind: Kind::Autoremove, name: "Superseded Windows components", desc: "Old versions of updated system files (DISM, can take several minutes)", icon: "📚", root: true, default_on: false },
+    Category {
+        kind: Kind::Autoremove,
+        name: "Superseded Windows components",
+        desc: "Old versions of updated system files (DISM, can take several minutes)",
+        icon: "📚",
+        root: true,
+        default_on: false,
+    },
 ];
 
 pub struct ScanResult {
@@ -168,10 +207,12 @@ fn user_paths(kind: Kind) -> Vec<PathBuf> {
             .map(|rd| {
                 rd.flatten()
                     .map(|e| e.path())
-                    .filter(|p| p.file_name().is_some_and(|n| {
-                        let n = n.to_string_lossy().to_lowercase();
-                        (n.starts_with("thumbcache_") || n.starts_with("iconcache_")) && n.ends_with(".db")
-                    }))
+                    .filter(|p| {
+                        p.file_name().is_some_and(|n| {
+                            let n = n.to_string_lossy().to_lowercase();
+                            (n.starts_with("thumbcache_") || n.starts_with("iconcache_")) && n.ends_with(".db")
+                        })
+                    })
                     .collect()
             })
             .unwrap_or_default(),
@@ -192,7 +233,12 @@ fn system_paths(kind: Kind) -> (Vec<PathBuf>, fn(&Path, &fs::Metadata) -> bool) 
         Kind::AptCache => (vec![w.join("SoftwareDistribution\\Download")], all),
         Kind::DeliveryOpt => (vec![w.join("ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization\\Cache")], all),
         Kind::SystemCrash => (
-            vec![w.join("Minidump"), w.join("MEMORY.DMP"), program_data().join("Microsoft\\Windows\\WER\\ReportArchive"), program_data().join("Microsoft\\Windows\\WER\\ReportQueue")],
+            vec![
+                w.join("Minidump"),
+                w.join("MEMORY.DMP"),
+                program_data().join("Microsoft\\Windows\\WER\\ReportArchive"),
+                program_data().join("Microsoft\\Windows\\WER\\ReportQueue"),
+            ],
             all,
         ),
         Kind::OldLogs => (vec![w.join("Logs")], older_than_30_days),
@@ -242,7 +288,7 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<Str
                 }
             }
             entries.retain(|e| e.1 > 0);
-            entries.sort_by(|a, b| b.1.cmp(&a.1));
+            entries.sort_by_key(|e| std::cmp::Reverse(e.1));
             let more = entries.len().saturating_sub(6);
             let mut lines: Vec<String> = entries.iter().take(6).map(|(p, s)| format!("{}  ({})", pretty(p), format_bytes(*s))).collect();
             if more > 0 {
@@ -292,17 +338,28 @@ fn uses_user_paths(kind: Kind) -> bool {
 /// Names of web browsers that are currently running.
 pub fn running_browsers() -> Vec<&'static str> {
     const BROWSERS: &[(&str, &str)] = &[
-        ("firefox", "Firefox"), ("firefox-bin", "Firefox"), ("librewolf", "LibreWolf"), ("brave", "Brave"),
-        ("chrome", "Chrome"), ("chromium", "Chromium"), ("vivaldi-bin", "Vivaldi"), ("opera", "Opera"), ("msedge", "Edge"),
+        ("firefox", "Firefox"),
+        ("firefox-bin", "Firefox"),
+        ("librewolf", "LibreWolf"),
+        ("brave", "Brave"),
+        ("chrome", "Chrome"),
+        ("chromium", "Chromium"),
+        ("vivaldi-bin", "Vivaldi"),
+        ("opera", "Opera"),
+        ("msedge", "Edge"),
         // macOS app names (lowercased by platform::running_processes).
-        ("google chrome", "Chrome"), ("brave browser", "Brave"), ("microsoft edge", "Edge"), ("vivaldi", "Vivaldi"), ("safari", "Safari"),
+        ("google chrome", "Chrome"),
+        ("brave browser", "Brave"),
+        ("microsoft edge", "Edge"),
+        ("vivaldi", "Vivaldi"),
+        ("safari", "Safari"),
     ];
     let mut found = Vec::new();
     for proc in crate::platform::running_processes() {
-        if let Some((_, name)) = BROWSERS.iter().find(|(c, _)| *c == proc) {
-            if !found.contains(name) {
-                found.push(*name);
-            }
+        if let Some((_, name)) = BROWSERS.iter().find(|(c, _)| *c == proc)
+            && !found.contains(name)
+        {
+            found.push(*name);
         }
     }
     found
@@ -338,10 +395,7 @@ fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
 }
 
 fn older_than(md: &fs::Metadata, days: u64) -> bool {
-    md.modified()
-        .ok()
-        .and_then(|m| SystemTime::now().duration_since(m).ok())
-        .is_some_and(|age| age > Duration::from_secs(days * 86400))
+    md.modified().ok().and_then(|m| SystemTime::now().duration_since(m).ok()).is_some_and(|age| age > Duration::from_secs(days * 86400))
 }
 
 fn older_than_7_days(_: &Path, md: &fs::Metadata) -> bool {
@@ -358,13 +412,7 @@ fn have(cmd: &str) -> bool {
 }
 
 fn run_c(cmd: &str, args: &[&str]) -> String {
-    Command::new(cmd)
-        .args(args)
-        .env("LC_ALL", "C")
-        .stderr(Stdio::null())
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-        .unwrap_or_default()
+    Command::new(cmd).args(args).env("LC_ALL", "C").stderr(Stdio::null()).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
 }
 
 /// Parses sizes like "1.2G", "512.0M", "123 kB", "1,234 MB".
@@ -463,7 +511,7 @@ fn clear(p: &Path, skips: &[PathBuf]) -> usize {
     let mut failed = 0;
     for e in rd.flatten() {
         let path = e.path();
-        if skips.iter().any(|s| *s == path) {
+        if skips.contains(&path) {
             continue;
         }
         let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
@@ -520,10 +568,7 @@ pub fn elevated_clean(kinds: &[Kind], log_file: &Path) {
         let Some(cat) = CATEGORIES.iter().find(|c| c.kind == kind && c.root) else { continue };
         log(format!(">> {}", cat.name));
         if kind == Kind::Autoremove {
-            let ok = crate::windows::command("dism.exe")
-                .args(["/Online", "/Cleanup-Image", "/StartComponentCleanup"])
-                .status()
-                .is_ok_and(|s| s.success());
+            let ok = crate::windows::command("dism.exe").args(["/Online", "/Cleanup-Image", "/StartComponentCleanup"]).status().is_ok_and(|s| s.success());
             if !ok {
                 log("DISM reported an error".into());
             }
@@ -550,10 +595,12 @@ fn root_script(kind: Kind, _journal_days: u32) -> Option<String> {
 
 /// macOS system items. Uses only `find` options that BSD and GNU find share,
 /// so the test can run them anywhere.
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 fn macos_root_script(kind: Kind) -> Option<String> {
     let s = match kind {
-        Kind::OldLogs => "echo '>> Deleting old system logs'; find /private/var/log -type f \\( -name '*.gz' -o -name '*.bz2' -o -name '*.old' -o -name '*.[0-9]' -o -name '*.[0-9][0-9]' \\) -print -delete | wc -l | tr -d ' ' | sed 's/$/ files removed/'",
+        Kind::OldLogs => {
+            "echo '>> Deleting old system logs'; find /private/var/log -type f \\( -name '*.gz' -o -name '*.bz2' -o -name '*.old' -o -name '*.[0-9]' -o -name '*.[0-9][0-9]' \\) -print -delete | wc -l | tr -d ' ' | sed 's/$/ files removed/'"
+        }
         Kind::SystemCrash => "echo '>> Deleting system crash reports'; find /Library/Logs/DiagnosticReports -mindepth 1 -delete",
         Kind::VarTmp => "echo '>> Deleting old temp files'; find /private/var/tmp -mindepth 1 -type f -mtime +7 -delete",
         _ => return None,
@@ -567,7 +614,9 @@ fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
         Kind::AptCache => "echo '>> Cleaning APT cache'; apt-get clean",
         Kind::Autoremove => "echo '>> Removing unused packages'; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y",
         Kind::Journal => return Some(format!("echo '>> Shrinking system journal'; journalctl --vacuum-time={}d", journal_days.max(1))),
-        Kind::OldLogs => "echo '>> Deleting rotated logs'; find /var/log -type f -not -path '/var/log/journal/*' \\( -name '*.gz' -o -name '*.old' -o -regex '.*\\.[0-9]+' \\) -print -delete | wc -l | sed 's/$/ files removed/'",
+        Kind::OldLogs => {
+            "echo '>> Deleting rotated logs'; find /var/log -type f -not -path '/var/log/journal/*' \\( -name '*.gz' -o -name '*.old' -o -regex '.*\\.[0-9]+' \\) -print -delete | wc -l | sed 's/$/ files removed/'"
+        }
         Kind::CrashReports => "echo '>> Deleting crash reports'; find /var/crash -mindepth 1 -delete",
         Kind::VarTmp => "echo '>> Deleting old temp files'; find /var/tmp -mindepth 1 -type f -mtime +7 -delete; find /var/tmp -mindepth 1 -type d -empty -delete",
         _ => return None,
@@ -810,9 +859,7 @@ mod tests {
         for f in ["syslog", "syslog.1", "kern.log.2.gz", "Xorg.0.log", "Xorg.0.log.old", "journal/x.journal.1"] {
             fs::write(base.join(f), "x").unwrap();
         }
-        let script = root_script(Kind::OldLogs, 3).unwrap()
-            .replace("/var/log", base.to_str().unwrap())
-            .replace("; find ", "; /usr/bin/find ");
+        let script = root_script(Kind::OldLogs, 3).unwrap().replace("/var/log", base.to_str().unwrap()).replace("; find ", "; /usr/bin/find ");
         let out = Command::new("sh").args(["-c", &script]).output().unwrap();
         let text = String::from_utf8_lossy(&out.stdout).to_string() + &String::from_utf8_lossy(&out.stderr);
         assert!(text.contains("3 files removed"), "unexpected output: {text}");

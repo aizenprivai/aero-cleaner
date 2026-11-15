@@ -42,7 +42,7 @@ pub fn find_big_files(min: u64, limit: usize, progress: &dyn Fn(u64)) -> Vec<Big
                 }
             } else if md.is_file() {
                 scanned += 1;
-                if scanned % 2000 == 0 {
+                if scanned.is_multiple_of(2000) {
                     progress(scanned);
                 }
                 if md.len() >= min {
@@ -52,7 +52,7 @@ pub fn find_big_files(min: u64, limit: usize, progress: &dyn Fn(u64)) -> Vec<Big
         }
     }
     progress(scanned);
-    found.sort_by(|a, b| b.size.cmp(&a.size));
+    found.sort_by_key(|f| std::cmp::Reverse(f.size));
     found.truncate(limit);
     found
 }
@@ -108,10 +108,8 @@ fn parse_desktop(text: &str) -> BTreeMap<String, String> {
         let line = line.trim();
         if line.starts_with('[') {
             in_main = line == "[Desktop Entry]";
-        } else if in_main {
-            if let Some((k, v)) = line.split_once('=') {
-                map.insert(k.trim().to_string(), v.trim().to_string());
-            }
+        } else if in_main && let Some((k, v)) = line.split_once('=') {
+            map.insert(k.trim().to_string(), v.trim().to_string());
         }
     }
     map
@@ -125,23 +123,35 @@ fn desktops() -> Vec<String> {
 fn shown_here(kv: &BTreeMap<String, String>) -> bool {
     let current = desktops();
     let list = |k: &str| kv.get(k).map(|v| v.split(';').filter(|s| !s.is_empty()).map(str::to_string).collect::<Vec<_>>());
-    if let Some(only) = list("OnlyShowIn") {
-        if !only.iter().any(|d| current.contains(d)) {
-            return false;
-        }
+    if let Some(only) = list("OnlyShowIn")
+        && !only.iter().any(|d| current.contains(d))
+    {
+        return false;
     }
-    if let Some(not) = list("NotShowIn") {
-        if not.iter().any(|d| current.contains(d)) {
-            return false;
-        }
+    if let Some(not) = list("NotShowIn")
+        && not.iter().any(|d| current.contains(d))
+    {
+        return false;
     }
     true
 }
 
 fn is_critical(file: &str) -> bool {
     const NEEDED: &[&str] = &[
-        "polkit", "keyring", "at-spi", "cinnamon-settings-daemon", "csd-", "xdg-user-dirs", "pipewire", "pulseaudio",
-        "nm-applet", "gnome-shell", "mintupdate", "user-dirs", "xapp-sn-watcher", "geoclue",
+        "polkit",
+        "keyring",
+        "at-spi",
+        "cinnamon-settings-daemon",
+        "csd-",
+        "xdg-user-dirs",
+        "pipewire",
+        "pulseaudio",
+        "nm-applet",
+        "gnome-shell",
+        "mintupdate",
+        "user-dirs",
+        "xapp-sn-watcher",
+        "geoclue",
     ];
     let f = file.to_ascii_lowercase();
     NEEDED.iter().any(|n| f.contains(n))
@@ -230,9 +240,7 @@ pub fn set_startup(file: &str, enabled: bool) -> Result<(), String> {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn linux_set_startup(file: &str, enabled: bool) -> Result<(), String> {
     let user_path = user_dir().join(file);
-    let text = fs::read_to_string(&user_path)
-        .or_else(|_| fs::read_to_string(Path::new(SYSTEM_DIR).join(file)))
-        .map_err(|e| e.to_string())?;
+    let text = fs::read_to_string(&user_path).or_else(|_| fs::read_to_string(Path::new(SYSTEM_DIR).join(file))).map_err(|e| e.to_string())?;
     let mut text = set_key(&text, "X-GNOME-Autostart-enabled", if enabled { "true" } else { "false" });
     if enabled && parse_desktop(&text).get("Hidden").is_some_and(|v| v.eq_ignore_ascii_case("true")) {
         text = set_key(&text, "Hidden", "false");

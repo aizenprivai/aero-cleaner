@@ -82,23 +82,51 @@ impl App {
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.settings.reduce_motion, resp.hovered(), th.go, th.accent);
                 aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, "⏸");
                 p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Reduce motion"), bold(15.0), th.text);
-                p.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr("Freeze the animated background to save battery. It already pauses when the window isn't active."), regular(12.0), th.soft);
+                p.text(
+                    pos2(rect.min.x + 98.0, cy + 11.0),
+                    Align2::LEFT_CENTER,
+                    crate::i18n::tr("Freeze the animated background to save battery. It already pauses when the window isn't active."),
+                    regular(12.0),
+                    th.soft,
+                );
 
                 // ----- Automation -----
                 Self::section(ui, "AUTOMATION", th);
-                let resp = toggle_row(ui, row_w, 0.0, self.auto.clean_on, "📅", "Weekly automatic clean",
-                    "Thumbnails and app caches, once a week. Never asks for a password.", th);
+                let resp = toggle_row(ui, row_w, 0.0, self.auto.clean_on, "📅", "Weekly automatic clean", "Thumbnails and app caches, once a week. Never asks for a password.", th);
                 let resp = resp.on_hover_text(crate::i18n::tr("Browser caches are skipped if a browser is open at that moment. Folders to keep are respected."));
                 toggle_clean = resp.clicked();
                 if let Some(next) = &self.auto.next_clean {
                     let r = resp.rect;
-                    ui.painter().text(pos2(r.max.x - 14.0, r.center().y), Align2::RIGHT_CENTER, crate::i18n::tr(format!("next: {}", next.split_whitespace().take(2).collect::<Vec<_>>().join(" "))), regular(12.0), th.soft);
+                    ui.painter().text(
+                        pos2(r.max.x - 14.0, r.center().y),
+                        Align2::RIGHT_CENTER,
+                        crate::i18n::tr(format!("next: {}", next.split_whitespace().take(2).collect::<Vec<_>>().join(" "))),
+                        regular(12.0),
+                        th.soft,
+                    );
                 }
-                toggle_trash = toggle_row(ui, row_w - 40.0, 40.0, self.settings.auto_trash, "🗑", "Also empty the Trash",
-                    "Files you deleted more than a week ago can't be restored after this.", th).clicked();
+                toggle_trash = toggle_row(
+                    ui,
+                    row_w - 40.0,
+                    40.0,
+                    self.settings.auto_trash,
+                    "🗑",
+                    "Also empty the Trash",
+                    "Files you deleted more than a week ago can't be restored after this.",
+                    th,
+                )
+                .clicked();
                 let pct = self.settings.low_disk_percent;
-                let resp = toggle_row(ui, row_w, 0.0, self.auto.disk_on, "🔔", "Low disk space alert",
-                    &format!("Checks every hour and notifies you when less than {pct}% of the disk is free (at most once a day)."), th);
+                let resp = toggle_row(
+                    ui,
+                    row_w,
+                    0.0,
+                    self.auto.disk_on,
+                    "🔔",
+                    "Low disk space alert",
+                    &format!("Checks every hour and notifies you when less than {pct}% of the disk is free (at most once a day)."),
+                    th,
+                );
                 let pr = Rect::from_min_size(pos2(resp.rect.max.x - 82.0, resp.rect.center().y - 15.0), vec2(70.0, 30.0));
                 cycle_pct = aero::aqua_button(ui, pr, &format!("{pct}%"), th.accent, true).on_hover_text(crate::i18n::tr("Change the threshold")).clicked();
                 toggle_disk = resp.clicked() && !cycle_pct;
@@ -121,15 +149,31 @@ impl App {
                 let days = format!("{} days", self.settings.journal_days);
                 // The systemd journal only exists on Linux.
                 if crate::platform::IS_LINUX {
-                    cycle_journal = option_row(ui, row_w, "📜", "System journal retention",
-                        "How many days of system logs to keep when cleaning the journal.", &days, "Change the threshold", th);
+                    cycle_journal = option_row(
+                        ui,
+                        row_w,
+                        "📜",
+                        "System journal retention",
+                        "How many days of system logs to keep when cleaning the journal.",
+                        &days,
+                        "Change the threshold",
+                        th,
+                    );
                 }
                 let mb = self.settings.big_min_mb;
                 let unit = if crate::i18n::is_french() { ("Mo", "Go") } else { ("MB", "GB") };
                 let big = if mb >= 1000 { format!("{} {}", mb / 1000, unit.1) } else { format!("{mb} {}", unit.0) };
                 cycle_big = option_row(ui, row_w, "🐘", "Big file size", "Files bigger than this are listed in Big files.", &big, "Change the threshold", th);
-                reset_sel = option_row(ui, row_w, "☑", "Remember my selection",
-                    "The items you tick in the Cleaner stay ticked next time.", "Reset", "Back to the recommended selection", th);
+                reset_sel = option_row(
+                    ui,
+                    row_w,
+                    "☑",
+                    "Remember my selection",
+                    "The items you tick in the Cleaner stay ticked next time.",
+                    "Reset",
+                    "Back to the recommended selection",
+                    th,
+                );
 
                 // ----- Language -----
                 Self::section(ui, "LANGUAGE", th);
@@ -198,9 +242,7 @@ impl App {
                         let picked = crate::macos::choose_folder(&crate::i18n::tr("Choose a folder to keep"));
                         #[cfg(not(target_os = "macos"))]
                         let picked = {
-                            let out = std::process::Command::new("zenity")
-                                .args(["--file-selection", "--directory", "--title=Choose a folder to keep"])
-                                .output();
+                            let out = std::process::Command::new("zenity").args(["--file-selection", "--directory", "--title=Choose a folder to keep"]).output();
                             out.ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
                         };
                         tx.send(Msg::Picked(picked));
@@ -211,7 +253,11 @@ impl App {
                 let rect = rect.translate(vec2(4.0, 0.0));
                 let keep_r = Rect::from_min_size(rect.min + vec2(0.0, 2.0), vec2(230.0, 36.0));
                 // Browser caches aren't part of the Windows cleaner, so the shortcut is Linux-only.
-                if !crate::platform::IS_WINDOWS && aero::aqua_button(ui, keep_r, "🌐 Keep browser caches", th.go, true).on_hover_text(crate::i18n::tr("Websites stay fast to load, but those caches won't be cleaned")).clicked() {
+                if !crate::platform::IS_WINDOWS
+                    && aero::aqua_button(ui, keep_r, "🌐 Keep browser caches", th.go, true)
+                        .on_hover_text(crate::i18n::tr("Websites stay fast to load, but those caches won't be cleaned"))
+                        .clicked()
+                {
                     let dirs = settings::browser_cache_dirs();
                     let added = dirs.iter().filter(|d| self.settings.add_exclusion(&d.to_string_lossy()).is_ok()).count();
                     self.settings_msg = if dirs.is_empty() { "No browser caches found.".into() } else { format!("Added {added} browser cache folder(s).") };
@@ -229,9 +275,22 @@ impl App {
                 aero::surface(ui.painter(), rect, 14.0, th, false, Some(aero::lighten(th.go, 0.75)));
                 aero::orb(ui.painter(), pos2(rect.min.x + 28.0, rect.center().y), 17.0, th.go, "✨");
                 let amount_color = if th.dark { aero::lighten(th.go, 0.35) } else { aero::darken(th.go, 0.1) };
-                embossed(ui.painter(), pos2(rect.min.x + 56.0, rect.center().y - 8.0), Align2::LEFT_CENTER, &format!("{} freed in total", format_bytes(total)), bold(18.0), amount_color);
+                embossed(
+                    ui.painter(),
+                    pos2(rect.min.x + 56.0, rect.center().y - 8.0),
+                    Align2::LEFT_CENTER,
+                    &format!("{} freed in total", format_bytes(total)),
+                    bold(18.0),
+                    amount_color,
+                );
                 let n = self.history.len();
-                ui.painter().text(pos2(rect.min.x + 56.0, rect.center().y + 13.0), Align2::LEFT_CENTER, crate::i18n::tr(format!("over {n} clean{}", if n == 1 { "" } else { "s" })), regular(12.0), th.soft);
+                ui.painter().text(
+                    pos2(rect.min.x + 56.0, rect.center().y + 13.0),
+                    Align2::LEFT_CENTER,
+                    crate::i18n::tr(format!("over {n} clean{}", if n == 1 { "" } else { "s" })),
+                    regular(12.0),
+                    th.soft,
+                );
                 for h in self.history.iter().take(20) {
                     let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
                     let rect = rect.translate(vec2(4.0, 0.0));

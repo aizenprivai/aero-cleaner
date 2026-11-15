@@ -28,10 +28,8 @@ impl App {
                 let c = rgba(240, 160, 30, 255);
                 aero::rrect_grad(&p, warn, 12.0, &[(0.0, aero::lighten(c, 0.75)), (1.0, aero::lighten(c, 0.45))]);
                 aero::rrect_outline(&p, warn, 12.0, Stroke::new(1.0, aero::darken(c, 0.2)));
-                let msg = format!(
-                    "⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.",
-                    review.browsers.join(" and ")
-                );
+                let msg =
+                    format!("⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.", review.browsers.join(" and "));
                 let g = p.layout(crate::i18n::tr(msg), regular(13.0), aero::darken(c, 0.7), warn.width() - 24.0);
                 p.galley(pos2(warn.min.x + 12.0, warn.center().y - g.size().y / 2.0), g, aero::darken(c, 0.7));
                 top = warn.max.y + 10.0;

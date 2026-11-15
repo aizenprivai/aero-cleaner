@@ -70,7 +70,11 @@ impl App {
                 for (bi, b) in self.browsers.list.iter().enumerate() {
                     let running = self.browsers.running.get(bi).copied().unwrap_or(false);
                     let profiles = crate::i18n::tr(format!("{} profile{}", b.profiles, if b.profiles == 1 { "" } else { "s" }));
-                    let title = if running { format!("{}  ·  {profiles}  ·  ⚠ OPEN, CLOSE IT TO CLEAN", b.name.to_uppercase()) } else { format!("{}  ·  {profiles}", b.name.to_uppercase()) };
+                    let title = if running {
+                        format!("{}  ·  {profiles}  ·  ⚠ OPEN, CLOSE IT TO CLEAN", b.name.to_uppercase())
+                    } else {
+                        format!("{}  ·  {profiles}", b.name.to_uppercase())
+                    };
                     Self::section(ui, &title, th);
                     for (pi, part) in Part::ALL.iter().enumerate() {
                         let data = b.parts.iter().find(|(p, _)| p == part).and_then(|(_, d)| d.as_ref());

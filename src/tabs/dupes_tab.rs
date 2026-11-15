@@ -67,18 +67,21 @@ impl App {
                 let cy = rect.center().y;
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.dupes.include_hidden, resp.hovered(), th.go, th.accent);
                 p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Include hidden app folders"), bold(15.0), th.text);
-                p.text(pos2(rect.min.x + 52.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr("Off by default: copies inside an app's own folders are usually needed by that app."), regular(12.0), th.soft);
+                p.text(
+                    pos2(rect.min.x + 52.0, cy + 11.0),
+                    Align2::LEFT_CENTER,
+                    crate::i18n::tr("Off by default: copies inside an app's own folders are usually needed by that app."),
+                    regular(12.0),
+                    th.soft,
+                );
 
                 if !self.dupes.done {
                     Self::section(ui, "PRESS \"FIND DUPLICATES\" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)", th);
                     return;
                 }
                 let wasted: u64 = self.dupes.groups.iter().map(|g| g.wasted()).sum();
-                let header = if self.dupes.msg.is_empty() {
-                    format!("{} GROUPS  ·  {} WASTED", self.dupes.groups.len(), format_bytes(wasted))
-                } else {
-                    self.dupes.msg.to_uppercase()
-                };
+                let header =
+                    if self.dupes.msg.is_empty() { format!("{} GROUPS  ·  {} WASTED", self.dupes.groups.len(), format_bytes(wasted)) } else { self.dupes.msg.to_uppercase() };
                 Self::section(ui, &header, th);
                 if self.dupes.groups.is_empty() {
                     Self::section(ui, "NO DUPLICATES FOUND. NICE AND TIDY!", th);
@@ -102,7 +105,10 @@ impl App {
                         th.soft,
                     );
                     let btn = Rect::from_min_size(pos2(rect.max.x - 236.0, cy - 15.0), vec2(224.0, 30.0));
-                    if aero::aqua_button(ui, btn, "Keep original, trash rest", th.root_orb, true).on_hover_text(crate::i18n::tr("Moves every copy except the oldest to the Trash")).clicked() {
+                    if aero::aqua_button(ui, btn, "Keep original, trash rest", th.root_orb, true)
+                        .on_hover_text(crate::i18n::tr("Moves every copy except the oldest to the Trash"))
+                        .clicked()
+                    {
                         trash_rest = Some(gi);
                     }
 
@@ -120,7 +126,7 @@ impl App {
                             p.galley(br.center() - tag.size() / 2.0, tag, th.text);
                             x = br.max.x + 8.0;
                         }
-                        let dir = f.path.parent().map(|d| pretty(d)).unwrap_or_default();
+                        let dir = f.path.parent().map(&pretty).unwrap_or_default();
                         let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 180.0, rect.max.y)));
                         clip.text(pos2(x, cy), Align2::LEFT_CENTER, crate::i18n::tr(format!("{dir}  ·  {}", tools::age(f.modified))), regular(12.5), th.text);
                         let open_r = Rect::from_min_size(pos2(rect.max.x - 172.0, cy - 13.0), vec2(76.0, 26.0));

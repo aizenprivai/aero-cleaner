@@ -13,12 +13,12 @@ mod settings_tab;
 mod startup;
 mod themes_tab;
 
+pub(crate) use boot_tab::BootState;
 pub(crate) use browsers_tab::BrowserState;
 pub(crate) use dev_tab::DevState;
 pub(crate) use dupes_tab::DupeState;
 pub(crate) use map_tab::MapState;
 pub(crate) use settings_tab::AutoState;
-pub(crate) use boot_tab::BootState;
 
 use prelude::*;
 
@@ -42,7 +42,7 @@ impl App {
         let th = &self.themes[self.theme];
         let p = ui.painter().clone();
         embossed(&p, pos2(area.min.x + 6.0, area.min.y + 12.0), Align2::LEFT_CENTER, title, bold(17.0), th.text);
-        let info_g = p.layout(crate::i18n::tr(info.to_string()), regular(13.0), th.soft, area.width() - 230.0);
+        let info_g = p.layout(crate::i18n::tr(info), regular(13.0), th.soft, area.width() - 230.0);
         p.galley(pos2(area.min.x + 6.0, area.min.y + 26.0), info_g, th.soft);
         let mut clicked = false;
         if let Some((label, enabled)) = button {
@@ -60,7 +60,13 @@ impl App {
 pub(crate) fn disk_meter(p: &egui::Painter, bar: Rect, size: u64, avail: u64, th: &Theme) {
     let used = 1.0 - avail as f32 / size.max(1) as f32;
     aero::surface(p, bar, 10.0, th, false, None);
-    let color = if used > 0.9 { aero::rgba(230, 70, 50, 255) } else if used > 0.75 { aero::rgba(240, 160, 30, 255) } else { th.go };
+    let color = if used > 0.9 {
+        aero::rgba(230, 70, 50, 255)
+    } else if used > 0.75 {
+        aero::rgba(240, 160, 30, 255)
+    } else {
+        th.go
+    };
     let fill = Rect::from_min_size(bar.min, vec2((bar.width() * used).max(bar.height()), bar.height()));
     aero::rrect_grad(p, fill, 10.0, &[(0.0, aero::lighten(color, 0.4)), (0.5, color), (1.0, aero::lighten(color, 0.3))]);
     let gloss = Rect::from_min_max(fill.min + vec2(4.0, 1.0), pos2(fill.max.x - 4.0, fill.center().y));

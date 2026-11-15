@@ -22,12 +22,12 @@ mod windows;
 mod macos;
 
 use aero::{bold, embossed, regular};
-use cleaner::{format_bytes, Kind, ScanResult, CATEGORIES};
-use eframe::egui::{self, pos2, vec2, Align2, FontData, FontDefinitions, FontFamily, Rect};
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::Arc;
-use std::time::Duration;
+use cleaner::{CATEGORIES, Kind, ScanResult, format_bytes};
+use eframe::egui::{self, Align2, FontData, FontDefinitions, FontFamily, Rect, pos2, vec2};
 use settings::{HistoryEntry, Settings};
+use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::time::Duration;
 use theme::Theme;
 use tools::{BigFile, StartupEntry};
 
@@ -219,26 +219,16 @@ impl App {
             for (i, c) in CATEGORIES.iter().enumerate() {
                 tx.send(Msg::Size(i, cleaner::scan(c.kind, &excl)));
             }
-            let _ = tx.send(Msg::ScanDone);
+            tx.send(Msg::ScanDone);
         });
     }
 
     fn selected(&self) -> Vec<Kind> {
-        self.items
-            .iter()
-            .zip(CATEGORIES)
-            .filter(|(it, _)| it.on && it.result.as_ref().is_some_and(|r| r.available))
-            .map(|(_, c)| c.kind)
-            .collect()
+        self.items.iter().zip(CATEGORIES).filter(|(it, _)| it.on && it.result.as_ref().is_some_and(|r| r.available)).map(|(_, c)| c.kind).collect()
     }
 
     fn total_of(&self, kinds: &[Kind]) -> u64 {
-        self.items
-            .iter()
-            .zip(CATEGORIES)
-            .filter(|(_, c)| kinds.contains(&c.kind))
-            .filter_map(|(it, _)| it.result.as_ref().and_then(|r| r.size))
-            .sum()
+        self.items.iter().zip(CATEGORIES).filter(|(_, c)| kinds.contains(&c.kind)).filter_map(|(it, _)| it.result.as_ref().and_then(|r| r.size)).sum()
     }
 
     fn notifier(&self) -> Notifier {
@@ -274,9 +264,9 @@ impl App {
         std::thread::spawn(move || {
             let log_tx = tx.clone();
             cleaner::clean(&kinds, &excl, days, &move |line| {
-                let _ = log_tx.send(Msg::Log(line));
+                log_tx.send(Msg::Log(line));
             });
-            let _ = tx.send(Msg::CleanDone);
+            tx.send(Msg::CleanDone);
         });
     }
 
@@ -498,7 +488,6 @@ impl eframe::App for App {
         }
     }
 }
-
 
 /// `--tab <name>` opens the app on that screen (handy for screenshots).
 fn start_tab() -> Tab {

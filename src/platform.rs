@@ -89,10 +89,7 @@ pub fn running_processes() -> Vec<String> {
         // `tasklist /fo csv /nh` prints "image.exe","pid",... (not localized).
         let out = Command::new("tasklist").args(["/fo", "csv", "/nh"]).stderr(Stdio::null()).output();
         let text = out.map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default();
-        text.lines()
-            .filter_map(|l| l.split(',').next())
-            .map(|n| n.trim_matches('"').to_lowercase().trim_end_matches(".exe").to_string())
-            .collect()
+        text.lines().filter_map(|l| l.split(',').next()).map(|n| n.trim_matches('"').to_lowercase().trim_end_matches(".exe").to_string()).collect()
     } else {
         std::fs::read_dir("/proc")
             .map(|rd| rd.flatten().filter_map(|e| std::fs::read_to_string(e.path().join("comm")).ok()).map(|c| c.trim().to_string()).collect())

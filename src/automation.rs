@@ -2,7 +2,7 @@
 //! desktop notifications and what runs them: systemd user timers on Linux,
 //! Task Scheduler on Windows, launchd agents on macOS.
 
-use crate::cleaner::{self, format_bytes, Kind};
+use crate::cleaner::{self, Kind, format_bytes};
 use crate::settings::{self, Settings};
 use crate::tools;
 use std::fs;
@@ -47,14 +47,8 @@ pub fn launch_gui(args: &[&str]) {
         let _ = Command::new(exe()).args(args).spawn();
         return;
     }
-    let ok = Command::new("systemd-run")
-        .args(["--user", "--collect", "--quiet"])
-        .arg(exe())
-        .args(args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success());
+    let ok =
+        Command::new("systemd-run").args(["--user", "--collect", "--quiet"]).arg(exe()).args(args).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s| s.success());
     if !ok {
         let _ = Command::new(exe()).args(args).spawn();
     }
@@ -98,11 +92,8 @@ fn warning_stamp() -> PathBuf {
 pub fn disk_is_low(settings: &Settings) -> Option<(u64, u64)> {
     let (total, avail) = tools::disk_usage()?;
     let low = avail * 100 < total * settings.low_disk_percent as u64;
-    let recently_warned = fs::metadata(warning_stamp())
-        .and_then(|m| m.modified())
-        .ok()
-        .and_then(|t| SystemTime::now().duration_since(t).ok())
-        .is_some_and(|age| age < Duration::from_secs(86400));
+    let recently_warned =
+        fs::metadata(warning_stamp()).and_then(|m| m.modified()).ok().and_then(|t| SystemTime::now().duration_since(t).ok()).is_some_and(|age| age < Duration::from_secs(86400));
     (low && !recently_warned).then_some((total, avail))
 }
 
@@ -132,12 +123,8 @@ pub const AUTO_CLEAN: Job = Job {
     schedule: "OnCalendar=weekly\nRandomizedDelaySec=1h\nPersistent=true",
 };
 
-pub const DISK_CHECK: Job = Job {
-    unit: "aero-cleaner-disk",
-    description: "AeroClean low disk space check",
-    command: "check-disk",
-    schedule: "OnBootSec=10min\nOnUnitActiveSec=1h",
-};
+pub const DISK_CHECK: Job =
+    Job { unit: "aero-cleaner-disk", description: "AeroClean low disk space check", command: "check-disk", schedule: "OnBootSec=10min\nOnUnitActiveSec=1h" };
 
 fn unit_dir() -> PathBuf {
     std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config")).join("systemd/user")
@@ -145,20 +132,12 @@ fn unit_dir() -> PathBuf {
 
 fn systemctl(args: &[&str]) -> Result<String, String> {
     let out = Command::new("systemctl").arg("--user").args(args).env("LC_ALL", "C").output().map_err(|e| e.to_string())?;
-    if out.status.success() {
-        Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
-    } else {
-        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
-    }
+    if out.status.success() { Ok(String::from_utf8_lossy(&out.stdout).trim().to_string()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) }
 }
 
 pub fn unit_files(job: &Job) -> (String, String) {
-    let service = format!(
-        "[Unit]\nDescription={}\n\n[Service]\nType=oneshot\nExecStart=\"{}\" {}\nNice=10\nIOSchedulingClass=idle\n",
-        job.description,
-        exe().display(),
-        job.command
-    );
+    let service =
+        format!("[Unit]\nDescription={}\n\n[Service]\nType=oneshot\nExecStart=\"{}\" {}\nNice=10\nIOSchedulingClass=idle\n", job.description, exe().display(), job.command);
     let timer = format!("[Unit]\nDescription={} (timer)\n\n[Timer]\n{}\n\n[Install]\nWantedBy=timers.target\n", job.description, job.schedule);
     (service, timer)
 }

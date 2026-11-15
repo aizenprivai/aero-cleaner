@@ -49,7 +49,13 @@ impl App {
             aero::rrect_outline(&p, preview, 4.0, Stroke::new(1.0, rgba(255, 255, 255, 180)));
 
             embossed(&p, pos2(card.min.x + 14.0, card.max.y - 33.0), Align2::LEFT_CENTER, th.name, bold(16.0), cur.text);
-            p.with_clip_rect(card.shrink2(vec2(10.0, 0.0))).text(pos2(card.min.x + 14.0, card.max.y - 14.0), Align2::LEFT_CENTER, crate::i18n::tr(th.desc), regular(12.0), cur.soft);
+            p.with_clip_rect(card.shrink2(vec2(10.0, 0.0))).text(
+                pos2(card.min.x + 14.0, card.max.y - 14.0),
+                Align2::LEFT_CENTER,
+                crate::i18n::tr(th.desc),
+                regular(12.0),
+                cur.soft,
+            );
             if selected {
                 aero::orb(&p, pos2(card.max.x - 22.0, card.max.y - 26.0), 12.0, cur.go, "✔");
             }
