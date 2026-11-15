@@ -10,12 +10,15 @@ version=${1:?usage: make-cask.sh <version> <dmg>}
 dmg=${2:?dmg}
 repo=${GITHUB_REPOSITORY:-aizenprivai/aero-cleaner}
 sha=$(sha256sum "$dmg" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$dmg" | cut -d' ' -f1)
+# (Built here: a "}" from Ruby's #{version} inside \${CASK_URL:-...} would end it early.)
+default_url='https://github.com/'"$repo"'/releases/download/v#{version}/AeroClean-#{version}-macos.dmg'
+url=${CASK_URL:-$default_url}
 cat <<RUBY
 cask "aeroclean" do
   version "$version"
   sha256 "$sha"
 
-  url "${CASK_URL:-https://github.com/$repo/releases/download/v#{version}/AeroClean-#{version}-macos.dmg}"
+  url "$url"
   name "AeroClean"
   desc "Disk cleaner with a Frutiger Aero look"
   homepage "https://github.com/$repo"
