@@ -100,6 +100,17 @@
 - **Accessibility:** screen reader labels, the high-contrast Aero Basic theme, UI scale up to 200%
 - **Languages:** translations moved to `lang/*.txt`; Spanish, German and Portuguese
 
+**v2.2 – Make it yours, get it everywhere**
+- **Themes are files:** a `.aerotheme` format with inheritance, 9 built-in themes and scenes built from layers (sky, sun, clouds, fish, fireflies, snow, pictures...)
+- **Theme Studio:** a live editor with harmonies, an eyedropper, contrast badges, a color-blindness preview, layer editing, undo and Randomize
+- **Share themes:** export with pictures inside, import or drag a file in, and a community gallery with live previews
+- **Day and night:** switch themes with your system's dark mode, on a schedule, or at sunrise and sunset, with a crossfade
+- **Themes from a picture:** light, dark and vivid themes from any photo, with readable text guaranteed
+- **Live touches (optional):** seasons, a sun that follows the time of day, and fun dates
+- **Sounds (optional):** an original synthesized sound pack, per event, with a volume setting
+- **Settings 2.0:** one readable `settings.toml`, migrated automatically
+- **Flatpak**, a **signed APT repository** (`apt upgrade` keeps AeroClean up to date), and ready-made **winget** and **Homebrew** files
+
 ---
 
 # 🗺 Road to 2.0
