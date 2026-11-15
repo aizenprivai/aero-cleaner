@@ -1,4 +1,4 @@
-//! The five built-in themes, plus loading and saving the user's choice.
+//! The six built-in themes, plus loading and saving the user's choice.
 
 use eframe::egui::{Color32, Vec2};
 use std::path::PathBuf;
@@ -141,6 +141,28 @@ pub fn all() -> Vec<Theme> {
             user_orb: c(240, 120, 180),
             root_orb: c(160, 110, 230),
             logo: c(240, 130, 180),
+        },
+        // High contrast: a calm, plain background, black text and strong colors.
+        Theme {
+            name: "Aero Basic",
+            desc: "High contrast, plain and calm",
+            sky: [(0.0, c(196, 210, 228)), (0.5, c(222, 230, 240)), (0.8, c(236, 240, 246)), (1.0, c(244, 246, 250))],
+            sun: Vec2::new(0.86, 0.1),
+            sun_color: c(250, 250, 250),
+            rays: 0,
+            hill_back: [(0.0, c(200, 212, 204)), (0.12, c(190, 204, 194)), (0.3, c(182, 196, 186)), (1.0, c(176, 190, 180))],
+            hill_front: [(0.0, c(214, 224, 216)), (0.1, c(204, 216, 206)), (0.3, c(196, 208, 198)), (1.0, c(190, 202, 192))],
+            night: false,
+            bubble: c(236, 240, 246),
+            dark: false,
+            glass: c(255, 255, 255),
+            text: c(0, 0, 0),
+            soft: c(38, 38, 38),
+            accent: c(0, 72, 168),
+            go: c(0, 112, 0),
+            user_orb: c(0, 80, 180),
+            root_orb: c(180, 72, 0),
+            logo: c(0, 110, 60),
         },
     ]
 }

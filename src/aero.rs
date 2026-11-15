@@ -232,11 +232,26 @@ pub fn surface(painter: &Painter, rect: Rect, r: f32, theme: &Theme, hovered: bo
     }
 }
 
+/// The words a screen reader should say: translated, without the
+/// decorative emoji many labels start with ("✨ Clean now" -> "Clean now").
+pub fn spoken(label: &str) -> String {
+    let t = crate::i18n::tr(label);
+    let words = t.trim_start_matches(|c: char| !c.is_alphanumeric() && c != '(' && c != '~').trim();
+    if words.is_empty() { t.trim().to_string() } else { words.to_string() }
+}
+
+/// Tells screen readers that a hand-drawn row is a checkbox, with its label.
+pub fn a11y_checkbox(resp: &Response, enabled: bool, checked: bool, label: &str) {
+    resp.widget_info(|| eframe::egui::WidgetInfo::selected(eframe::egui::Role::CheckBox, enabled, checked, spoken(label)));
+}
+
 /// A glossy "aqua" pill button. Returns the click response.
 pub fn aqua_button(ui: &mut Ui, rect: Rect, label: &str, base: Color32, enabled: bool) -> Response {
     // An id that stays the same while the list scrolls, so keyboard focus sticks.
     let id = ui.auto_id_with(("aqua", label, rect.min.x as i32));
     let resp = ui.interact(rect, id, if enabled { Sense::click() } else { Sense::hover() });
+    // What screen readers announce (the button is drawn by hand, so egui can't know).
+    resp.widget_info(|| eframe::egui::WidgetInfo::labeled(eframe::egui::Role::Button, enabled, spoken(label)));
     let p = ui.painter();
     let mut c = if enabled { base } else { rgba(150, 165, 180, 255) };
     if enabled && resp.is_pointer_button_down_on() {
@@ -381,6 +396,7 @@ pub fn background(painter: &Painter, rect: Rect, time: f32, theme: &Theme) {
 /// A sidebar entry: an aqua bar when active, a glass highlight on hover.
 pub fn nav_item(ui: &mut Ui, rect: Rect, icon: &str, label: &str, active: bool, theme: &Theme) -> Response {
     let resp = ui.interact(rect, eframe::egui::Id::unique(("nav", label)), Sense::click());
+    resp.widget_info(|| eframe::egui::WidgetInfo::selected(eframe::egui::Role::Tab, true, active, spoken(label)));
     let p = ui.painter();
     let r = 12.0;
     let text_color = if active {

@@ -16,6 +16,7 @@ pub(crate) struct AutoState {
 /// Draws a toggle row (bubble checkbox, orb, title, description). Returns the response.
 fn toggle_row(ui: &mut egui::Ui, w: f32, indent: f32, on: bool, icon: &str, title: &str, desc: &str, th: &Theme) -> egui::Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 60.0), Sense::click());
+    aero::a11y_checkbox(&resp, true, on, title);
     let rect = Rect::from_min_max(rect.min + vec2(4.0 + indent, 0.0), rect.max + vec2(4.0, 0.0));
     let p = ui.painter();
     let tint = on.then(|| if th.dark { th.go } else { aero::lighten(th.go, 0.75) });
@@ -58,6 +59,7 @@ impl App {
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
         let mut toggle_updates = false;
+        let mut cycle_scale = false;
         let mut updater_action: Option<super::UpdaterAction> = None;
         let (mut cycle_undo, mut empty_undo) = (false, false);
         let mut export: Option<bool> = None;
@@ -97,6 +99,17 @@ impl App {
                     regular(12.0),
                     th.soft,
                     rect.width() - 98.0 - 16.0,
+                );
+
+                cycle_scale = option_row(
+                    ui,
+                    row_w,
+                    "🔍",
+                    "Text and controls size",
+                    "Makes everything bigger. The window gets bigger too, so it may not fit small screens above 150%.",
+                    &format!("{}%", self.settings.ui_scale),
+                    "Change the size",
+                    th,
                 );
 
                 // ----- Automation -----
@@ -446,6 +459,17 @@ impl App {
         }
         if let Some(a) = updater_action {
             self.run_updater_action(a);
+        }
+        if cycle_scale {
+            self.settings.ui_scale = match self.settings.ui_scale {
+                100 => 125,
+                125 => 150,
+                150 => 175,
+                175 => 200,
+                _ => 100,
+            };
+            self.settings.save();
+            self.apply_scale(ui.ctx());
         }
         if toggle_updates {
             self.settings.check_updates = !self.settings.check_updates;

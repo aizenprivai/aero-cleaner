@@ -18,6 +18,7 @@ impl App {
             toggled = true;
         }
         let checked = item.on && available;
+        aero::a11y_checkbox(&resp, available && !busy, checked, cat.name);
         let hovered = resp.hovered() && available && !busy;
         let p = ui.painter();
 

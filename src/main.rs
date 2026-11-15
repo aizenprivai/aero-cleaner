@@ -235,6 +235,7 @@ impl App {
         };
         app.items = app.initial_selection();
         app.apply_visuals(ctx);
+        app.apply_scale(ctx);
         app.start_scan();
         app.start_update_check(false);
         // Really delete what's past the undo window (in the background: it can be big).
@@ -268,6 +269,14 @@ impl App {
     fn apply_visuals(&self, ctx: &egui::Context) {
         let dark = self.themes[self.theme].dark;
         ctx.set_visuals(if dark { egui::Visuals::dark() } else { egui::Visuals::light() });
+    }
+
+    /// Text and controls size. The smallest window grows with it, so the
+    /// layout always has the room it was designed for.
+    fn apply_scale(&self, ctx: &egui::Context) {
+        let z = self.settings.ui_scale.clamp(100, 200) as f32 / 100.0;
+        ctx.set_zoom_factor(z);
+        ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(vec2(960.0 * z, 680.0 * z)));
     }
 
     fn start_scan(&mut self) {
@@ -1009,6 +1018,12 @@ mod ui_tests {
             let ctx = h.ctx.clone();
             h.state().apply_visuals(&ctx);
         }
+        // AERO_SHOT_SCALE=150: text and controls size (use a window size scaled to match).
+        if let Some(scale) = std::env::var("AERO_SHOT_SCALE").ok().and_then(|v| v.parse().ok()) {
+            h.state_mut().settings.ui_scale = scale;
+            let ctx = h.ctx.clone();
+            h.state().apply_scale(&ctx);
+        }
         let only = std::env::var("AERO_SHOT_TAB").ok();
         let demo = std::env::var("AERO_SHOT_DEMO").is_ok();
         let days_ago = |d: u64| Some(std::time::SystemTime::now() - std::time::Duration::from_secs(d * 86_400));
@@ -1157,6 +1172,23 @@ mod ui_tests {
             }
             h.render().unwrap().save(dir.join(format!("{tab:?}.png"))).unwrap();
         }
+    }
+
+    /// What a screen reader sees: every hand-drawn control has a role and a label.
+    #[test]
+    fn screen_readers_can_find_and_use_controls() {
+        use egui_kittest::kittest::Queryable;
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let mut h = harness();
+        h.run_steps(2);
+        assert_eq!(h.state().tab, Tab::Overview, "opens on the Overview");
+        assert!(h.query_by_label("Fix all safe items").is_some(), "button label without the emoji");
+        h.get_by_label("Cleaner").click();
+        h.run_steps(2);
+        assert_eq!(h.state().tab, Tab::Cleaner, "sidebar items work by label");
+        assert!(h.query_by_label("Clean now").is_some());
+        assert!(h.query_by_role_and_label(egui::Role::CheckBox, "Trash").is_some(), "rows are checkboxes");
     }
 
     #[test]

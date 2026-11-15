@@ -824,6 +824,15 @@ const FR: &[(&str, &str)] = &[
     ("AeroClean {} is the latest version", "AeroClean {} est la dernière version"),
     ("AeroClean {}  ·  not checked yet", "AeroClean {}  ·  pas encore vérifié"),
     ("Open", "Ouvrir"),
+    // ----- Accessibility -----
+    ("Aero Basic", "Aero Basic"),
+    ("High contrast, plain and calm", "Contraste élevé, sobre et calme"),
+    ("Text and controls size", "Taille du texte et des contrôles"),
+    (
+        "Makes everything bigger. The window gets bigger too, so it may not fit small screens above 150%.",
+        "Agrandit tout. La fenêtre s'agrandit aussi, elle peut donc dépasser des petits écrans au-delà de 150 %.",
+    ),
+    ("Change the size", "Changer la taille"),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

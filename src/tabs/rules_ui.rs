@@ -139,6 +139,7 @@ impl App {
             }
             let p = ui.painter();
             let on = r.enabled && !broken;
+            aero::a11y_checkbox(&resp, !busy, on, &r.name);
             let tint = on.then(|| if th.dark { th.go } else { aero::lighten(th.go, 0.75) });
             aero::surface(p, rect, 14.0, th, resp.hovered() && !busy, tint);
             let cy = rect.center().y;

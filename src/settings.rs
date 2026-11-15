@@ -27,6 +27,8 @@ pub struct Settings {
     pub check_updates: bool,
     /// Hours cleaned files are kept so a clean can be undone (0 = off).
     pub undo_hours: u32,
+    /// Size of text and controls, in percent (100 to 200).
+    pub ui_scale: u32,
 }
 
 impl Default for Settings {
@@ -42,6 +44,7 @@ impl Default for Settings {
             language: "auto".into(),
             check_updates: false,
             undo_hours: 24,
+            ui_scale: 100,
         }
     }
 }
@@ -55,6 +58,7 @@ impl Settings {
                 Some(("reduce_motion", v)) => s.reduce_motion = v.trim() == "true",
                 Some(("auto_trash", v)) => s.auto_trash = v.trim() == "true",
                 Some(("check_updates", v)) => s.check_updates = v.trim() == "true",
+                Some(("ui_scale", v)) => s.ui_scale = v.trim().parse().unwrap_or(100).clamp(100, 200),
                 Some(("undo_hours", v)) => s.undo_hours = v.trim().parse().unwrap_or(24).min(24 * 30),
                 Some(("low_disk_percent", v)) => s.low_disk_percent = v.trim().parse().unwrap_or(10).clamp(1, 50),
                 Some(("journal_days", v)) => s.journal_days = v.trim().parse().unwrap_or(3).clamp(1, 365),
@@ -70,8 +74,8 @@ impl Settings {
 
     pub fn save(&self) {
         let mut text = format!(
-            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\n",
-            self.reduce_motion, self.auto_trash, self.low_disk_percent, self.journal_days, self.big_min_mb, self.language, self.check_updates, self.undo_hours
+            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\n",
+            self.reduce_motion, self.auto_trash, self.low_disk_percent, self.journal_days, self.big_min_mb, self.language, self.check_updates, self.undo_hours, self.ui_scale
         );
         if let Some(sel) = &self.selected {
             text.push_str(&format!("selected={}\n", sel.join(",")));

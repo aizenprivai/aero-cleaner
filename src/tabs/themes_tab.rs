@@ -6,14 +6,17 @@ impl App {
     pub(crate) fn themes_tab(&mut self, ui: &mut egui::Ui, area: Rect, t: f32) {
         let gap = 18.0;
         let cols = 3;
+        let count = self.themes.len();
+        let rows = count.div_ceil(cols);
         let w = (area.width() - gap * (cols as f32 - 1.0)) / cols as f32;
-        let h = (area.height() - gap) / 2.0;
+        let h = (area.height() - gap * (rows as f32 - 1.0)) / rows as f32;
         let mut picked = None;
 
-        for i in 0..self.themes.len() {
+        for i in 0..count {
             let (row, col) = (i / cols, i % cols);
-            // Center the second row (2 cards under 3).
-            let offset = if row == 1 { (w + gap) / 2.0 } else { 0.0 };
+            // Center a last row that isn't full.
+            let in_row = (count - row * cols).min(cols);
+            let offset = (cols - in_row) as f32 * (w + gap) / 2.0;
             let card = Rect::from_min_size(area.min + vec2(offset + col as f32 * (w + gap), row as f32 * (h + gap)), vec2(w, h));
             let resp = ui.interact(card, egui::Id::unique(("theme-card", i)), Sense::click());
             let cur = &self.themes[self.theme];
