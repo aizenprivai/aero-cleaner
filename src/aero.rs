@@ -208,7 +208,9 @@ pub fn surface(painter: &Painter, rect: Rect, r: f32, theme: &Theme, hovered: bo
 
 /// A glossy "aqua" pill button. Returns the click response.
 pub fn aqua_button(ui: &mut Ui, rect: Rect, label: &str, base: Color32, enabled: bool) -> Response {
-    let resp = ui.interact(rect, eframe::egui::Id::unique(("aqua", label, rect.min.x as i32, rect.min.y as i32)), if enabled { Sense::click() } else { Sense::hover() });
+    // An id that stays the same while the list scrolls, so keyboard focus sticks.
+    let id = ui.auto_id_with(("aqua", label, rect.min.x as i32));
+    let resp = ui.interact(rect, id, if enabled { Sense::click() } else { Sense::hover() });
     let p = ui.painter();
     let mut c = if enabled { base } else { rgba(150, 165, 180, 255) };
     if enabled && resp.is_pointer_button_down_on() {

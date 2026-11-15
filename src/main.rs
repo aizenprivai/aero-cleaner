@@ -101,6 +101,8 @@ struct Item {
 }
 
 struct App {
+    /// The keyboard is being used to move around: show the focus ring.
+    keyboard_nav: bool,
     items: Vec<Item>,
     phase: Phase,
     tx: Sender<Msg>,
@@ -175,6 +177,7 @@ impl App {
             browsers: Default::default(),
             auto: Default::default(),
             boot: Default::default(),
+            keyboard_nav: false,
         };
         app.items = app.initial_selection();
         app.apply_visuals(ctx);
@@ -435,17 +438,33 @@ impl eframe::App for App {
         let hidden = |tab: Tab| !platform::IS_LINUX && tab == Tab::Boot;
         let mut y = nav_top + 8.0;
         let mut new_tab = self.tab;
+        let mut visible = Vec::new();
+        let modifier = if platform::IS_MACOS { "Cmd" } else { "Ctrl" };
         for (title, entries) in groups {
             embossed(&p, pos2(sidebar.min.x + 14.0, y + 9.0), Align2::LEFT_CENTER, title, bold(11.5), th.soft);
             y += 22.0;
             for &(tab, icon, label) in entries.iter().filter(|e| !hidden(e.0)) {
+                visible.push(tab);
                 let r = Rect::from_min_size(pos2(sidebar.min.x + 6.0, y), vec2(sidebar.width() - 12.0, 36.0));
-                if aero::nav_item(ui, r, icon, label, self.tab == tab, &self.themes[self.theme]).clicked() {
+                let resp = aero::nav_item(ui, r, icon, label, self.tab == tab, &self.themes[self.theme]);
+                let key = match visible.len() {
+                    n @ 1..=9 => format!("{modifier}+{n}"),
+                    10 => format!("{modifier}+0"),
+                    _ => String::new(),
+                };
+                if resp.on_hover_text(key).clicked() {
                     new_tab = tab;
                 }
                 y += 39.0;
             }
             y += 6.0;
+        }
+        // Ctrl+1…9 (Cmd on macOS) jumps to a screen, Ctrl+0 to the tenth.
+        if self.review.is_none()
+            && let Some(n) = ui.ctx().input(|i| SCREEN_KEYS.iter().position(|k| i.modifiers.command && i.key_pressed(*k)))
+            && let Some(tab) = visible.get(n)
+        {
+            new_tab = *tab;
         }
         self.tab = new_tab;
 
@@ -466,6 +485,7 @@ impl eframe::App for App {
         if self.review.is_some() {
             self.review_sheet(ui.ctx(), screen, spin);
         }
+        self.focus_ring(ui.ctx());
 
         // Repaint continuously only when something is moving. Otherwise egui
         // repaints on input, and worker threads wake it through `Notifier`.
@@ -536,6 +556,35 @@ fn setup_fonts(ctx: &egui::Context) {
     }
     fonts.families.insert(FontFamily::Name("bold".into()), bold_family);
     ctx.set_fonts(fonts);
+}
+
+const SCREEN_KEYS: [egui::Key; 10] =
+    [egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4, egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8, egui::Key::Num9, egui::Key::Num0];
+
+impl App {
+    /// Our glossy widgets draw themselves, so draw the keyboard focus on top.
+    /// Only shown while the keyboard is in use, not after mouse clicks.
+    fn focus_ring(&mut self, ctx: &egui::Context) {
+        use egui::Key;
+        let (keys, pointer) = ctx.input(|i| {
+            let keys = [Key::Tab, Key::ArrowUp, Key::ArrowDown, Key::ArrowLeft, Key::ArrowRight].iter().any(|k| i.key_pressed(*k));
+            (keys, i.pointer.any_pressed() || i.pointer.delta() != egui::Vec2::ZERO)
+        });
+        if keys {
+            self.keyboard_nav = true;
+        } else if pointer {
+            self.keyboard_nav = false;
+        }
+        let Some(resp) = ctx.memory(|m| m.focused()).and_then(|id| ctx.read_response(id)) else { return };
+        if !self.keyboard_nav || resp.interact_rect.area() <= 0.0 {
+            return;
+        }
+        let accent = self.themes[self.theme].accent;
+        let p = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::unique("focus-ring")));
+        let r = resp.interact_rect.expand(2.0);
+        p.rect_stroke(r, (r.height() / 2.0).min(14.0), egui::Stroke::new(2.5, accent), egui::StrokeKind::Outside);
+        p.rect_stroke(r.expand(2.5), (r.height() / 2.0 + 2.5).min(16.5), egui::Stroke::new(1.5, aero::with_alpha(egui::Color32::WHITE, 160)), egui::StrokeKind::Outside);
+    }
 }
 
 const USAGE: &str = "AeroClean
