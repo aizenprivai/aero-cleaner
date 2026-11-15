@@ -6,7 +6,8 @@ impl App {
     pub(crate) fn review_sheet(&mut self, ctx: &egui::Context, screen: Rect, spin: f32) {
         let th = &self.themes[self.theme];
         let Some(review) = self.review.as_ref() else { return };
-        let total = self.total_of(&review.kinds);
+        let rule_names: Vec<String> = review.rules.iter().map(|r| r.name.clone()).collect();
+        let total = self.total_of(&review.kinds) + self.rules_total(&rule_names);
         let mut action = None;
         egui::Area::new(egui::Id::unique("review-sheet")).order(egui::Order::Foreground).fixed_pos(screen.min).show(ctx, |ui| {
             // Swallow clicks so nothing underneath reacts while the sheet is open.
@@ -19,7 +20,7 @@ impl App {
             aero::glass_panel(&p, sheet, 20.0, th);
             let inner = sheet.shrink(24.0);
             embossed(&p, pos2(inner.min.x, inner.min.y + 14.0), Align2::LEFT_CENTER, "Ready to clean?", bold(24.0), th.text);
-            let summary = format!("{} items selected · about {} will be freed", review.kinds.len(), format_bytes(total));
+            let summary = format!("{} items selected · about {} will be freed", review.kinds.len() + review.rules.len(), format_bytes(total));
             p.text(pos2(inner.min.x, inner.min.y + 44.0), Align2::LEFT_CENTER, crate::i18n::tr(summary), regular(14.0), th.soft);
 
             let mut top = inner.min.y + 66.0;
@@ -61,6 +62,13 @@ impl App {
                                 }
                                 ui.add_space(6.0);
                             }
+                            for (name, size, ls) in &review.rule_lines {
+                                ui.label(egui::RichText::new(format!("📐 {name}  ·  {}", format_bytes(*size))).font(bold(15.0)).color(th.text));
+                                for l in ls {
+                                    ui.label(egui::RichText::new(crate::i18n::tr(format!("    {l}"))).font(regular(12.5)).color(th.soft));
+                                }
+                                ui.add_space(6.0);
+                            }
                         });
                     });
                 }
@@ -80,8 +88,9 @@ impl App {
         }
         match action {
             Some(true) => {
-                let kinds = self.review.take().map(|r| r.kinds).unwrap_or_default();
-                self.start_clean(kinds);
+                if let Some(r) = self.review.take() {
+                    self.start_clean(r.kinds, r.rules);
+                }
             }
             Some(false) => self.review = None,
             None => {}

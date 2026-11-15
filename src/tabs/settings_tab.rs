@@ -255,13 +255,7 @@ impl App {
                 if aero::aqua_button(ui, browse_r, "📁 Browse", th.accent, true).clicked() {
                     let tx = notifier.clone();
                     std::thread::spawn(move || {
-                        #[cfg(target_os = "macos")]
-                        let picked = crate::macos::choose_folder(&crate::i18n::tr("Choose a folder to keep"));
-                        #[cfg(not(target_os = "macos"))]
-                        let picked = {
-                            let out = std::process::Command::new("zenity").args(["--file-selection", "--directory", "--title=Choose a folder to keep"]).output();
-                            out.ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-                        };
+                        let picked = crate::platform::pick_folder(&crate::i18n::tr("Choose a folder to keep"));
                         tx.send(Msg::Picked(picked));
                     });
                 }

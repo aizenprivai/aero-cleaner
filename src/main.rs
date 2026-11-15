@@ -15,6 +15,7 @@ mod holding;
 mod i18n;
 mod platform;
 mod report;
+mod rules;
 mod settings;
 mod similar;
 mod tabs;
@@ -45,7 +46,10 @@ enum Msg {
     CleanDone,
     BigProgress(u64),
     BigDone(Vec<BigFile>),
-    Preview(Vec<(Kind, Vec<String>)>),
+    /// Review lines for categories, then for rules (name, size, lines).
+    Preview(Vec<(Kind, Vec<String>)>, Vec<(String, u64, Vec<String>)>),
+    RuleScanned(usize, rules::RuleScan),
+    RulesFile(Option<String>),
     Picked(Option<String>),
     DupeProgress(String),
     DupeDone(Vec<dupes::DupeGroup>),
@@ -79,8 +83,10 @@ impl Notifier {
 /// The "Ready to clean?" confirmation sheet.
 struct Review {
     kinds: Vec<Kind>,
+    rules: Vec<rules::Rule>,
     /// Filled in by a background thread.
     lines: Option<Vec<(Kind, Vec<String>)>>,
+    rule_lines: Vec<(String, u64, Vec<String>)>,
     browsers: Vec<&'static str>,
 }
 
@@ -126,7 +132,14 @@ struct App {
     log: Vec<String>,
     status: String,
     /// Bytes selected before cleaning, used to compute how much was freed.
-    baseline: Option<(Vec<Kind>, u64)>,
+    /// What a clean started with: categories, rule names and bytes to free.
+    baseline: Option<(Vec<Kind>, Vec<String>, u64)>,
+    rules: Vec<rules::Rule>,
+    /// Latest scan of each rule (same order as `rules`).
+    rule_scans: Vec<Option<rules::RuleScan>>,
+    rule_editor: Option<tabs::RuleEditor>,
+    /// The folder picker fills the rule editor instead of "Folders to keep".
+    pick_for_rule: bool,
     /// Time when the last clean finished, for the bubble celebration.
     celebrate: Option<f64>,
     themes: Vec<Theme>,
@@ -170,6 +183,10 @@ impl App {
             log: vec![],
             status: String::new(),
             baseline: None,
+            rules: rules::load(),
+            rule_scans: vec![],
+            rule_editor: None,
+            pick_for_rule: false,
             celebrate: None,
             themes,
             theme,
@@ -245,9 +262,14 @@ impl App {
         }
         let tx = self.notifier();
         let excl = self.settings.exclusions.clone();
+        self.rule_scans = vec![None; self.rules.len()];
+        let rules = self.rules.clone();
         std::thread::spawn(move || {
             for (i, c) in CATEGORIES.iter().enumerate() {
                 tx.send(Msg::Size(i, cleaner::scan(c.kind, &excl)));
+            }
+            for (i, r) in rules.iter().enumerate() {
+                tx.send(Msg::RuleScanned(i, rules::scan(r, &excl)));
             }
             tx.send(Msg::ScanDone);
         });
@@ -255,6 +277,21 @@ impl App {
 
     fn selected(&self) -> Vec<Kind> {
         self.items.iter().zip(CATEGORIES).filter(|(it, _)| it.on && it.result.as_ref().is_some_and(|r| r.available)).map(|(_, c)| c.kind).collect()
+    }
+
+    /// Ticked rules that found something.
+    fn selected_rules(&self) -> Vec<rules::Rule> {
+        self.rules.iter().zip(&self.rule_scans).filter(|(r, s)| r.enabled && s.as_ref().is_some_and(|s| s.error.is_empty() && s.size > 0)).map(|(r, _)| r.clone()).collect()
+    }
+
+    fn rules_total(&self, names: &[String]) -> u64 {
+        self.rules.iter().zip(&self.rule_scans).filter(|(r, _)| names.contains(&r.name)).filter_map(|(_, s)| s.as_ref().map(|s| s.size)).sum()
+    }
+
+    /// Bytes the Cleaner would free with the current ticks.
+    fn ready_total(&self) -> u64 {
+        let names: Vec<String> = self.selected_rules().into_iter().map(|r| r.name).collect();
+        self.total_of(&self.selected()) + self.rules_total(&names)
     }
 
     fn total_of(&self, kinds: &[Kind]) -> u64 {
@@ -268,23 +305,33 @@ impl App {
     /// Opens the confirmation sheet and computes its file preview in the background.
     fn open_review(&mut self) {
         let kinds = self.selected();
-        if kinds.is_empty() {
+        let chosen_rules = self.selected_rules();
+        if kinds.is_empty() && chosen_rules.is_empty() {
             self.status = "Pick at least one thing to clean.".into();
             return;
         }
         let browsers = if kinds.contains(&Kind::AppCache) { cleaner::running_browsers() } else { vec![] };
-        self.review = Some(Review { kinds: kinds.clone(), lines: None, browsers });
+        self.review = Some(Review { kinds: kinds.clone(), rules: chosen_rules.clone(), lines: None, rule_lines: vec![], browsers });
         let tx = self.notifier();
         let excl = self.settings.exclusions.clone();
         let days = self.settings.journal_days;
         std::thread::spawn(move || {
             let lines = kinds.iter().map(|&k| (k, cleaner::preview(k, &excl, days))).collect();
-            tx.send(Msg::Preview(lines));
+            let home = platform::home();
+            let rule_lines = chosen_rules
+                .iter()
+                .map(|r| {
+                    let s = rules::scan(r, &excl);
+                    (r.name.clone(), s.size, rules::preview(&s, &home))
+                })
+                .collect();
+            tx.send(Msg::Preview(lines, rule_lines));
         });
     }
 
-    fn start_clean(&mut self, kinds: Vec<Kind>) {
-        self.baseline = Some((kinds.clone(), self.total_of(&kinds)));
+    fn start_clean(&mut self, kinds: Vec<Kind>, chosen_rules: Vec<rules::Rule>) {
+        let names: Vec<String> = chosen_rules.iter().map(|r| r.name.clone()).collect();
+        self.baseline = Some((kinds.clone(), names.clone(), self.total_of(&kinds) + self.rules_total(&names)));
         self.phase = Phase::Cleaning;
         self.status = "Cleaning...".into();
         self.log.clear();
@@ -294,7 +341,7 @@ impl App {
         let hold = holding::should_hold(&self.settings);
         std::thread::spawn(move || {
             let log_tx = tx.clone();
-            cleaner::clean(&kinds, &excl, days, hold, &move |line| {
+            cleaner::clean(&kinds, &chosen_rules, &excl, days, hold, &move |line| {
                 log_tx.send(Msg::Log(line));
             });
             tx.send(Msg::CleanDone);
@@ -314,9 +361,16 @@ impl App {
                     self.start_scan();
                 }
                 Msg::BigProgress(n) => self.big_scanning = Some(n),
-                Msg::Preview(lines) => {
+                Msg::Preview(lines, rule_lines) => {
                     if let Some(r) = &mut self.review {
                         r.lines = Some(lines);
+                        r.rule_lines = rule_lines;
+                    }
+                }
+                Msg::RulesFile(path) => self.import_rules_file(path),
+                Msg::RuleScanned(i, scan) => {
+                    if let Some(slot) = self.rule_scans.get_mut(i) {
+                        *slot = Some(scan);
                     }
                 }
                 Msg::DupeProgress(s) => self.dupes.scanning = Some(s),
@@ -397,8 +451,12 @@ impl App {
                 }
                 Msg::Picked(path) => {
                     if let Some(p) = path {
-                        self.excl_input = p;
+                        match (&mut self.rule_editor, self.pick_for_rule) {
+                            (Some(ed), true) => ed.folder = tabs::tilde(&p),
+                            _ => self.excl_input = p,
+                        }
                     }
+                    self.pick_for_rule = false;
                 }
                 Msg::BigDone(files) => {
                     let min = format_bytes(self.settings.big_min_mb * 1_000_000);
@@ -411,10 +469,11 @@ impl App {
                     self.phase = Phase::Idle;
                     self.refresh_disk();
                     self.status = match self.baseline.take() {
-                        Some((kinds, before)) => {
+                        Some((kinds, rule_names, before)) => {
                             self.celebrate = Some(time);
-                            let freed = before.saturating_sub(self.total_of(&kinds));
-                            let names: Vec<&str> = CATEGORIES.iter().filter(|c| kinds.contains(&c.kind)).map(|c| c.name).collect();
+                            let freed = before.saturating_sub(self.total_of(&kinds) + self.rules_total(&rule_names));
+                            let mut names: Vec<String> = CATEGORIES.iter().filter(|c| kinds.contains(&c.kind)).map(|c| c.name.to_string()).collect();
+                            names.extend(rule_names.iter().map(|n| format!("Rule: {n}")));
                             settings::record(freed, &names.join(", "));
                             self.history = settings::history();
                             format!("✨ Sparkling clean! Freed {}", format_bytes(freed))
@@ -461,7 +520,7 @@ impl eframe::App for App {
         embossed(&p, pos2(logo.x + 48.0, logo.y - 9.0), Align2::LEFT_CENTER, "AeroClean", bold(34.0), th.text);
         p.text(pos2(logo.x + 50.0, logo.y + 20.0), Align2::LEFT_CENTER, crate::i18n::tr("Give your PC that fresh, sparkling feeling"), regular(15.0), th.soft);
 
-        let total = self.total_of(&self.selected());
+        let total = self.ready_total();
         let th = &self.themes[self.theme];
         let pill = Rect::from_min_size(pos2(inner.max.x - 240.0, inner.min.y), vec2(240.0, 46.0));
         aero::surface(&p, pill, 23.0, th, false, None);
@@ -544,6 +603,9 @@ impl eframe::App for App {
 
         if self.review.is_some() {
             self.review_sheet(ui.ctx(), screen, spin);
+        }
+        if self.rule_editor.is_some() {
+            self.rule_editor_sheet(ui.ctx(), screen);
         }
         self.focus_ring(ui.ctx());
 
@@ -887,6 +949,31 @@ mod ui_tests {
                 st.undo_list = Some(vec![held(600, "App & browser cache, Thumbnail cache", 812_000_000), held(30_000, "Firefox: Browsing history", 41_000_000)]);
                 st.undo_busy = false;
                 h.run_steps(2);
+            }
+            if tab == Tab::Cleaner && std::env::var("AERO_SHOT_DEMO").is_ok() {
+                let st = h.state_mut();
+                st.rules = rules::parse(
+                    "[Old ISO files]\nfolder = ~/Downloads\npattern = *.iso;*.img\nolder_than_days = 30\nenabled = yes\n[Screen recordings]\nfolder = ~/Videos/OBS\npattern = *.mkv\nolder_than_days = 90\nsubfolders = yes\nenabled = no\n",
+                );
+                st.rule_scans = vec![
+                    Some(rules::RuleScan { files: vec![("/x".into(), 4_700_000_000)], size: 4_700_000_000, error: String::new() }),
+                    Some(rules::RuleScan { files: vec![], size: 0, error: String::new() }),
+                ];
+                h.run_steps(2);
+                h.render().unwrap().save(dir.join("Cleaner-rules.png")).unwrap();
+                h.state_mut().rule_editor = Some(tabs::RuleEditor {
+                    index: Some(0),
+                    name: "Old ISO files".into(),
+                    folder: "~/Downloads".into(),
+                    pattern: "*.iso;*.img".into(),
+                    days: "30".into(),
+                    subfolders: false,
+                    source: String::new(),
+                });
+                h.run_steps(2);
+                h.render().unwrap().save(dir.join("RuleEditor.png")).unwrap();
+                h.state_mut().rule_editor = None;
+                h.run_steps(1);
             }
             if tab == Tab::Duplicates && std::env::var("AERO_SHOT_DEMO").is_ok() {
                 let home = platform::home();

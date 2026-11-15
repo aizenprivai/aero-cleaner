@@ -674,13 +674,23 @@ fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
 
 /// Cleans the given categories, reporting progress lines through `log`.
 /// With `hold`, user files go to an undo batch instead of being deleted.
-pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, hold: bool, log: &dyn Fn(String)) {
-    let label = CATEGORIES.iter().filter(|c| kinds.contains(&c.kind) && !c.root && c.kind != Kind::Trash).map(|c| c.name).collect::<Vec<_>>().join(", ");
+/// Custom `rules` are cleaned after the categories, into the same batch.
+pub fn clean(kinds: &[Kind], rules: &[crate::rules::Rule], exclusions: &[PathBuf], journal_days: u32, hold: bool, log: &dyn Fn(String)) {
+    let mut parts: Vec<String> = CATEGORIES.iter().filter(|c| kinds.contains(&c.kind) && !c.root && c.kind != Kind::Trash).map(|c| c.name.to_string()).collect();
+    parts.extend(rules.iter().map(|r| format!("Rule: {}", r.name)));
+    let label = parts.join(", ");
     let batch = if hold && !label.is_empty() { crate::holding::Batch::start(&label) } else { None };
     if !hold && !label.is_empty() {
         log("Disk almost full or undo turned off: cleaned files are deleted right away.".into());
     }
     clean_into(kinds, exclusions, journal_days, batch.as_ref(), log);
+    for r in rules {
+        log(format!(">> {}", r.name));
+        let failed = crate::rules::clean(r, exclusions, batch.as_ref());
+        if failed > 0 {
+            log(format!("   {failed} item(s) in use, skipped"));
+        }
+    }
     if let Some(b) = batch {
         b.finish();
     }

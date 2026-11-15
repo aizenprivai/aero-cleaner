@@ -92,6 +92,13 @@ pub fn choose_folder(prompt: &str) -> Option<String> {
     (!path.is_empty()).then(|| path.to_string())
 }
 
+/// Lets the user pick a file in the standard macOS dialog.
+pub fn choose_file(prompt: &str) -> Option<String> {
+    let path = osascript(&format!("POSIX path of (choose file with prompt {})", applescript_string(prompt))).ok()?;
+    let path = path.trim();
+    (!path.is_empty()).then(|| path.to_string())
+}
+
 /// The per-user cache folder (`/var/folders/…/C/`), home of the Quick Look thumbnails.
 pub fn user_cache_dir() -> Option<PathBuf> {
     run("getconf", &["DARWIN_USER_CACHE_DIR"]).map(|s| PathBuf::from(s.trim())).filter(|p| p.is_absolute())

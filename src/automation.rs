@@ -73,7 +73,7 @@ pub fn auto_clean(settings: &Settings) -> String {
     let measure = |kinds: &[Kind]| -> u64 { kinds.iter().filter_map(|k| cleaner::scan(*k, &settings.exclusions).size).sum() };
     let before = measure(&kinds);
     crate::holding::purge(settings.undo_hours);
-    cleaner::clean(&kinds, &settings.exclusions, settings.journal_days, crate::holding::should_hold(settings), &|_| {});
+    cleaner::clean(&kinds, &[], &settings.exclusions, settings.journal_days, crate::holding::should_hold(settings), &|_| {});
     let freed = before.saturating_sub(measure(&kinds));
     let names: Vec<&str> = cleaner::CATEGORIES.iter().filter(|c| kinds.contains(&c.kind)).map(|c| c.name).collect();
     settings::record(freed, &format!("Automatic: {}", names.join(", ")));

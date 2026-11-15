@@ -10,6 +10,7 @@ mod history_tab;
 mod map_tab;
 mod prelude;
 mod review;
+mod rules_ui;
 mod settings_tab;
 mod startup;
 mod themes_tab;
@@ -20,6 +21,7 @@ pub(crate) use dev_tab::DevState;
 pub(crate) use dupes_tab::DupeState;
 pub(crate) use history_tab::HistoryState;
 pub(crate) use map_tab::MapState;
+pub(crate) use rules_ui::{RuleEditor, tilde};
 pub(crate) use settings_tab::AutoState;
 
 use prelude::*;

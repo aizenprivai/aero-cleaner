@@ -184,3 +184,43 @@ pub fn find_tool(name: &str) -> Option<PathBuf> {
     }
     dirs.into_iter().map(|d| d.join(&file)).find(|p| p.is_file())
 }
+
+fn ps_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "''"))
+}
+
+/// Asks the user for a folder with the system dialog.
+pub fn pick_folder(title: &str) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    return crate::macos::choose_folder(title);
+    #[allow(unreachable_code)]
+    if IS_WINDOWS {
+        let script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = {}; if ($d.ShowDialog() -eq 'OK') {{ $d.SelectedPath }}",
+            ps_quote(title)
+        );
+        return dialog_output(command("powershell").args(["-NoProfile", "-STA", "-Command", &script]));
+    }
+    dialog_output(Command::new("zenity").args(["--file-selection", "--directory", &format!("--title={title}")]))
+}
+
+/// Asks the user for a file with the system dialog.
+pub fn pick_file(title: &str) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    return crate::macos::choose_file(title);
+    #[allow(unreachable_code)]
+    if IS_WINDOWS {
+        let script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Title = {}; if ($d.ShowDialog() -eq 'OK') {{ $d.FileName }}",
+            ps_quote(title)
+        );
+        return dialog_output(command("powershell").args(["-NoProfile", "-STA", "-Command", &script]));
+    }
+    dialog_output(Command::new("zenity").args(["--file-selection", &format!("--title={title}")]))
+}
+
+fn dialog_output(cmd: &mut Command) -> Option<String> {
+    let out = cmd.stderr(Stdio::null()).output().ok().filter(|o| o.status.success())?;
+    let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!path.is_empty()).then_some(path)
+}
