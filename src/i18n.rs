@@ -580,6 +580,17 @@ const FR: &[(&str, &str)] = &[
     ),
     ("✨ Version {} is out", "✨ La version {} est sortie"),
     ("Open the download page", "Ouvrir la page de téléchargement"),
+    // ----- Boot time on Windows -----
+    ("Windows hasn't recorded boot times yet. Restart once, then come back.", "Windows n'a pas encore enregistré de temps de démarrage. Redémarrez une fois, puis revenez."),
+    ("Windows starting up, loading drivers and finding your hardware.", "Windows qui démarre, charge les pilotes et détecte votre matériel."),
+    ("Services, sign-in and startup apps until the desktop is ready.", "Services, connexion et applications au démarrage jusqu'à ce que le bureau soit prêt."),
+    ("WHAT SLOWED DOWN RECENT BOOTS", "CE QUI A RALENTI LES DERNIERS DÉMARRAGES"),
+    ("WINDOWS DIDN'T REPORT ANYTHING SLOW. NICE!", "WINDOWS N'A RIEN SIGNALÉ DE LENT. BRAVO !"),
+    ("slowed boot", "a ralenti"),
+    (
+        "Windows reported that this slowed down a recent boot. Turn it off in Task Manager (Startup apps or Services).",
+        "Windows a signalé que cet élément a ralenti un démarrage récent. Désactivez-le dans le Gestionnaire des tâches (Applications de démarrage ou Services).",
+    ),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

@@ -448,8 +448,8 @@ impl eframe::App for App {
             ("FIND SPACE", &[(Tab::BigFiles, "🐘", "Big files"), (Tab::Duplicates, "📑", "Duplicates"), (Tab::DiskMap, "🗺", "Disk map")]),
             ("SYSTEM", &[(Tab::Boot, "⏱", "Boot time"), (Tab::Startup, "🚀", "Startup"), (Tab::Themes, "🎨", "Themes"), (Tab::Settings, "⚙", "Settings")]),
         ];
-        // Boot analysis relies on systemd, so it's Linux-only for now.
-        let hidden = |tab: Tab| !platform::IS_LINUX && tab == Tab::Boot;
+        // Boot analysis: systemd on Linux, the event log on Windows. Not on macOS yet.
+        let hidden = |tab: Tab| platform::IS_MACOS && tab == Tab::Boot;
         let mut y = nav_top + 8.0;
         let mut new_tab = self.tab;
         let mut visible = Vec::new();

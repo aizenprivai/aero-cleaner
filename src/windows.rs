@@ -288,6 +288,12 @@ pub fn install_shortcut() -> Result<(), String> {
     powershell(&script).map_err(|e| e.to_string()).map(|_| ())
 }
 
+/// Time the firmware (BIOS/UEFI) took at the last boot, in milliseconds.
+pub fn firmware_ms() -> Option<u32> {
+    let key = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power").ok()?;
+    key.get_value::<u32, _>("FwPOSTTime").ok().filter(|ms| *ms > 0)
+}
+
 /// Sends printed output to the terminal the app was started from, if any
 /// (the app is a GUI program, so it has no console of its own).
 pub fn attach_console() {

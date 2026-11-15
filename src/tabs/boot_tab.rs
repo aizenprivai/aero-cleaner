@@ -20,10 +20,10 @@ impl App {
         self.boot.loading = true;
         let tx = self.notifier();
         std::thread::spawn(move || {
-            let times = boot::last_boot();
-            if let Some(t) = &times {
-                boot::record(t);
-            }
+            let times = boot::last_boot().map(|(t, id)| {
+                boot::record(&t, &id);
+                t
+            });
             tx.send(Msg::BootDone(times, boot::history(), boot::slowest(20)));
         });
     }
@@ -51,15 +51,31 @@ impl App {
             return;
         }
         let Some(times) = self.boot.times.clone() else {
-            embossed(&p, list.center(), Align2::CENTER_CENTER, "Boot data isn't available yet (the system may still be starting up).", regular(15.0), th.soft);
+            let msg = if crate::platform::IS_WINDOWS {
+                "Windows hasn't recorded boot times yet. Restart once, then come back."
+            } else {
+                "Boot data isn't available yet (the system may still be starting up)."
+            };
+            embossed(&p, list.center(), Align2::CENTER_CENTER, msg, regular(15.0), th.soft);
             return;
         };
 
+        let win = crate::platform::IS_WINDOWS;
         let stages = [
             ("Firmware", times.firmware, rgba(120, 140, 170, 255), "Your PC's BIOS/UEFI. Change it in the firmware setup (F2/Del at power-on)."),
             ("Boot menu", times.loader, rgba(150, 100, 210, 255), "GRUB's menu wait plus loading Linux."),
-            ("Kernel", times.kernel, rgba(240, 150, 40, 255), "Linux starting up and finding your hardware."),
-            ("Services", times.userspace, th.go, "Everything systemd starts until the desktop is ready."),
+            (
+                "Kernel",
+                times.kernel,
+                rgba(240, 150, 40, 255),
+                if win { "Windows starting up, loading drivers and finding your hardware." } else { "Linux starting up and finding your hardware." },
+            ),
+            (
+                "Services",
+                times.userspace,
+                th.go,
+                if win { "Services, sign-in and startup apps until the desktop is ready." } else { "Everything systemd starts until the desktop is ready." },
+            ),
         ];
         let mut toggle: Option<(String, bool)> = None;
         ui.scope_builder(egui::UiBuilder::new().max_rect(list.shrink(6.0)), |ui| {
@@ -136,7 +152,14 @@ impl App {
                 }
 
                 // ----- Slow services -----
-                let header = if self.boot.msg.is_empty() { "SLOWEST SERVICES AT LAST BOOT".to_string() } else { self.boot.msg.to_uppercase() };
+                let header = match (self.boot.msg.is_empty(), win) {
+                    (false, _) => self.boot.msg.to_uppercase(),
+                    (true, true) => "WHAT SLOWED DOWN RECENT BOOTS".to_string(),
+                    (true, false) => "SLOWEST SERVICES AT LAST BOOT".to_string(),
+                };
+                if win && self.boot.services.is_empty() {
+                    Self::section(ui, "WINDOWS DIDN'T REPORT ANYTHING SLOW. NICE!", th);
+                }
                 Self::section(ui, &header, th);
                 for svc in &self.boot.services {
                     let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 52.0), Sense::hover());
@@ -165,7 +188,9 @@ impl App {
                             toggle = Some((svc.unit.clone(), off));
                         }
                     } else {
-                        let (text, tip) = if svc.critical {
+                        let (text, tip) = if svc.state == "windows" {
+                            ("slowed boot", "Windows reported that this slowed down a recent boot. Turn it off in Task Manager (Startup apps or Services).")
+                        } else if svc.critical {
                             ("needed", "Part of the system. Turning it off could break booting or the desktop.")
                         } else {
                             ("on demand", "Started by a timer, socket or another service, not directly at boot.")
