@@ -207,9 +207,10 @@ Getting AeroClean, and keeping it up to date, the way each system expects.
 - Each release publishes the `.deb` into an APT repository on GitHub Pages, so `apt upgrade` keeps AeroClean up to date.
 - *Key made and stored as a secret; GitHub Pages is switched on after the first release creates the `gh-pages` branch.*
 
-### Milestone 4 – Winget and Homebrew
+### ✅ Milestone 4 – Winget and Homebrew
 - A winget manifest, so `winget install AeroClean` works on Windows.
 - A Homebrew cask in AeroClean's own tap (the main Homebrew repository only takes notarized apps).
+- *Generated and tested by CI for each release; submitted after the 2.2 release (they point at its files).*
 
 ## 🚫 Not planned
 - **"RAM booster", "registry cleaner", "driver updater":** these don't help on Linux.

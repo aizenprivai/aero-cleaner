@@ -145,6 +145,20 @@ jobs:
         run: |
           Get-ChildItem dist\*-setup.exe | ForEach-Object { & $env:SIGNTOOL sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $_.FullName }
           Remove-Item "$env:RUNNER_TEMP\cert.pfx"
+      - name: Installer test (silent install, as winget runs it)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          # winget finds the installed app by this uninstall entry (ProductCode in the manifest).
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{6B3E3C1A-7A43-4E0B-9C61-AE20C1EA0001}_is1'
+          if (-not (Test-Path $key)) { throw "uninstall entry missing: $key" }
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\AeroClean\AeroClean.exe'
+          if (-not (Test-Path $exe)) { $exe = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs\AeroClean') -Filter *.exe -Recurse | Select-Object -First 1 }
+          if (-not $exe) { throw "AeroClean wasn't installed" }
+          (Get-ItemProperty $key).DisplayName
+          $uninstall = (Get-ItemProperty $key).UninstallString.Trim('"')
+          Start-Process $uninstall -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
       - name: Package portable .zip
         shell: pwsh
         run: |
@@ -204,6 +218,19 @@ jobs:
           echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
       - name: Build AeroClean.dmg
         run: packaging/build-macos.sh
+      - name: Homebrew cask test (style, install from the .dmg, uninstall)
+        run: |
+          dmg=$(ls target/macos/*.dmg | head -1)
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          brew tap-new --no-git aeroclean/test
+          tap="$(brew --repository)/Library/Taps/aeroclean/homebrew-test"
+          mkdir -p "$tap/Casks"
+          CASK_URL="file://$PWD/$dmg" packaging/homebrew/make-cask.sh "$version" "$dmg" > "$tap/Casks/aeroclean.rb"
+          brew style "$tap/Casks/aeroclean.rb"
+          brew install --cask aeroclean/test/aeroclean
+          test -d /Applications/AeroClean.app
+          brew uninstall --cask aeroclean/test/aeroclean
+          brew untap aeroclean/test
       - uses: actions/upload-artifact@v7
         with:
           name: macos
@@ -232,6 +259,11 @@ jobs:
           tag="${{ github.ref_name }}"
           curl -fsSL -o src.tar.gz "https://github.com/${{ github.repository }}/archive/refs/tags/$tag.tar.gz"
           sed -e "s/@VERSION@/${tag#v}/" -e "s/@SHA256@/$(sha256sum src.tar.gz | cut -d' ' -f1)/" packaging/aur/PKGBUILD.in > assets/PKGBUILD
+          # Ready-made winget manifests and Homebrew cask for this release.
+          ver="${tag#v}"
+          packaging/winget/make-manifests.sh "$ver" "assets/AeroClean-$ver-windows-setup.exe" winget >/dev/null
+          cp winget/manifests/a/AeroClean/AeroClean/"$ver"/*.yaml assets/
+          packaging/homebrew/make-cask.sh "$ver" "assets/AeroClean-$ver-macos.dmg" > assets/aeroclean.rb
           (cd assets && sha256sum * > SHA256SUMS)
           # Notes: this version's section of ROADMAP.md ("**v1.6 – ...**" up to the next blank line).
           tag="${{ github.ref_name }}"; ver="${tag#v}"; short="${ver%.*}"

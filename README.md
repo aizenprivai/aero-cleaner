@@ -94,9 +94,9 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 
 ## Install
 
-**Windows:** download `AeroClean-<version>-windows-setup.exe` from the Releases page and run it. It installs for your account only (no administrator rights) and adds an uninstaller. Prefer no installation? Use `AeroClean-<version>-windows-x64-portable.zip`: unzip it and run `AeroClean.exe`. Until releases are code-signed, SmartScreen may warn about an unknown publisher: click **More info**, then **Run anyway**.
+**Windows:** `winget install AeroClean.AeroClean` (once it's in winget), or download `AeroClean-<version>-windows-setup.exe` from the Releases page and run it. It installs for your account only (no administrator rights) and adds an uninstaller. Prefer no installation? Use `AeroClean-<version>-windows-x64-portable.zip`: unzip it and run `AeroClean.exe`. Until releases are code-signed, SmartScreen may warn about an unknown publisher: click **More info**, then **Run anyway**.
 
-**macOS:** download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. The app isn't notarized by Apple, so macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security. You only do this once per version.
+**macOS:** `brew install --cask aizenprivai/tap/aeroclean` (once the tap is up), or download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. The app isn't notarized by Apple, so macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security. You only do this once per version.
 
 **Mint, Ubuntu, Debian, with automatic updates:** add AeroClean's signed APT repository once, then `sudo apt upgrade` keeps it up to date:
 
@@ -159,6 +159,10 @@ Releases are unsigned. The CI can sign them if these GitHub secrets exist (Setti
 | `WINDOWS_CERTIFICATE_PASSWORD` | The `.pfx` password. |
 
 With the Windows secrets, the `.exe` and installer are signed; with the macOS ones, the app is signed with the hardened runtime and notarized. To try the packages without publishing anything, open **Actions → CI → Run workflow**.
+
+### winget and Homebrew
+
+Each release carries ready-made winget manifests (`AeroClean.AeroClean*.yaml`, from `packaging/winget/make-manifests.sh`) and a Homebrew cask (`aeroclean.rb`, from `packaging/homebrew/make-cask.sh`). CI installs the Windows setup silently and checks the uninstall entry winget relies on, and installs the cask from the freshly built `.dmg`. Publishing means a pull request to `microsoft/winget-pkgs` with the manifests, and committing `aeroclean.rb` to `Casks/` in the `homebrew-tap` repository.
 
 ### The APT repository
 
