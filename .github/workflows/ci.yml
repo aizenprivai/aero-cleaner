@@ -56,7 +56,7 @@ jobs:
             deps: pacman -Syu --noconfirm base-devel libxkbcommon wayland mesa findutils which curl git
           - name: opensuse
             image: opensuse/tumbleweed:latest
-            deps: zypper -n install gcc pkg-config libxkbcommon-devel wayland-devel Mesa-libGL-devel findutils which curl git tar gzip
+            deps: zypper -n install bash gcc pkg-config libxkbcommon-devel wayland-devel Mesa-libGL-devel findutils which curl git tar gzip
     name: test (${{ matrix.name }})
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}

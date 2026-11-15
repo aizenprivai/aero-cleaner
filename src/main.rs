@@ -1189,7 +1189,8 @@ mod ui_tests {
         h.run_steps(2);
         assert_eq!(h.state().tab, Tab::Cleaner, "sidebar items work by label");
         assert!(h.query_by_label("Clean now").is_some());
-        assert!(h.query_by_role_and_label(egui::Role::CheckBox, "Trash").is_some(), "rows are checkboxes");
+        // "Trash" on Linux and macOS, "Recycle Bin" on Windows.
+        assert!(h.query_by_role_and_label(egui::Role::CheckBox, CATEGORIES[0].name).is_some(), "rows are checkboxes");
     }
 
     #[test]
