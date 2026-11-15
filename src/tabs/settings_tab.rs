@@ -14,7 +14,7 @@ pub(crate) struct AutoState {
 }
 
 /// Draws a toggle row (bubble checkbox, orb, title, description). Returns the response.
-fn toggle_row(ui: &mut egui::Ui, w: f32, indent: f32, on: bool, icon: &str, title: &str, desc: &str, th: &Theme) -> egui::Response {
+pub(super) fn toggle_row(ui: &mut egui::Ui, w: f32, indent: f32, on: bool, icon: &str, title: &str, desc: &str, th: &Theme) -> egui::Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 60.0), Sense::click());
     aero::a11y_checkbox(&resp, true, on, title);
     let rect = Rect::from_min_max(rect.min + vec2(4.0 + indent, 0.0), rect.max + vec2(4.0, 0.0));
@@ -33,8 +33,14 @@ fn toggle_row(ui: &mut egui::Ui, w: f32, indent: f32, on: bool, icon: &str, titl
 /// A row with a title, a description and a value button on the right.
 /// Returns true when the button was clicked.
 fn option_row(ui: &mut egui::Ui, w: f32, icon: &str, title: &str, desc: &str, value: &str, tip: &str, th: &Theme) -> bool {
+    option_row_at(ui, w, 0.0, icon, title, desc, value, tip, th)
+}
+
+/// `option_row`, moved right by `indent` (a setting that belongs to the one above).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn option_row_at(ui: &mut egui::Ui, w: f32, indent: f32, icon: &str, title: &str, desc: &str, value: &str, tip: &str, th: &Theme) -> bool {
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 60.0), Sense::hover());
-    let rect = rect.translate(vec2(4.0, 0.0));
+    let rect = rect.translate(vec2(4.0 + indent, 0.0));
     let p = ui.painter();
     aero::surface(p, rect, 14.0, th, resp.hovered(), None);
     let cy = rect.center().y;
@@ -59,6 +65,7 @@ impl App {
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
         let mut toggle_updates = false;
+        let mut sound_action: Option<super::sound_ui::SoundAction> = None;
         let mut cycle_scale = false;
         let mut updater_action: Option<super::UpdaterAction> = None;
         let (mut cycle_undo, mut empty_undo) = (false, false);
@@ -111,6 +118,10 @@ impl App {
                     "Change the size",
                     th,
                 );
+
+                // ----- Sounds -----
+                Self::section(ui, "SOUNDS", th);
+                sound_action = super::sound_ui::sounds_section(ui, row_w, &mut self.settings, th);
 
                 // ----- Automation -----
                 Self::section(ui, "AUTOMATION", th);
@@ -463,6 +474,14 @@ impl App {
         }
         if let Some(a) = updater_action {
             self.run_updater_action(a);
+        }
+        match sound_action {
+            Some(super::sound_ui::SoundAction::Changed) => self.settings.save(),
+            Some(super::sound_ui::SoundAction::Preview(e)) => {
+                self.settings.save();
+                self.play_sound_now(e);
+            }
+            None => {}
         }
         if cycle_scale {
             self.settings.ui_scale = match self.settings.ui_scale {

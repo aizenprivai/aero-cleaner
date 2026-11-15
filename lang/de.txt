@@ -1352,8 +1352,6 @@ Reduce motion (in Settings) always turns animations and transitions off.
 = Bewegung reduzieren (in den Einstellungen) schaltet Animationen und Übergänge immer aus.
 Sounds
 = Töne
-Sound packs come in a later update. Theme files can already name one.
-= Tonpakete kommen in einem späteren Update. Design-Dateien können schon eines nennen.
 Choose a picture for the background
 = Wähle ein Bild für den Hintergrund
 ✏ Edit
@@ -1540,3 +1538,49 @@ The sun follows the time of day.
 = 🎃 Fröhliches Halloween!
 🎄 Merry Christmas!
 = 🎄 Frohe Weihnachten!
+
+# ----- Sounds -----
+SOUNDS
+= TÖNE
+Play sounds
+= Töne abspielen
+An original sound pack made for AeroClean. Silent when the window is in the background.
+= Ein eigenes Sound-Paket für AeroClean. Stumm, wenn das Fenster im Hintergrund ist.
+Volume
+= Lautstärke
+Glassy bells (from your theme)
+= Gläserne Glocken (aus deinem Design)
+Soft marimba (from your theme)
+= Sanftes Marimba (aus deinem Design)
+Your theme is silent: pick another theme to hear sounds
+= Dein Design ist stumm: wähle ein anderes, um Töne zu hören
+Change the volume
+= Lautstärke ändern
+Clean finished
+= Reinigung fertig
+A rising chime when space has been freed
+= Ein aufsteigendes Glockenspiel, wenn Platz frei wurde
+Scan finished
+= Suche fertig
+Two soft notes (off at first: a scan runs every time AeroClean opens)
+= Zwei sanfte Töne (anfangs aus: bei jedem Start von AeroClean läuft eine Suche)
+Switching screens
+= Bildschirm wechseln
+A gentle click
+= Ein sanfter Klick
+Something went wrong
+= Etwas ist schiefgelaufen
+A friendly two-tone, never harsh
+= Ein freundlicher Zweiklang, nie schrill
+Listen
+= Anhören
+Listen: {}
+= Anhören: {}
+Glassy bells
+= Gläserne Glocken
+Soft marimba
+= Sanftes Marimba
+Silent
+= Stumm
+Turn sounds on in Settings, under Sounds.
+= Töne in den Einstellungen unter Töne einschalten.

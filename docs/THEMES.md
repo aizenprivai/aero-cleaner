@@ -75,7 +75,12 @@ Colors are written `"#rrggbb"` (or `"#rrggbbaa"` with transparency).
 
 ## `[sound]`
 
-`pack` and `volume` (0 to 1) are read but not used yet: sound packs come in a later version.
+| Setting | Range | What it does |
+|---|---|---|
+| `pack` | `"glass"`, `"soft"`, `"none"` | The voice of AeroClean's sounds: glassy bells, a soft marimba, or silence. |
+| `volume` | 0 to 1 | 0.5 plays at the volume set in Settings; 1 is twice as loud (up to the maximum). |
+
+Sounds stay off until they're turned on in **Settings → Sounds**, whatever the theme says.
 
 ## The scene: `[[scene.layers]]`
 

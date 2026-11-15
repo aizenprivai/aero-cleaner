@@ -227,7 +227,6 @@ pub struct Theme {
     /// Animation speed factor.
     pub motion_speed: f32,
     pub transition: Transition,
-    #[allow(dead_code)] // sounds are milestone 8
     pub sound: (String, f32),
     pub scene: Vec<SceneLayer>,
 }

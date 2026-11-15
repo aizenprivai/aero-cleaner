@@ -34,7 +34,7 @@ speed = 1.0
 transition = "none"
 
 [sound]
-pack = "none"
+pack = "soft"
 volume = 0.5
 
 [[scene.layers]]

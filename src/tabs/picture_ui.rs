@@ -55,6 +55,7 @@ impl App {
                 st.analysis = None;
                 st.made.clear();
                 st.error = e;
+                self.play_sound(crate::sound::Event::Warning);
             }
         }
     }
@@ -204,7 +205,10 @@ impl App {
                         theme::save(&self.themes[idx]);
                     }
                 }
-                Err(e) => self.picture.msg = crate::i18n::tr(format!("Couldn't save the theme: {e}")),
+                Err(e) => {
+                    self.picture.msg = crate::i18n::tr(format!("Couldn't save the theme: {e}"));
+                    self.play_sound(crate::sound::Event::Warning);
+                }
             }
         }
     }

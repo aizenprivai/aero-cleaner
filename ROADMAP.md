@@ -181,7 +181,7 @@
 - **Live sky:** the sun and its light follow the real time of day.
 - Fun dates: a few subtle touches on holidays, never on by default.
 
-### Milestone 8 – Sounds
+### ✅ Milestone 8 – Sounds
 - An **original** 2000s-style sound pack made for AeroClean (soft chimes for a finished clean, gentle clicks, a friendly warning), no borrowed sounds.
 - Per-event on/off and volume, off by default, silent when the window is in the background.
 - Last on the list: audio libraries add build dependencies on Linux, so this is done once everything else is stable.

@@ -17,6 +17,7 @@ mod prelude;
 mod review;
 mod rules_ui;
 mod settings_tab;
+mod sound_ui;
 mod startup;
 mod studio;
 mod themes_tab;
@@ -104,3 +105,5 @@ pub(crate) fn disk_meter(p: &egui::Painter, bar: Rect, size: u64, avail: u64, th
     let text = format!("💽 {} free of {}", format_bytes(avail), format_bytes(size));
     embossed(p, bar.center(), Align2::CENTER_CENTER, &text, bold(12.0), th.text);
 }
+
+use settings_tab::{option_row_at as settings_option_row, toggle_row as settings_toggle_row};

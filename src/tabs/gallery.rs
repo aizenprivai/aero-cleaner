@@ -55,7 +55,10 @@ impl App {
                     self.gallery.msg = "The gallery is empty for now.".into();
                 }
             }
-            Err(e) => self.gallery.error = e,
+            Err(e) => {
+                self.gallery.error = e;
+                self.play_sound(crate::sound::Event::Warning);
+            }
         }
     }
 
@@ -74,15 +77,24 @@ impl App {
             }
             Err(e) => format!("Couldn't import the theme: {e}"),
         };
+        if self.gallery.msg.starts_with("Couldn't") {
+            self.play_sound(crate::sound::Event::Warning);
+        }
     }
 
     pub(crate) fn import_theme_file(&mut self, path: Option<String>) {
         let Some(path) = path else { return };
         match std::fs::metadata(&path) {
-            Ok(m) if m.len() as usize > theme_share::MAX_SHARED => self.gallery.msg = "Couldn't import the theme: the file is too big".into(),
+            Ok(m) if m.len() as usize > theme_share::MAX_SHARED => {
+                self.gallery.msg = "Couldn't import the theme: the file is too big".into();
+                self.play_sound(crate::sound::Event::Warning);
+            }
             _ => match std::fs::read_to_string(&path) {
                 Ok(text) => self.import_theme_text(&text),
-                Err(e) => self.gallery.msg = format!("Couldn't import the theme: {e}"),
+                Err(e) => {
+                    self.gallery.msg = format!("Couldn't import the theme: {e}");
+                    self.play_sound(crate::sound::Event::Warning);
+                }
             },
         }
     }
@@ -124,7 +136,10 @@ impl App {
         self.gallery.installing = false;
         match text {
             Ok(t) => self.import_theme_text(&t),
-            Err(e) => self.gallery.msg = format!("Couldn't install the theme: {e}"),
+            Err(e) => {
+                self.gallery.msg = format!("Couldn't install the theme: {e}");
+                self.play_sound(crate::sound::Event::Warning);
+            }
         }
     }
 

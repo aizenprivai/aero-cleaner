@@ -1352,8 +1352,6 @@ Reduce motion (in Settings) always turns animations and transitions off.
 = Reduzir movimento (nas Configurações) sempre desliga animações e transições.
 Sounds
 = Sons
-Sound packs come in a later update. Theme files can already name one.
-= Pacotes de sons chegam numa próxima atualização. Arquivos de tema já podem nomear um.
 Choose a picture for the background
 = Escolha uma imagem para o fundo
 ✏ Edit
@@ -1540,3 +1538,49 @@ The sun follows the time of day.
 = 🎃 Feliz Halloween!
 🎄 Merry Christmas!
 = 🎄 Feliz Natal!
+
+# ----- Sounds -----
+SOUNDS
+= SONS
+Play sounds
+= Tocar sons
+An original sound pack made for AeroClean. Silent when the window is in the background.
+= Um pacote de sons original feito para o AeroClean. Silencioso quando a janela está em segundo plano.
+Volume
+= Volume
+Glassy bells (from your theme)
+= Sinos de vidro (do seu tema)
+Soft marimba (from your theme)
+= Marimba suave (do seu tema)
+Your theme is silent: pick another theme to hear sounds
+= O seu tema é silencioso: escolha outro para ouvir sons
+Change the volume
+= Mudar o volume
+Clean finished
+= Limpeza concluída
+A rising chime when space has been freed
+= Um carrilhão ascendente quando há espaço liberado
+Scan finished
+= Análise concluída
+Two soft notes (off at first: a scan runs every time AeroClean opens)
+= Duas notas suaves (desativado no início: uma análise é feita sempre que o AeroClean abre)
+Switching screens
+= Troca de tela
+A gentle click
+= Um clique suave
+Something went wrong
+= Algo deu errado
+A friendly two-tone, never harsh
+= Dois tons amigáveis, nunca estridentes
+Listen
+= Ouvir
+Listen: {}
+= Ouvir: {}
+Glassy bells
+= Sinos de vidro
+Soft marimba
+= Marimba suave
+Silent
+= Silencioso
+Turn sounds on in Settings, under Sounds.
+= Ative os sons em Configurações, na seção Sons.

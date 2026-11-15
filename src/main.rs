@@ -25,6 +25,7 @@ mod report;
 mod rules;
 mod settings;
 mod similar;
+mod sound;
 mod tabs;
 mod theme;
 mod theme_edit;
@@ -212,6 +213,8 @@ struct App {
     /// Today's seasonal and live touches, worked out every half minute.
     touches: Option<touches::Touches>,
     touches_at: f64,
+    /// Whether the window had the focus last frame (sounds only play then).
+    window_focused: bool,
     review: Option<Review>,
     excl_input: String,
     settings_msg: String,
@@ -272,6 +275,7 @@ impl App {
             daynight_open: false,
             touches: None,
             touches_at: -100.0,
+            window_focused: true,
             review: None,
             excl_input: String::new(),
             settings_msg: String::new(),
@@ -504,6 +508,7 @@ impl App {
                 }
                 Msg::DevDeleted(freed, errors) => {
                     self.dev.deleting = false;
+                    self.play_sound(if errors.is_empty() { sound::Event::CleanDone } else { sound::Event::Warning });
                     self.dev.msg = match errors.first() {
                         None => format!("Freed {}", format_bytes(freed)),
                         Some(e) => format!("Freed {}, {} failed: {e}", format_bytes(freed), errors.len()),
@@ -635,9 +640,13 @@ impl App {
                             names.extend(rule_names.iter().map(|n| format!("Rule: {n}")));
                             settings::record(freed, &names.join(", "));
                             self.history = settings::history();
+                            self.play_sound(sound::Event::CleanDone);
                             format!("✨ Sparkling clean! Freed {}", format_bytes(freed))
                         }
-                        None => "Scan complete. Choose what to clean.".into(),
+                        None => {
+                            self.play_sound(sound::Event::ScanDone);
+                            "Scan complete. Choose what to clean.".into()
+                        }
                     };
                 }
             }
@@ -703,6 +712,7 @@ impl App {
         // never with "reduce motion". The clock pauses instead of jumping.
         let (focused, minimized, dt) = ui.input(|i| (i.viewport().focused.unwrap_or(true), i.viewport().minimized.unwrap_or(false), i.stable_dt));
         let animate = focused && !minimized && !self.settings.reduce_motion;
+        self.window_focused = focused && !minimized;
         if animate {
             self.anim_t += dt.min(0.1) as f64 * self.themes[self.theme].motion_speed as f64;
         }
@@ -812,6 +822,9 @@ impl App {
         if self.tab != self.shown_tab {
             self.shown_tab = self.tab;
             self.tab_changed_at = time;
+            if time > 1.0 {
+                self.play_sound(sound::Event::Click);
+            }
             if self.tab != Tab::Themes {
                 self.end_gallery_preview();
             }
@@ -1604,6 +1617,34 @@ mod ui_tests {
         assert!(h.state().touches.is_none());
     }
 
+    /// Sounds: off at first, then turned on with a sound per event.
+    #[test]
+    fn sounds_settings() {
+        use egui_kittest::kittest::Queryable;
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let mut h = harness();
+        h.state_mut().tab = Tab::Settings;
+        h.run_steps(2);
+        assert!(!h.state().settings.sound_on, "off by default");
+        assert!(h.query_by_label("Clean finished").is_none());
+        h.get_by_label("Play sounds").click();
+        h.run_steps(2);
+        assert!(h.state().settings.sound_on);
+        assert_eq!(h.state().settings.sound_off, [sound::Event::ScanDone], "the scan sound starts off");
+        h.get_by_label("Scan finished").click();
+        h.run_steps(2);
+        assert!(h.state().settings.sound_off.is_empty());
+        h.get_by_label("Switching screens").click();
+        h.run_steps(2);
+        assert_eq!(h.state().settings.sound_off, [sound::Event::Click]);
+        h.get_by_label("60%").click();
+        h.run_steps(2);
+        assert_eq!(h.state().settings.sound_volume, 80);
+        h.get_by_label("Listen: Clean finished");
+        assert_eq!(h.get_all_by_label_contains("Listen: ").count(), 4);
+    }
+
     /// Themes from a picture: three are made, one is saved and used.
     #[test]
     fn themes_from_a_picture() {
@@ -1760,6 +1801,18 @@ mod ui_tests {
             }
             h.render().unwrap().save(dir.join("picture-frosted.png")).unwrap();
             h.state_mut().picture = Default::default();
+        }
+        // Sounds, in Settings.
+        {
+            let st = h.state_mut();
+            st.tab = Tab::Settings;
+            st.theme = 0;
+            st.settings.sound_on = true;
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("sounds.png")).unwrap();
+            h.state_mut().settings.sound_on = false;
         }
         // Live touches: the panel, an autumn sunset, and Christmas.
         {

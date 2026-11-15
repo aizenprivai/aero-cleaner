@@ -759,5 +759,12 @@ fn motion_tab(ui: &mut egui::Ui, st: &mut Studio, now: f64) {
     ui.label(egui::RichText::new(crate::i18n::tr("Reduce motion (in Settings) always turns animations and transitions off.")).size(12.0).weak());
     ui.add_space(8.0);
     ui.label(egui::RichText::new(crate::i18n::tr("Sounds")).strong());
-    ui.label(egui::RichText::new(crate::i18n::tr("Sound packs come in a later update. Theme files can already name one.")).size(12.0).weak());
+    ui.horizontal(|ui| {
+        for (key, label) in [("glass", "Glassy bells"), ("soft", "Soft marimba"), ("none", "Silent")] {
+            if ui.radio(t.sound.0 == key || (key == "glass" && !["soft", "none"].contains(&t.sound.0.as_str())), crate::i18n::tr(label)).clicked() {
+                st.edit("sound-pack", now, |d| d.set(&["sound", "pack"], Value::String(key.into())));
+            }
+        }
+    });
+    ui.label(egui::RichText::new(crate::i18n::tr("Turn sounds on in Settings, under Sounds.")).size(12.0).weak());
 }

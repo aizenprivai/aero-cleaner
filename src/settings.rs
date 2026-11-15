@@ -40,6 +40,10 @@ pub struct Settings {
     pub seasons: bool,
     pub live_sky: bool,
     pub fun_dates: bool,
+    /// Sounds (off until turned on), their volume in percent, and the ones turned off.
+    pub sound_on: bool,
+    pub sound_volume: u32,
+    pub sound_off: Vec<crate::sound::Event>,
 }
 
 impl Default for Settings {
@@ -64,6 +68,9 @@ impl Default for Settings {
             seasons: false,
             live_sky: false,
             fun_dates: false,
+            sound_on: false,
+            sound_volume: 60,
+            sound_off: vec![crate::sound::Event::ScanDone],
         }
     }
 }
@@ -96,6 +103,9 @@ impl Settings {
                 Some(("seasons", v)) => s.seasons = v.trim() == "true",
                 Some(("live_sky", v)) => s.live_sky = v.trim() == "true",
                 Some(("fun_dates", v)) => s.fun_dates = v.trim() == "true",
+                Some(("sound_on", v)) => s.sound_on = v.trim() == "true",
+                Some(("sound_volume", v)) => s.sound_volume = v.trim().parse().unwrap_or(60).min(100),
+                Some(("sound_off", v)) => s.sound_off = v.split(',').filter_map(crate::sound::Event::from_code).collect(),
                 Some(("exclude", v)) if !v.trim().is_empty() => s.exclusions.push(PathBuf::from(v.trim())),
                 _ => {}
             }
@@ -109,7 +119,7 @@ impl Settings {
             return;
         }
         let mut text = format!(
-            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\nauto_theme={}\nday_theme={}\nnight_theme={}\nday_at={}\nnight_at={}\nseasons={}\nlive_sky={}\nfun_dates={}\n",
+            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\nauto_theme={}\nday_theme={}\nnight_theme={}\nday_at={}\nnight_at={}\nseasons={}\nlive_sky={}\nfun_dates={}\nsound_on={}\nsound_volume={}\nsound_off={}\n",
             self.reduce_motion,
             self.auto_trash,
             self.low_disk_percent,
@@ -126,7 +136,10 @@ impl Settings {
             self.night_at,
             self.seasons,
             self.live_sky,
-            self.fun_dates
+            self.fun_dates,
+            self.sound_on,
+            self.sound_volume,
+            self.sound_off.iter().map(|e| e.code()).collect::<Vec<_>>().join(",")
         );
         if let Some(sel) = &self.selected {
             text.push_str(&format!("selected={}\n", sel.join(",")));
