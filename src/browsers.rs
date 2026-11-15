@@ -1,6 +1,7 @@
 //! Per-browser cleaning: cache, cookies and history, chosen separately.
 //! Supports Chromium-based browsers (Brave, Chrome, Chromium, Vivaldi, Edge)
-//! and Firefox (cache and cookies; its history shares a file with bookmarks).
+//! and Firefox. Firefox history shares a database with bookmarks, so it is
+//! cleaned with SQL that keeps every bookmarked page.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,6 +40,9 @@ pub struct Browser {
     pub profiles: usize,
     /// Files and folders per part, with their total size. None = not supported.
     pub parts: Vec<(Part, Option<(Vec<PathBuf>, u64)>)>,
+    /// History paths are Firefox `places.sqlite` databases to clean with
+    /// SQL, never files to delete (they also hold the bookmarks).
+    pub places_db: bool,
 }
 
 fn size_of(p: &Path) -> u64 {
@@ -94,6 +98,7 @@ fn chromium(name: &'static str, process: &'static str, config: PathBuf, cache: O
         process,
         profiles: profiles.len(),
         parts: vec![(Part::Cache, collect(cache_paths)), (Part::Cookies, collect(cookies)), (Part::History, collect(history))],
+        places_db: false,
     })
 }
 
@@ -104,17 +109,23 @@ fn firefox(root: PathBuf, cache_root: PathBuf) -> Option<Browser> {
     }
     let mut cache_paths = Vec::new();
     let mut cookies = Vec::new();
+    let mut places = Vec::new();
     for prof in &profiles {
         cache_paths.push(cache_root.join(prof.file_name().unwrap()));
         for f in ["cookies.sqlite", "cookies.sqlite-wal", "cookies.sqlite-shm", "webappsstore.sqlite", "storage/default"] {
             cookies.push(prof.join(f));
         }
+        if prof.join("places.sqlite").is_file() {
+            places.push(prof.join("places.sqlite"));
+        }
     }
+    let history_size = places.iter().map(|p| firefox_history::estimate(p)).sum();
     Some(Browser {
         name: "Firefox",
         process: "firefox",
         profiles: profiles.len(),
-        parts: vec![(Part::Cache, collect(cache_paths)), (Part::Cookies, collect(cookies)), (Part::History, None)],
+        parts: vec![(Part::Cache, collect(cache_paths)), (Part::Cookies, collect(cookies)), (Part::History, Some((places, history_size)))],
+        places_db: true,
     })
 }
 
@@ -193,6 +204,10 @@ pub fn clean(browser: &Browser, parts: &[Part]) -> Result<usize, String> {
     let mut failed = 0;
     for (part, data) in &browser.parts {
         let (Some((paths, _)), true) = (data, parts.contains(part)) else { continue };
+        if *part == Part::History && browser.places_db {
+            failed += paths.iter().filter(|p| firefox_history::clear(p).is_err()).count();
+            continue;
+        }
         for p in paths {
             let Ok(md) = p.symlink_metadata() else { continue };
             let res = if md.is_dir() {
@@ -213,6 +228,119 @@ pub fn clean(browser: &Browser, parts: &[Part]) -> Result<usize, String> {
         }
     }
     Ok(failed)
+}
+
+/// Firefox history in `places.sqlite`: visits, address bar data and pages
+/// that aren't bookmarked. Bookmarks, their pages and keywords are kept.
+/// Only runs while Firefox is closed (its triggers aren't loaded then).
+mod firefox_history {
+    use rusqlite::{Connection, OpenFlags};
+    use std::path::Path;
+
+    /// Pages that must survive: bookmarked, or used by a bookmark keyword.
+    const KEPT: &str = "SELECT fk FROM moz_bookmarks WHERE fk IS NOT NULL UNION SELECT place_id FROM moz_keywords WHERE place_id IS NOT NULL";
+
+    fn has_table(db: &Connection, name: &str) -> bool {
+        db.query_row("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?1", [name], |r| r.get::<_, i64>(0)).is_ok_and(|n| n > 0)
+    }
+
+    fn kept_query(db: &Connection) -> String {
+        if has_table(db, "moz_keywords") { KEPT.to_string() } else { "SELECT fk FROM moz_bookmarks WHERE fk IS NOT NULL".to_string() }
+    }
+
+    /// Roughly how much space cleaning would free: the file's share of
+    /// pages that would go, plus the visit table's share.
+    pub fn estimate(path: &Path) -> u64 {
+        let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        let Ok(db) = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX) else { return 0 };
+        if !has_table(&db, "moz_places") || !has_table(&db, "moz_bookmarks") {
+            return 0;
+        }
+        let count = |sql: &str| db.query_row(sql, [], |r| r.get::<_, i64>(0)).unwrap_or(0).max(0) as u64;
+        let total = count("SELECT count(*) FROM moz_places");
+        if total == 0 {
+            return 0;
+        }
+        let gone = count(&format!("SELECT count(*) FROM moz_places WHERE id NOT IN ({})", kept_query(&db)));
+        size * gone / total
+    }
+
+    pub fn clear(path: &Path) -> rusqlite::Result<()> {
+        let mut db = Connection::open(path)?;
+        if !has_table(&db, "moz_places") || !has_table(&db, "moz_bookmarks") {
+            return Err(rusqlite::Error::InvalidQuery);
+        }
+        let kept = kept_query(&db);
+        let tables: Vec<&str> =
+            ["moz_historyvisits", "moz_inputhistory", "moz_places_metadata", "moz_places_metadata_search_queries", "moz_annos", "moz_origins", "moz_icons_to_pages"]
+                .into_iter()
+                .filter(|t| has_table(&db, t))
+                .collect();
+        let tx = db.transaction()?;
+        for t in ["moz_historyvisits", "moz_inputhistory", "moz_places_metadata", "moz_places_metadata_search_queries"] {
+            if tables.contains(&t) {
+                tx.execute(&format!("DELETE FROM {t}"), [])?;
+            }
+        }
+        tx.execute(&format!("DELETE FROM moz_places WHERE id NOT IN ({kept})"), [])?;
+        // Bookmarked pages stay, but forget that they were visited.
+        tx.execute("UPDATE moz_places SET visit_count = 0, last_visit_date = NULL", [])?;
+        if tables.contains(&"moz_annos") {
+            tx.execute("DELETE FROM moz_annos WHERE place_id NOT IN (SELECT id FROM moz_places)", [])?;
+        }
+        if tables.contains(&"moz_origins") {
+            tx.execute("DELETE FROM moz_origins WHERE id NOT IN (SELECT origin_id FROM moz_places WHERE origin_id IS NOT NULL)", [])?;
+        }
+        tx.commit()?;
+        // Actually give the space back.
+        db.execute_batch("VACUUM")?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn keeps_bookmarks_and_their_pages() {
+            let dir = std::env::temp_dir().join(format!("aero-places-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let path = dir.join("places.sqlite");
+            let _ = std::fs::remove_file(&path);
+            let db = Connection::open(&path).unwrap();
+            db.execute_batch(
+                "CREATE TABLE moz_origins (id INTEGER PRIMARY KEY, host TEXT);
+                 CREATE TABLE moz_places (id INTEGER PRIMARY KEY, url TEXT, visit_count INTEGER, last_visit_date INTEGER, origin_id INTEGER);
+                 CREATE TABLE moz_historyvisits (id INTEGER PRIMARY KEY, place_id INTEGER);
+                 CREATE TABLE moz_bookmarks (id INTEGER PRIMARY KEY, fk INTEGER, title TEXT);
+                 CREATE TABLE moz_keywords (id INTEGER PRIMARY KEY, keyword TEXT, place_id INTEGER);
+                 CREATE TABLE moz_inputhistory (place_id INTEGER, input TEXT);
+                 INSERT INTO moz_origins VALUES (1, 'kept.org'), (2, 'gone.com'), (3, 'kw.net');
+                 INSERT INTO moz_places VALUES (1, 'https://kept.org', 5, 99, 1), (2, 'https://gone.com', 3, 98, 2), (3, 'https://kw.net/?q=%s', 1, 97, 3);
+                 INSERT INTO moz_historyvisits VALUES (1, 1), (2, 2), (3, 2);
+                 INSERT INTO moz_bookmarks VALUES (1, NULL, 'Toolbar'), (2, 1, 'Kept site');
+                 INSERT INTO moz_keywords VALUES (1, 'kw', 3);
+                 INSERT INTO moz_inputhistory VALUES (2, 'go');",
+            )
+            .unwrap();
+            drop(db);
+
+            assert!(estimate(&path) > 0);
+            clear(&path).unwrap();
+            let db = Connection::open(&path).unwrap();
+            let q = |sql: &str| db.query_row(sql, [], |r| r.get::<_, i64>(0)).unwrap();
+            assert_eq!(q("SELECT count(*) FROM moz_historyvisits"), 0);
+            assert_eq!(q("SELECT count(*) FROM moz_inputhistory"), 0);
+            assert_eq!(q("SELECT count(*) FROM moz_bookmarks"), 2, "bookmarks untouched");
+            let ids: String = db.query_row("SELECT group_concat(id) FROM (SELECT id FROM moz_places ORDER BY id)", [], |r| r.get(0)).unwrap();
+            assert_eq!(ids, "1,3", "bookmarked and keyword pages kept, the rest gone");
+            assert_eq!(q("SELECT sum(visit_count) FROM moz_places"), 0, "visit counts reset");
+            assert_eq!(q("SELECT count(*) FROM moz_origins WHERE host = 'gone.com'"), 0);
+            assert_eq!(q("SELECT count(*) FROM moz_origins"), 2);
+            drop(db);
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
+    }
 }
 
 #[cfg(test)]

@@ -99,7 +99,7 @@ impl App {
                         let grey = rgba(150, 160, 172, 255);
                         aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, if usable { hue } else { grey }, icon);
                         p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(part.label()), bold(15.0), if usable { th.text } else { grey });
-                        let desc = if usable { part.desc() } else { "Not supported for this browser (history shares a file with your bookmarks)." };
+                        let desc = if usable { part.desc() } else { "Not supported for this browser." };
                         p.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(desc), regular(12.0), th.soft);
                         if let Some((_, size)) = data {
                             embossed(p, pos2(rect.max.x - 18.0, cy), Align2::RIGHT_CENTER, &format_bytes(*size), bold(16.0), th.text);

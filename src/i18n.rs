@@ -372,10 +372,7 @@ const FR: &[(&str, &str)] = &[
         "Visited pages, top sites and address bar suggestions. Bookmarks are kept.",
         "Pages visitées, sites favoris et suggestions de la barre d'adresse. Les marque-pages sont conservés.",
     ),
-    (
-        "Not supported for this browser (history shares a file with your bookmarks).",
-        "Non pris en charge pour ce navigateur (l'historique partage un fichier avec vos marque-pages).",
-    ),
+    ("Not supported for this browser.", "Non pris en charge pour ce navigateur."),
     ("✨ Clean {}", "✨ Nettoyer {}"),
     ("Click again: signs you out", "Encore : vous serez déconnecté"),
     ("Click again: erases history", "Encore : efface l'historique"),
