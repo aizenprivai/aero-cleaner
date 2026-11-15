@@ -288,6 +288,14 @@ pub fn install_shortcut() -> Result<(), String> {
     powershell(&script).map_err(|e| e.to_string()).map(|_| ())
 }
 
+/// Sends printed output to the terminal the app was started from, if any
+/// (the app is a GUI program, so it has no console of its own).
+pub fn attach_console() {
+    use windows_sys::Win32::System::Console::{ATTACH_PARENT_PROCESS, AttachConsole};
+    // SAFETY: no pointers involved; fails harmlessly when there's no parent console.
+    unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

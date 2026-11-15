@@ -568,6 +568,9 @@ const FR: &[(&str, &str)] = &[
     ("part of macOS", "fait partie de macOS"),
     ("Part of macOS. Turning it off could break things, so it's locked.", "Fait partie de macOS. Le désactiver pourrait casser des choses, il est donc verrouillé."),
     ("Choose a folder to keep", "Choisissez un dossier à garder"),
+    // ----- Command line -----
+    ("Dry run: nothing is deleted.", "Simulation : rien n'est supprimé."),
+    ("Ticked items would free about {}.", "Les éléments cochés libéreraient environ {}."),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

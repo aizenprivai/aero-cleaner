@@ -11,6 +11,7 @@ mod diskmap;
 mod dupes;
 mod i18n;
 mod platform;
+mod report;
 mod settings;
 mod tabs;
 mod theme;
@@ -543,14 +544,30 @@ Usage:
   aero-cleaner                 open the app
   aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, big, dupes, map, boot, startup, themes, settings)
   aero-cleaner clean --auto    run the automatic clean (thumbnails, app caches, Trash if enabled) and notify
+  aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
+                 [--auto]      only what the automatic clean would remove
+                 [--json]      as JSON, sizes in bytes (for scripts)
   aero-cleaner check-disk      notify if free disk space is below the alert threshold";
 
 fn main() -> eframe::Result {
     // Command-line mode, used by the systemd timers and the launcher's right-click actions.
     let args: Vec<String> = std::env::args().skip(1).collect();
     i18n::set_language(&Settings::load().language);
+    let flag = |f: &str| args.iter().any(|a| a == f);
+    // Windows: a GUI app has no console, so print into the terminal that started it.
+    #[cfg(windows)]
+    if !args.is_empty() {
+        windows::attach_console();
+    }
     match args.first().map(String::as_str) {
-        Some("clean") if args.iter().any(|a| a == "--auto") => {
+        Some("clean") if flag("--dry-run") => {
+            let settings = Settings::load();
+            let auto = flag("--auto").then(|| automation::auto_kinds(&settings, !cleaner::running_browsers().is_empty()));
+            let rows = report::collect(&settings, auto.as_deref());
+            println!("{}", if flag("--json") { report::to_json(&rows) } else { report::to_text(&rows) });
+            return Ok(());
+        }
+        Some("clean") if flag("--auto") => {
             let summary = automation::auto_clean(&Settings::load());
             println!("{summary}");
             automation::notify(&i18n::tr("AeroClean cleaned up ✨"), &i18n::tr(&summary), None);
