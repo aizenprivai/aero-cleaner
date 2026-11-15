@@ -129,6 +129,7 @@
   - Distro-aware categories: dnf cache, `paccache`, orphan packages, old Snap revisions on Ubuntu.
   - CI runs the tests in Fedora, Arch and openSUSE containers.
 - **Packaging & updates:**
+  - **Update button in Settings:** "Check for updates" works any time (not only once a day), shows what's new, and **Update now** downloads the right package for this system, checks it against the release's `SHA256SUMS`, then installs it: the `.deb` with one password prompt on Linux, the installer on Windows, the `.dmg` opened for you on macOS. Nothing is downloaded without that click.
   - `.rpm`, an AUR `PKGBUILD` and an AppImage.
   - Flathub: user-level features inside the sandbox, system features through the helper.
   - A **signed APT repository** on GitHub Pages, so `apt upgrade` keeps AeroClean up to date.
