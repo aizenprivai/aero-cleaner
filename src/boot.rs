@@ -5,7 +5,6 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
 
 /// Seconds spent in each boot stage.
 #[derive(Clone, Default, Debug, PartialEq)]
@@ -39,7 +38,7 @@ impl Service {
 }
 
 fn run(cmd: &str, args: &[&str]) -> String {
-    Command::new(cmd).args(args).env("LC_ALL", "C").output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
+    crate::platform::command_c(cmd).args(args).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
 }
 
 /// Parses durations like "1min 2.345s", "14.130s" or "512ms" into seconds.
@@ -274,7 +273,7 @@ pub fn set_enabled(unit: &str, enabled: bool) -> Result<(), String> {
     if crate::helper::installed() {
         return crate::helper::call(&format!("service-{action}"), unit).map(|_| ()).map_err(|e| if e == "cancelled" { "Password prompt was cancelled".into() } else { e });
     }
-    let out = Command::new("pkexec").args(["/usr/bin/systemctl", action, "--", unit]).output().map_err(|e| e.to_string())?;
+    let out = crate::platform::command("pkexec").args(["/usr/bin/systemctl", action, "--", unit]).output().map_err(|e| e.to_string())?;
     match out.status.code() {
         Some(0) => Ok(()),
         Some(126 | 127) => Err("Password prompt was cancelled".into()),

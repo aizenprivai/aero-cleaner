@@ -200,7 +200,7 @@ Getting AeroClean, and keeping it up to date, the way each system expects.
 ### Milestone 2 – Flatpak and Flathub
 - A Flatpak manifest built from source, offline (vendored crates), tested locally.
 - Inside the sandbox: user-level cleaning works directly; system cleaning goes through the privileged helper on the host.
-- Submitted to Flathub.
+- Submitted to Flathub (after the 2.2 release: Flathub builds from a release tag). *Built, linted and tested locally.*
 
 ### Milestone 3 – A signed APT repository
 - A dedicated signing key (made together; its private part only lives on your machine and in a GitHub secret).

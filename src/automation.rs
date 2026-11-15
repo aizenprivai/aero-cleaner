@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, SystemTime};
 
-use crate::platform::{exe, home};
+use crate::platform::{exe, exe_argv, home};
 
 /// Shows a desktop notification. With `action`, waits for a click and
 /// returns true if the action button was pressed (Linux only; Windows toasts
@@ -29,7 +29,7 @@ pub fn notify(title: &str, body: &str, action: Option<&str>) -> bool {
         return false;
     }
     #[allow(unreachable_code)]
-    let mut cmd = Command::new("notify-send");
+    let mut cmd = crate::platform::command("notify-send");
     cmd.args(["--app-name=AeroClean", "--icon=aero-cleaner", title, body]);
     if let Some(a) = action {
         cmd.arg(format!("--action=open={a}"));
@@ -47,8 +47,14 @@ pub fn launch_gui(args: &[&str]) {
         let _ = Command::new(exe()).args(args).spawn();
         return;
     }
-    let ok =
-        Command::new("systemd-run").args(["--user", "--collect", "--quiet"]).arg(exe()).args(args).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s| s.success());
+    let ok = crate::platform::command("systemd-run")
+        .args(["--user", "--collect", "--quiet"])
+        .args(exe_argv())
+        .args(args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success());
     if !ok {
         let _ = Command::new(exe()).args(args).spawn();
     }
@@ -145,17 +151,21 @@ pub const DISK_CHECK: Job =
     Job { unit: "aero-cleaner-disk", description: "AeroClean low disk space check", command: "check-disk", schedule: "OnBootSec=10min\nOnUnitActiveSec=1h" };
 
 fn unit_dir() -> PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config")).join("systemd/user")
+    crate::platform::xdg_dir("XDG_CONFIG_HOME").unwrap_or_else(|| home().join(".config")).join("systemd/user")
 }
 
 fn systemctl(args: &[&str]) -> Result<String, String> {
-    let out = Command::new("systemctl").arg("--user").args(args).env("LC_ALL", "C").output().map_err(|e| e.to_string())?;
+    let out = crate::platform::command_c("systemctl").arg("--user").args(args).output().map_err(|e| e.to_string())?;
     if out.status.success() { Ok(String::from_utf8_lossy(&out.stdout).trim().to_string()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) }
 }
 
 pub fn unit_files(job: &Job) -> (String, String) {
-    let service =
-        format!("[Unit]\nDescription={}\n\n[Service]\nType=oneshot\nExecStart=\"{}\" {}\nNice=10\nIOSchedulingClass=idle\n", job.description, exe().display(), job.command);
+    let service = format!(
+        "[Unit]\nDescription={}\n\n[Service]\nType=oneshot\nExecStart={} {}\nNice=10\nIOSchedulingClass=idle\n",
+        job.description,
+        exe_argv().iter().map(|a| format!("\"{a}\"")).collect::<Vec<_>>().join(" "),
+        job.command
+    );
     let timer = format!("[Unit]\nDescription={} (timer)\n\n[Timer]\n{}\n\n[Install]\nWantedBy=timers.target\n", job.description, job.schedule);
     (service, timer)
 }

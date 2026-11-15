@@ -1584,3 +1584,9 @@ Silent
 = Silencioso
 Turn sounds on in Settings, under Sounds.
 = Activa los sonidos en Ajustes, en Sonidos.
+
+# ----- Flatpak -----
+Update with Flatpak
+= Actualizar con Flatpak
+Updates come from Flathub: your software center, or flatpak update
+= Las actualizaciones llegan desde Flathub: tu centro de software, o flatpak update

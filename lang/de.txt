@@ -1584,3 +1584,9 @@ Silent
 = Stumm
 Turn sounds on in Settings, under Sounds.
 = Töne in den Einstellungen unter Töne einschalten.
+
+# ----- Flatpak -----
+Update with Flatpak
+= Mit Flatpak aktualisieren
+Updates come from Flathub: your software center, or flatpak update
+= Updates kommen von Flathub: über deine Software-Verwaltung oder flatpak update

@@ -224,8 +224,15 @@ fn run(cmd: &str, args: &[&str]) -> String {
 
 /// Commands on the PATH.
 fn add_path_commands(installed: &mut Installed) {
-    if let Some(path) = std::env::var_os("PATH") {
-        for dir in std::env::split_paths(&path) {
+    // Inside the Flatpak, PATH is the sandbox's: look at the host's folders instead.
+    let dirs: Vec<PathBuf> = if crate::platform::in_flatpak() {
+        let home = crate::platform::home();
+        ["/usr/bin", "/usr/sbin", "/usr/local/bin", "/usr/games"].iter().map(|d| crate::platform::host_path(d)).chain([home.join(".local/bin"), home.join("bin")]).collect()
+    } else {
+        std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default()
+    };
+    {
+        for dir in dirs {
             if let Ok(rd) = fs::read_dir(dir) {
                 for e in rd.flatten() {
                     let n = e.file_name().to_string_lossy().to_string();
@@ -240,28 +247,42 @@ fn add_path_commands(installed: &mut Installed) {
 fn linux_installed(home: &Path) -> Installed {
     let mut ins = Installed::default();
     let dirs = [
-        PathBuf::from("/usr/share/applications"),
-        PathBuf::from("/usr/local/share/applications"),
+        crate::platform::host_path("/usr/share/applications"),
+        crate::platform::host_path("/usr/local/share/applications"),
         PathBuf::from("/var/lib/flatpak/exports/share/applications"),
         PathBuf::from("/var/lib/snapd/desktop/applications"),
         home.join(".local/share/applications"),
         home.join(".local/share/flatpak/exports/share/applications"),
     ];
+    // (file name, text) of every launcher.
+    let mut launchers: Vec<(String, String)> = vec![];
     for d in dirs {
         let Ok(rd) = fs::read_dir(d) else { continue };
         for e in rd.flatten() {
-            let file = e.file_name().to_string_lossy().to_string();
-            let Some(stem) = file.strip_suffix(".desktop") else { continue };
-            ins.add_id(stem);
-            for line in fs::read_to_string(e.path()).unwrap_or_default().lines() {
-                for key in ["Name=", "StartupWMClass=", "Icon="] {
-                    if let Some(v) = line.strip_prefix(key) {
-                        ins.add(v);
-                    }
+            launchers.push((e.file_name().to_string_lossy().to_string(), fs::read_to_string(e.path()).unwrap_or_default()));
+        }
+    }
+    // The sandbox can't see /var: read the system-wide Flatpak and Snap launchers on the host.
+    if crate::platform::in_flatpak() {
+        let script = "for f in /var/lib/flatpak/exports/share/applications/*.desktop /var/lib/snapd/desktop/applications/*.desktop; do [ -f \"$f\" ] && printf '\\036%s\\n' \"${f##*/}\" && cat \"$f\"; done";
+        let out = run("sh", &["-c", script]);
+        for chunk in out.split('\u{1e}').skip(1) {
+            if let Some((name, text)) = chunk.split_once('\n') {
+                launchers.push((name.to_string(), text.to_string()));
+            }
+        }
+    }
+    for (file, text) in launchers {
+        let Some(stem) = file.strip_suffix(".desktop") else { continue };
+        ins.add_id(stem);
+        for line in text.lines() {
+            for key in ["Name=", "StartupWMClass=", "Icon="] {
+                if let Some(v) = line.strip_prefix(key) {
+                    ins.add(v);
                 }
-                if let Some(cmd) = line.strip_prefix("Exec=").and_then(|v| v.split_whitespace().next()) {
-                    ins.add(Path::new(cmd).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default().as_str());
-                }
+            }
+            if let Some(cmd) = line.strip_prefix("Exec=").and_then(|v| v.split_whitespace().next()) {
+                ins.add(Path::new(cmd).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default().as_str());
             }
         }
     }

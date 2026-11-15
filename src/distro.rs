@@ -4,7 +4,9 @@
 
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
-use std::process::{Command, Stdio};
+#[cfg(test)]
+use std::process::Command;
+use std::process::Stdio;
 use std::sync::OnceLock;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,7 +41,7 @@ fn have(tool: &str) -> bool {
 pub fn detect() -> Pkg {
     static P: OnceLock<Pkg> = OnceLock::new();
     *P.get_or_init(|| {
-        let from_file = parse_os_release(&std::fs::read_to_string("/etc/os-release").unwrap_or_default());
+        let from_file = parse_os_release(&std::fs::read_to_string(crate::platform::host_path("/etc/os-release")).unwrap_or_default());
         if from_file != Pkg::Unknown {
             return from_file;
         }
@@ -49,7 +51,7 @@ pub fn detect() -> Pkg {
 }
 
 pub fn has_snap() -> bool {
-    have("snap") && std::path::Path::new("/var/lib/snapd/snaps").is_dir()
+    have("snap") && (crate::platform::in_flatpak() || std::path::Path::new("/var/lib/snapd/snaps").is_dir())
 }
 
 /// (name, description) of the package cache and of unused packages.
@@ -112,7 +114,7 @@ pub fn unused_script(pkg: Pkg) -> Option<&'static str> {
 
 fn run_c(cmd: &str, args: &[&str]) -> String {
     let Some(bin) = crate::platform::find_tool(cmd) else { return String::new() };
-    Command::new(bin).args(args).env("LC_ALL", "C").stderr(Stdio::null()).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
+    crate::platform::command_c(bin).args(args).stderr(Stdio::null()).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
 }
 
 /// Packages the unused-packages clean would remove (names), and the space
@@ -187,6 +189,9 @@ pub fn snap_old_revisions() -> Vec<(String, String)> {
 
 /// Size of the old revisions' .snap files.
 pub fn snap_old_size(revs: &[(String, String)]) -> u64 {
+    if crate::platform::in_flatpak() {
+        return revs.iter().map(|(n, r)| crate::platform::host_size(&format!("/var/lib/snapd/snaps/{n}_{r}.snap"), None, crate::platform::Files::All)).sum();
+    }
     revs.iter().filter_map(|(n, r)| std::fs::metadata(format!("/var/lib/snapd/snaps/{n}_{r}.snap")).ok()).map(|m| m.len()).sum()
 }
 

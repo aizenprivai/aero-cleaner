@@ -175,6 +175,10 @@ pub fn container_tool(item: &DevItem) -> Option<&'static str> {
 
 /// Size of Waydroid's Android system images, if installed.
 pub fn waydroid_images() -> Option<u64> {
+    if crate::platform::in_flatpak() {
+        let n = crate::platform::host_size("/var/lib/waydroid/images", None, crate::platform::Files::All);
+        return (n > 0).then_some(n);
+    }
     let p = Path::new("/var/lib/waydroid/images");
     p.exists().then(|| dir_size(p))
 }

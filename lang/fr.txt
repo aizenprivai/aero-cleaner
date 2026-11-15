@@ -1584,3 +1584,9 @@ Silent
 = Silencieux
 Turn sounds on in Settings, under Sounds.
 = Activez les sons dans les Paramètres, section Sons.
+
+# ----- Flatpak -----
+Update with Flatpak
+= Mettre à jour avec Flatpak
+Updates come from Flathub: your software center, or flatpak update
+= Les mises à jour viennent de Flathub : votre logithèque, ou flatpak update

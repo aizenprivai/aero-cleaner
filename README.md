@@ -103,6 +103,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 - **Fedora, openSUSE:** `aero-cleaner-<version>-1.x86_64.rpm`, then `sudo dnf install ./aero-cleaner-*.rpm` (or `sudo zypper install`)
 - **Arch:** the release's `PKGBUILD`, then `makepkg -si`
 - **Any distro:** `AeroClean-<version>-x86_64.AppImage`, make it executable and run it (system cleans then use one password prompt instead of the helper)
+- **Flatpak:** coming to Flathub. The Flatpak cleans your home folder directly and runs system items (package caches, the journal, logs) on your system through Flatpak's host access, with one password prompt (or the helper, if the `.deb`/`.rpm` is installed too). It updates through your software center.
 
 **From source** (needs [Rust](https://rustup.rs)):
 
@@ -115,6 +116,7 @@ aero-cleaner   # the first run adds AeroClean to your menu
 **Build the packages yourself:**
 - `packaging/build-deb.sh`, `build-rpm.sh` and `build-appimage.sh` build the Linux packages (need `librsvg2-bin`; `rpm` for the `.rpm`).
 - `packaging/build-windows.sh` cross-compiles the portable Windows `.zip` from Linux (needs `mingw-w64` and `rustup target add x86_64-pc-windows-gnu`). The installer is built by CI with Inno Setup (`packaging/windows/aeroclean.iss`).
+- `packaging/flatpak/` builds the Flatpak: `flatpak run org.flatpak.Builder --user --install --force-clean build-dir packaging/flatpak/io.github.aizenprivai.aero-cleaner.yml` (needs `org.flatpak.Builder` and the freedesktop 25.08 SDK with `rust-stable`; after changing `Cargo.lock`, run `packaging/flatpak/cargo-sources.py` to refresh the offline crate list).
 - `packaging/build-macos.sh` builds the universal `AeroClean.app` and its `.dmg` on a Mac (needs `rustup target add aarch64-apple-darwin x86_64-apple-darwin`).
 
 Packages are written to `target/deb/`, `target/rpm/`, `target/appimage/`, `target/windows/` and `target/macos/`.

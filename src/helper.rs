@@ -346,7 +346,8 @@ pub fn serve() -> Result<(), String> {
 
 /// Is the helper installed on this system?
 pub fn installed() -> bool {
-    Path::new(SERVICE_FILE).is_file()
+    // From the Flatpak, the host's helper (installed with the .deb or .rpm) is reachable too.
+    crate::platform::host_path(SERVICE_FILE).is_file()
 }
 
 /// Asks the helper to run `op`. Err("cancelled") when permission was refused.

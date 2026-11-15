@@ -215,6 +215,9 @@ struct App {
     touches_at: f64,
     /// Whether the window had the focus last frame (sounds only play then).
     window_focused: bool,
+    /// AERO_SCREENSHOT=file.png: save a screenshot of the window after a few frames, then close
+    /// (for checking packaged builds). The frame count so far.
+    shot: Option<(std::path::PathBuf, u32)>,
     review: Option<Review>,
     excl_input: String,
     settings_msg: String,
@@ -276,6 +279,7 @@ impl App {
             touches: None,
             touches_at: -100.0,
             window_focused: true,
+            shot: std::env::var_os("AERO_SCREENSHOT").map(|p| (p.into(), 0)),
             review: None,
             excl_input: String::new(),
             settings_msg: String::new(),
@@ -658,6 +662,7 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let time = ui.input(|i| i.time);
         self.poll(time);
+        self.take_screenshot(ui.ctx());
         self.auto_theme_tick(ui.ctx(), time);
         // During a crossfade, the current theme is drawn as a blend of the
         // old and the new one; seasonal and live touches are added on top.
@@ -696,6 +701,27 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// AERO_SCREENSHOT: asks for a screenshot once the scan had time to finish, saves it, closes.
+    fn take_screenshot(&mut self, ctx: &egui::Context) {
+        let Some((path, frames)) = &mut self.shot else { return };
+        *frames += 1;
+        ctx.request_repaint_after(Duration::from_millis(50));
+        if *frames == 80 {
+            let path = path.clone();
+            let ctx2 = ctx.clone();
+            ctx.request_screenshot(move |img| {
+                let [w, h] = img.size;
+                let bytes: Vec<u8> = img.pixels.iter().flat_map(|c| c.to_array()).collect();
+                match image::RgbaImage::from_raw(w as u32, h as u32, bytes).map(|i| i.save(&path)) {
+                    Some(Ok(())) => eprintln!("AeroClean: screenshot saved to {}", path.display()),
+                    _ => eprintln!("AeroClean: couldn't save the screenshot to {}", path.display()),
+                }
+                ctx2.send_viewport_cmd(egui::ViewportCommand::Close);
+                ctx2.request_repaint();
+            });
+        }
+    }
+
     fn frame_ui(&mut self, ui: &mut egui::Ui, time: f64) {
         // A theme file dropped on the window: import it.
         let dropped: Vec<std::path::PathBuf> = ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).collect());
@@ -1133,7 +1159,7 @@ fn main() -> eframe::Result {
     // macOS the .app bundle is the launcher, nothing to install.
     if platform::IS_WINDOWS {
         let _ = automation::install_launcher();
-    } else if platform::IS_LINUX {
+    } else if platform::IS_LINUX && !platform::in_flatpak() {
         let launcher = platform::home().join(".local/share/applications/aero-cleaner.desktop");
         let packaged = std::path::Path::new("/usr/share/applications/aero-cleaner.desktop").exists();
         if !packaged && !std::fs::read_to_string(&launcher).unwrap_or_default().contains("Icon=aero-cleaner") {
@@ -1159,7 +1185,7 @@ fn run_gui(renderer: eframe::Renderer) -> eframe::Result {
         renderer,
         viewport: egui::ViewportBuilder::default()
             .with_title("AeroClean")
-            .with_app_id("aero-cleaner")
+            .with_app_id(if platform::in_flatpak() { platform::APP_ID } else { "aero-cleaner" })
             .with_inner_size([1080.0, 800.0])
             .with_min_inner_size([960.0, 680.0])
             .with_icon(Arc::new(eframe::icon_data::from_png_bytes(include_bytes!("../assets/aero-cleaner.png")).unwrap_or_default())),

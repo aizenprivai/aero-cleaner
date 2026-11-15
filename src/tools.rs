@@ -88,6 +88,11 @@ pub struct StartupEntry {
 
 const SYSTEM_DIR: &str = "/etc/xdg/autostart";
 
+/// The system autostart folder (the host's, from the Flatpak).
+fn system_dir() -> PathBuf {
+    crate::platform::host_path(SYSTEM_DIR)
+}
+
 fn user_dir() -> PathBuf {
     home().join(".config/autostart")
 }
@@ -170,7 +175,7 @@ pub fn startup_entries() -> Vec<StartupEntry> {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn linux_startup_entries() -> Vec<StartupEntry> {
     let mut files: BTreeMap<String, (Option<String>, Option<String>)> = BTreeMap::new();
-    for (dir, is_user) in [(PathBuf::from(SYSTEM_DIR), false), (user_dir(), true)] {
+    for (dir, is_user) in [(system_dir(), false), (user_dir(), true)] {
         let Ok(rd) = fs::read_dir(dir) else { continue };
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().to_string();
@@ -236,7 +241,7 @@ pub fn set_startup(file: &str, enabled: bool) -> Result<(), String> {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn linux_set_startup(file: &str, enabled: bool) -> Result<(), String> {
     let user_path = user_dir().join(file);
-    let text = fs::read_to_string(&user_path).or_else(|_| fs::read_to_string(Path::new(SYSTEM_DIR).join(file))).map_err(|e| e.to_string())?;
+    let text = fs::read_to_string(&user_path).or_else(|_| fs::read_to_string(system_dir().join(file))).map_err(|e| e.to_string())?;
     let mut text = set_key(&text, "X-GNOME-Autostart-enabled", if enabled { "true" } else { "false" });
     if enabled && parse_desktop(&text).get("Hidden").is_some_and(|v| v.eq_ignore_ascii_case("true")) {
         text = set_key(&text, "Hidden", "false");

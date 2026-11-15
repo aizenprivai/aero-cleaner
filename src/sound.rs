@@ -210,10 +210,14 @@ fn play_file(path: &std::path::Path) {
     let player = PLAYER.get_or_init(|| {
         let dirs: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
         let options: [(&str, &'static [&'static str]); 3] = [("pw-play", &[]), ("paplay", &[]), ("aplay", &["-q"])];
+        if crate::platform::in_flatpak() {
+            // The host's player (run there through flatpak-spawn).
+            return options.iter().find_map(|(name, args)| crate::platform::find_tool(name).map(|p| (p, *args)));
+        }
         options.iter().find_map(|(name, args)| dirs.iter().map(|d| d.join(name)).find(|p| p.is_file()).map(|p| (p, *args)))
     });
     if let Some((exe, args)) = player {
-        run(std::process::Command::new(exe).args(*args).arg(path));
+        run(crate::platform::command(exe).args(*args).arg(path));
     }
 }
 

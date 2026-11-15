@@ -100,6 +100,10 @@ impl App {
                     if aero::aqua_button(ui, btn, "⬇ Update now", th.go, !busy).on_hover_text(tip).clicked() {
                         start = Some(r);
                     }
+                } else if crate::platform::in_flatpak() {
+                    // Flatpak updates itself, from your software center or `flatpak update`.
+                    let tip = crate::i18n::tr("Updates come from Flathub: your software center, or flatpak update");
+                    let _ = aero::aqua_button(ui, btn, "Update with Flatpak", th.accent, false).on_hover_text(tip);
                 } else {
                     let tip = crate::i18n::tr("This copy wasn't installed from a package, so it can't update itself");
                     if aero::aqua_button(ui, btn, "Open download page", th.accent, true).on_hover_text(tip).clicked() {

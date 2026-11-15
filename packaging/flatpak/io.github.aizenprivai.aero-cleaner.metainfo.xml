@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.aizenprivai.aero-cleaner</id>
+  <name>AeroClean</name>
+  <summary>Free up disk space, with a glossy 2000s look</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.aizenprivai">
+    <name>aizenprivai</name>
+  </developer>
+  <description>
+    <p>
+      AeroClean finds what's taking up space and cleans it safely, in a bright Frutiger Aero style
+      with glass panels, bubbles and soft animations.
+    </p>
+    <ul>
+      <li>Clean caches, thumbnails, the trash, old logs, package caches and unused Flatpak runtimes</li>
+      <li>Find big files, duplicates and similar photos, and see your disk as a map</li>
+      <li>Developer caches: Cargo, npm, pnpm, Yarn, Go, Maven, Gradle and old build folders</li>
+      <li>Leftovers of apps you've removed, startup apps and boot time</li>
+      <li>Undo a clean for 24 hours, and a weekly automatic clean</li>
+      <li>Themes: a live Theme Studio, day and night themes, themes from a picture and a community gallery</li>
+    </ul>
+    <p>
+      Everything is shown before it's removed, and nothing that needs a password is cleaned without asking.
+      Available in English, French, Spanish, German and Portuguese.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.aizenprivai.aero-cleaner.desktop</launchable>
+  <url type="homepage">https://github.com/aizenprivai/aero-cleaner</url>
+  <url type="bugtracker">https://github.com/aizenprivai/aero-cleaner/issues</url>
+  <url type="vcs-browser">https://github.com/aizenprivai/aero-cleaner</url>
+  <url type="translate">https://github.com/aizenprivai/aero-cleaner/tree/master/lang</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/aizenprivai/aero-cleaner/master/docs/screenshots/cleaner.png</image>
+      <caption>The cleaner, with everything shown before it's removed</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/aizenprivai/aero-cleaner/master/docs/screenshots/disk-map.png</image>
+      <caption>The disk map</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/aizenprivai/aero-cleaner/master/docs/screenshots/themes.png</image>
+      <caption>Themes</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/aizenprivai/aero-cleaner/master/docs/screenshots/developer.png</image>
+      <caption>Developer caches</caption>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#8fd3ff</color>
+    <color type="primary" scheme_preference="dark">#0b3d6b</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">960</display_length>
+  </requires>
+  <categories>
+    <category>System</category>
+  </categories>
+  <keywords>
+    <keyword>clean</keyword>
+    <keyword>cleaner</keyword>
+    <keyword>disk space</keyword>
+    <keyword>cache</keyword>
+    <keyword>junk</keyword>
+  </keywords>
+  <releases>
+    <release version="2.2.0" date="2026-11-15">
+      <description>
+        <p>Settings in one readable file, a Flatpak version, themes that switch by day and night, themes from a picture, seasonal touches and sounds.</p>
+      </description>
+    </release>
+  </releases>
+</component>

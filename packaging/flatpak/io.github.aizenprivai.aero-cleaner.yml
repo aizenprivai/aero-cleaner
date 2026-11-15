@@ -1,0 +1,53 @@
+# AeroClean as a Flatpak. Local build and test:
+#   flatpak run org.flatpak.Builder --user --install --force-clean build-dir packaging/flatpak/io.github.aizenprivai.aero-cleaner.yml
+# After changing Cargo.lock, regenerate the crate list:
+#   python3 packaging/flatpak/cargo-sources.py > packaging/flatpak/cargo-sources.json
+id: io.github.aizenprivai.aero-cleaner
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: aero-cleaner
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Checking for updates and the theme gallery (both only when asked).
+  - --share=network
+  # What it cleans and measures: caches, browser data, trash, developer
+  # caches and big files, all in your home folder.
+  - --filesystem=home
+  # The host's installed apps (so Leftovers never flags an installed app),
+  # BleachBit cleaners, the system autostart folder and the distribution.
+  - --filesystem=host-os:ro
+  - --filesystem=host-etc:ro
+  # System items run on the host: package caches (apt, dnf, pacman, zypper),
+  # the journal, old logs, unused Flatpak runtimes and snaps, systemd timers
+  # for the weekly clean, boot analysis, and pkexec for what needs a password.
+  - --talk-name=org.freedesktop.Flatpak
+  # AeroClean's privileged helper on the host, when it's installed.
+  - --system-talk-name=org.aeroclean.Helper1
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/aero-cleaner/cargo
+modules:
+  - name: aero-cleaner
+    buildsystem: simple
+    build-commands:
+      - cargo --offline build --release --locked
+      - install -Dm755 target/release/aero-cleaner /app/bin/aero-cleaner
+      - install -Dm644 packaging/flatpak/io.github.aizenprivai.aero-cleaner.desktop /app/share/applications/io.github.aizenprivai.aero-cleaner.desktop
+      - install -Dm644 assets/aero-cleaner.svg /app/share/icons/hicolor/scalable/apps/io.github.aizenprivai.aero-cleaner.svg
+      - install -Dm644 packaging/flatpak/io.github.aizenprivai.aero-cleaner.metainfo.xml /app/share/metainfo/io.github.aizenprivai.aero-cleaner.metainfo.xml
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - build-dir
+          - .flatpak-builder
+          - .flatpak-build
+      - cargo-sources.json

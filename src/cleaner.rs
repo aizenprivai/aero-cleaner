@@ -10,8 +10,13 @@ use std::fs;
 #[cfg(target_os = "linux")]
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+#[cfg(test)]
+use std::process::Command;
+use std::process::Stdio;
 use std::time::{Duration, SystemTime};
+
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+use crate::platform::Files;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
@@ -492,6 +497,23 @@ fn path_size(p: &Path, skips: &[PathBuf], filter: &dyn Fn(&Path, &fs::Metadata) 
     }
 }
 
+/// A system folder's size: walked directly, or measured on the host from the Flatpak.
+fn sys_size(dir: &str, skip: Option<&str>, files: Files) -> u64 {
+    if crate::platform::in_flatpak() {
+        return crate::platform::host_size(dir, skip, files);
+    }
+    let skips: Vec<PathBuf> = skip.map(PathBuf::from).into_iter().collect();
+    match files {
+        Files::All => path_size(Path::new(dir), &skips, &all),
+        Files::RotatedLogs => path_size(Path::new(dir), &skips, &is_rotated_log),
+        Files::Older7Days => path_size(Path::new(dir), &skips, &older_than_7_days),
+        Files::Ending(list) => path_size(Path::new(dir), &skips, &|p: &Path, _: &fs::Metadata| {
+            let n = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            list.iter().any(|e| n.ends_with(e))
+        }),
+    }
+}
+
 fn all(_: &Path, _: &fs::Metadata) -> bool {
     true
 }
@@ -519,11 +541,11 @@ fn older_than_30_days(_: &Path, md: &fs::Metadata) -> bool {
 }
 
 fn have(cmd: &str) -> bool {
-    Command::new("sh").args(["-c", &format!("command -v {cmd}")]).stdout(Stdio::null()).status().is_ok_and(|s| s.success())
+    crate::platform::command("sh").args(["-c", &format!("command -v {cmd}")]).stdout(Stdio::null()).status().is_ok_and(|s| s.success())
 }
 
 fn run_c(cmd: &str, args: &[&str]) -> String {
-    Command::new(cmd).args(args).env("LC_ALL", "C").stderr(Stdio::null()).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
+    crate::platform::command_c(cmd).args(args).stderr(Stdio::null()).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
 }
 
 /// Parses sizes like "1.2G", "512.0M", "123 kB", "1,234 MB".
@@ -591,10 +613,7 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
                 return ok(saved);
             }
             match crate::distro::cache_dir(pkg) {
-                Some((dir, ends)) => ok(path_size(Path::new(dir), &[], &|p, _| {
-                    let n = p.to_string_lossy();
-                    ends.iter().any(|e| n.ends_with(e))
-                })),
+                Some((dir, ends)) => ok(sys_size(dir, None, Files::Ending(ends))),
                 None => ScanResult { size: None, note: String::new(), available: false },
             }
         }
@@ -617,10 +636,10 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             ScanResult { size, note: "up to".into(), available: true }
         }
         #[cfg(target_os = "linux")]
-        Kind::OldLogs => ok(path_size(Path::new("/var/log"), &[PathBuf::from("/var/log/journal")], &is_rotated_log)),
-        Kind::CrashReports => ok(path_size(Path::new("/var/crash"), &[], &all)),
+        Kind::OldLogs => ok(sys_size("/var/log", Some("/var/log/journal"), Files::RotatedLogs)),
+        Kind::CrashReports => ok(sys_size("/var/crash", None, Files::All)),
         #[cfg(target_os = "linux")]
-        Kind::VarTmp => ok(path_size(Path::new("/var/tmp"), &[], &older_than_7_days)),
+        Kind::VarTmp => ok(sys_size("/var/tmp", None, Files::Older7Days)),
         _ => ScanResult { size: None, note: String::new(), available: false },
     }
 }
@@ -890,7 +909,7 @@ fn helper_clean(kinds: &[Kind], journal_days: u32, log: &dyn Fn(String)) {
 #[cfg(target_os = "linux")]
 fn unix_root_clean(script: &str, log: &dyn Fn(String)) {
     log("Asking for administrator password...".into());
-    let child = Command::new("pkexec").args(["/bin/sh", "-c", script]).stdout(Stdio::piped()).stderr(Stdio::null()).spawn();
+    let child = crate::platform::command("pkexec").args(["/bin/sh", "-c", script]).stdout(Stdio::piped()).stderr(Stdio::null()).spawn();
     let mut child = match child {
         Ok(c) => c,
         Err(e) => return log(format!("Could not run pkexec: {e}")),

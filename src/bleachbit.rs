@@ -119,7 +119,10 @@ fn expand(path: &str, vars: &HashMap<String, String>, home: &Path) -> Option<Pat
         return None;
     }
     let h = home.to_string_lossy().to_string();
-    let env = |k: &str, fallback: &str| std::env::var(k).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| format!("{h}/{fallback}"));
+    let env = |k: &str, fallback: &str| {
+        let v = if k.starts_with("XDG_") { crate::platform::xdg_dir(k).map(|p| p.to_string_lossy().into_owned()) } else { std::env::var(k).ok() };
+        v.filter(|v| !v.is_empty()).unwrap_or_else(|| format!("{h}/{fallback}"))
+    };
     let known = [
         ("$XDG_CACHE_HOME", env("XDG_CACHE_HOME", ".cache")),
         ("$XDG_CONFIG_HOME", env("XDG_CONFIG_HOME", ".config")),
@@ -203,7 +206,11 @@ fn rules_from(xml: &str, home: &Path, covered: &[PathBuf]) -> Vec<Rule> {
 /// Where BleachBit keeps its cleaner files, if it's installed.
 pub fn default_dirs() -> Vec<PathBuf> {
     let home = crate::platform::home();
-    let mut dirs = vec![PathBuf::from("/usr/share/bleachbit/cleaners"), PathBuf::from("/usr/local/share/bleachbit/cleaners"), home.join(".config/bleachbit/cleaners")];
+    let mut dirs = vec![
+        crate::platform::host_path("/usr/share/bleachbit/cleaners"),
+        crate::platform::host_path("/usr/local/share/bleachbit/cleaners"),
+        home.join(".config/bleachbit/cleaners"),
+    ];
     for var in ["ProgramFiles(x86)", "ProgramFiles"] {
         if let Some(pf) = std::env::var_os(var) {
             dirs.push(PathBuf::from(pf).join("BleachBit").join("share").join("cleaners"));
