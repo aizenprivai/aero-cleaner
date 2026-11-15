@@ -23,6 +23,8 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
+      - name: APT repository script (end to end, with a throwaway key)
+        run: sudo apt-get install -y apt-utils && packaging/apt/test-repo.sh
 
   test:
     strategy:
@@ -236,3 +238,57 @@ jobs:
           awk -v h="**v$short " 'index($0, h) == 1 {f = 1} f && /^$/ {exit} f' ROADMAP.md > notes.md
           if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
           gh release create "$tag" assets/* --repo "${{ github.repository }}" --title "AeroClean $tag" "${notes[@]}"
+
+  # Adds the release's .deb to the signed APT repository on GitHub Pages
+  # (https://<owner>.github.io/aero-cleaner/apt). Needs the APT_SIGNING_KEY
+  # secret (an armored private key without passphrase); skipped without it.
+  apt-repo:
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+    steps:
+      - name: Signing key
+        id: key
+        run: |
+          if [ -z "$APT_SIGNING_KEY" ]; then
+            echo "::warning::No APT_SIGNING_KEY secret: the APT repository isn't updated."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/checkout@v7
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: linux
+          path: linux
+      - name: Update the repository
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          sudo apt-get install -y apt-utils
+          export GNUPGHOME=$(mktemp -d)
+          echo "$APT_SIGNING_KEY" | gpg --batch --import
+          export APT_KEY_ID=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr/ {print $10; exit}')
+          export APT_REPO_URL="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/apt"
+          # The site lives on the gh-pages branch (made on the first run).
+          git config user.name "AeroClean"
+          git config user.email "noreply@github.com"
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git fetch --depth 1 origin gh-pages
+            git worktree add site origin/gh-pages
+            git -C site checkout -B gh-pages
+          else
+            git worktree add --detach site
+            git -C site checkout --orphan gh-pages
+            git -C site rm -rfq .
+          fi
+          touch site/.nojekyll
+          packaging/apt/update-repo.sh site/apt $(find linux -name '*.deb')
+          git -C site add -A
+          git -C site commit -qm "APT repository: ${GITHUB_REF_NAME}"
+          git -C site push origin gh-pages

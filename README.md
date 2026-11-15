@@ -98,6 +98,16 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 
 **macOS:** download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. The app isn't notarized by Apple, so macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security. You only do this once per version.
 
+**Mint, Ubuntu, Debian, with automatic updates:** add AeroClean's signed APT repository once, then `sudo apt upgrade` keeps it up to date:
+
+```bash
+sudo curl -fsSLo /usr/share/keyrings/aeroclean.gpg https://aizenprivai.github.io/aero-cleaner/apt/aeroclean.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/aeroclean.sources https://aizenprivai.github.io/aero-cleaner/apt/aeroclean.sources
+sudo apt update && sudo apt install aero-cleaner
+```
+
+The repository is signed with the key `BBD3 DC57 ADBF B46D 6957  8D4D 7F4A 3626 A3AD 93D2` ("AeroClean APT repository").
+
 **Linux, from a release** (Releases page):
 - **Mint, Ubuntu, Debian:** `aero-cleaner_<version>_amd64.deb`, then `sudo apt install ./aero-cleaner_*_amd64.deb`
 - **Fedora, openSUSE:** `aero-cleaner-<version>-1.x86_64.rpm`, then `sudo dnf install ./aero-cleaner-*.rpm` (or `sudo zypper install`)
@@ -149,6 +159,10 @@ Releases are unsigned. The CI can sign them if these GitHub secrets exist (Setti
 | `WINDOWS_CERTIFICATE_PASSWORD` | The `.pfx` password. |
 
 With the Windows secrets, the `.exe` and installer are signed; with the macOS ones, the app is signed with the hardened runtime and notarized. To try the packages without publishing anything, open **Actions → CI → Run workflow**.
+
+### The APT repository
+
+Each release's `.deb` is added to a signed APT repository on GitHub Pages (`gh-pages` branch, served at `/apt`) by the `apt-repo` CI job, using `packaging/apt/update-repo.sh`. It keeps the 3 newest versions. The job needs the `APT_SIGNING_KEY` secret (the armored private key, no passphrase) and skips itself without it. `packaging/apt/test-repo.sh` tests the whole thing with a throwaway key and a real `apt-get update`, without root.
 
 ## Development
 

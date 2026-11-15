@@ -202,9 +202,10 @@ Getting AeroClean, and keeping it up to date, the way each system expects.
 - Inside the sandbox: user-level cleaning works directly; system cleaning goes through the privileged helper on the host.
 - Submitted to Flathub (after the 2.2 release: Flathub builds from a release tag). *Built, linted and tested locally.*
 
-### Milestone 3 – A signed APT repository
+### ✅ Milestone 3 – A signed APT repository
 - A dedicated signing key (made together; its private part only lives on your machine and in a GitHub secret).
 - Each release publishes the `.deb` into an APT repository on GitHub Pages, so `apt upgrade` keeps AeroClean up to date.
+- *Key made and stored as a secret; GitHub Pages is switched on after the first release creates the `gh-pages` branch.*
 
 ### Milestone 4 – Winget and Homebrew
 - A winget manifest, so `winget install AeroClean` works on Windows.
