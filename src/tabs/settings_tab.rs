@@ -58,6 +58,11 @@ impl App {
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
         let mut toggle_updates = false;
+        let (mut cycle_undo, mut empty_undo) = (false, false);
+        let mut restore: Option<crate::holding::Held> = None;
+        if self.undo_list.is_none() {
+            self.load_undo_list();
+        }
         let mut set_lang: Option<&'static str> = None;
         let home = crate::platform::home().to_string_lossy().into_owned();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
@@ -292,6 +297,60 @@ impl App {
                 )
                 .clicked();
 
+                // ----- Undo -----
+                Self::section(ui, "UNDO", th);
+                let keep = match self.settings.undo_hours {
+                    0 => "Off".to_string(),
+                    24 => "24 hours".to_string(),
+                    h if h % 24 == 0 && h / 24 == 7 => "1 week".to_string(),
+                    h if h % 24 == 0 => format!("{} days", h / 24),
+                    h => format!("{h} hours"),
+                };
+                cycle_undo = option_row(
+                    ui,
+                    row_w,
+                    "↩",
+                    "Keep cleaned files for",
+                    "So a clean can be undone. They're deleted for real afterwards, or right away if the disk is almost full.",
+                    &keep,
+                    "Change how long",
+                    th,
+                );
+                let held = self.undo_list.clone().unwrap_or_default();
+                for h in &held {
+                    let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 44.0), Sense::hover());
+                    let rect = rect.translate(vec2(4.0, 0.0));
+                    let p = ui.painter();
+                    aero::surface(p, rect, 12.0, th, resp.hovered(), None);
+                    let cy = rect.center().y;
+                    let when = tools::age(Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(h.when)));
+                    p.text(pos2(rect.min.x + 16.0, cy), Align2::LEFT_CENTER, &when, bold(13.0), th.text);
+                    // Stored in English: "Firefox: Cache, Browsing history" or category names.
+                    let what = h
+                        .label
+                        .split(", ")
+                        .map(|part| match part.split_once(": ") {
+                            Some((app, first)) => format!("{app}: {}", crate::i18n::tr(first)),
+                            None => crate::i18n::tr(part),
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    aero::fit_text(p, pos2(rect.min.x + 120.0, cy), Align2::LEFT_CENTER, &what, regular(12.0), th.soft, rect.width() - 120.0 - 230.0);
+                    embossed(p, pos2(rect.max.x - 128.0, cy), Align2::RIGHT_CENTER, &format_bytes(h.size), bold(14.0), th.text);
+                    let btn = Rect::from_min_size(pos2(rect.max.x - 116.0, cy - 14.0), vec2(104.0, 28.0));
+                    if aero::aqua_button(ui, btn, "↩ Restore", th.accent, !self.undo_busy).on_hover_text(crate::i18n::tr("Put these files back where they were")).clicked() {
+                        restore = Some(h.clone());
+                    }
+                }
+                if !held.is_empty() {
+                    let total: u64 = held.iter().map(|h| h.size).sum();
+                    let (rect, _) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
+                    let r = Rect::from_min_size(rect.min + vec2(4.0, 2.0), vec2(230.0, 36.0));
+                    empty_undo = aero::aqua_button(ui, r, &format!("🗑 Delete now ({})", format_bytes(total)), th.root_orb, !self.undo_busy)
+                        .on_hover_text(crate::i18n::tr("Frees the space now; these cleans can't be undone anymore"))
+                        .clicked();
+                }
+
                 // ----- History -----
                 Self::section(ui, "CLEANING HISTORY", th);
                 let total: u64 = self.history.iter().map(|h| h.freed).sum();
@@ -347,6 +406,26 @@ impl App {
                 self.settings_msg = e;
             }
             self.auto.checked = None;
+        }
+        if cycle_undo {
+            self.settings.undo_hours = match self.settings.undo_hours {
+                24 => 72,
+                72 => 168,
+                168 => 0,
+                _ => 24,
+            };
+            self.settings.save();
+        }
+        if empty_undo {
+            self.undo_busy = true;
+            let tx = self.notifier();
+            std::thread::spawn(move || {
+                let freed = crate::holding::purge(0);
+                tx.send(Msg::Restored(format!("Freed {} kept for undo.", format_bytes(freed))));
+            });
+        }
+        if let Some(h) = restore {
+            self.restore_held(h);
         }
         if toggle_updates {
             self.settings.check_updates = !self.settings.check_updates;

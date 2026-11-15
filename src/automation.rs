@@ -72,7 +72,8 @@ pub fn auto_clean(settings: &Settings) -> String {
     let kinds = auto_kinds(settings, !browsers.is_empty());
     let measure = |kinds: &[Kind]| -> u64 { kinds.iter().filter_map(|k| cleaner::scan(*k, &settings.exclusions).size).sum() };
     let before = measure(&kinds);
-    cleaner::clean(&kinds, &settings.exclusions, settings.journal_days, &|_| {});
+    crate::holding::purge(settings.undo_hours);
+    cleaner::clean(&kinds, &settings.exclusions, settings.journal_days, crate::holding::should_hold(settings), &|_| {});
     let freed = before.saturating_sub(measure(&kinds));
     let names: Vec<&str> = cleaner::CATEGORIES.iter().filter(|c| kinds.contains(&c.kind)).map(|c| c.name).collect();
     settings::record(freed, &format!("Automatic: {}", names.join(", ")));
@@ -109,7 +110,10 @@ pub fn check_disk(settings: &Settings) {
         let tree = crate::diskmap::scan(&home(), 20_000_000, &|_| {});
         diskhistory::save_snapshot(&diskhistory::snapshot_from_tree(&tree, today));
     }
+    crate::holding::purge(settings.undo_hours);
     let Some((total, avail)) = disk_is_low(settings) else { return };
+    // Space is short: let go of everything kept for undo first.
+    crate::holding::purge(0);
     let _ = fs::create_dir_all(warning_stamp().parent().unwrap());
     let _ = fs::write(warning_stamp(), "");
     let mut body = crate::i18n::tr(format!("Only {} free of {}. AeroClean can help you make room.", format_bytes(avail), format_bytes(total)));

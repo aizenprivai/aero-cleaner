@@ -197,7 +197,9 @@ pub fn is_running(process: &str) -> bool {
 
 /// Deletes the given parts. Refuses while the browser runs, because it would
 /// rewrite or corrupt its databases. Returns how many items failed.
-pub fn clean(browser: &Browser, parts: &[Part]) -> Result<usize, String> {
+/// With `batch`, removed files go to the undo batch (and Firefox's history
+/// database is copied there before it's changed).
+pub fn clean(browser: &Browser, parts: &[Part], batch: Option<&crate::holding::Batch>) -> Result<usize, String> {
     if is_running(browser.process) {
         return Err(format!("Close {} first.", browser.name));
     }
@@ -205,7 +207,12 @@ pub fn clean(browser: &Browser, parts: &[Part]) -> Result<usize, String> {
     for (part, data) in &browser.parts {
         let (Some((paths, _)), true) = (data, parts.contains(part)) else { continue };
         if *part == Part::History && browser.places_db {
-            failed += paths.iter().filter(|p| firefox_history::clear(p).is_err()).count();
+            for p in paths {
+                if let Some(b) = batch {
+                    let _ = b.keep_copy(p);
+                }
+                failed += firefox_history::clear(p).is_err() as usize;
+            }
             continue;
         }
         for p in paths {
@@ -216,13 +223,13 @@ pub fn clean(browser: &Browser, parts: &[Part]) -> Result<usize, String> {
                     rd.flatten()
                         .map(|e| {
                             let ep = e.path();
-                            if ep.symlink_metadata().is_ok_and(|m| m.is_dir()) { fs::remove_dir_all(&ep) } else { fs::remove_file(&ep) }
+                            crate::holding::dispose(&ep, ep.symlink_metadata().is_ok_and(|m| m.is_dir()), batch)
                         })
                         .filter(|r| r.is_err())
                         .count()
                 })
             } else {
-                fs::remove_file(p).map(|_| 0)
+                crate::holding::dispose(p, false, batch).map(|_| 0)
             };
             failed += res.unwrap_or(1);
         }
@@ -369,12 +376,12 @@ mod tests {
         let size = |part| b.parts.iter().find(|(p, _)| *p == part).unwrap().1.as_ref().unwrap().1;
         assert_eq!((size(Part::Cache), size(Part::Cookies), size(Part::History)), (400, 50, 100));
 
-        assert_eq!(clean(b, &[Part::History]).unwrap(), 0);
+        assert_eq!(clean(b, &[Part::History], None).unwrap(), 0);
         assert!(!prof.join("History").exists(), "history deleted");
         assert!(prof.join("Network/Cookies").exists(), "cookies untouched");
         assert!(prof.join("Bookmarks").exists(), "bookmarks untouched");
         assert!(home.join(".cache/google-chrome/Default/Cache/data_0").exists(), "cache untouched");
-        clean(b, &[Part::Cache]).unwrap();
+        clean(b, &[Part::Cache], None).unwrap();
         assert!(!home.join(".cache/google-chrome/Default/Cache/data_0").exists());
         assert!(home.join(".cache/google-chrome/Default").exists(), "cache folder itself kept");
         fs::remove_dir_all(&home).unwrap();
@@ -424,7 +431,7 @@ mod tests {
         assert!(cache.0.iter().all(|p| p != &prof), "never the whole profile");
         assert!(cache.0.contains(&prof.join("Cache")));
         assert_eq!(cache.1, 300);
-        clean(&found[0], &[Part::Cache]).unwrap();
+        clean(&found[0], &[Part::Cache], None).unwrap();
         assert!(prof.join("Bookmarks").exists() && prof.join("Login Data").exists() && prof.join("Preferences").exists());
         assert!(!prof.join("Cache/Cache_Data").exists());
         fs::remove_dir_all(&base).unwrap();

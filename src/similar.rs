@@ -121,7 +121,7 @@ pub fn find_similar(root: &Path, include_hidden: bool, progress: &(dyn Fn(String
 
 fn find_similar_with_cache(root: &Path, include_hidden: bool, progress: &(dyn Fn(String) + Sync), cache_path: &Path) -> Vec<DupeGroup> {
     let hidden = |p: &Path| p.file_name().is_some_and(|n| crate::platform::is_app_data(Path::new(n)));
-    let trash = [root.join(".local/share/Trash"), root.join(".Trash")];
+    let trash = [root.join(".local/share/Trash"), root.join(".Trash"), crate::holding::holding_dir()];
     let photos = Mutex::new(Vec::new());
     crate::walk::par_walk(root, &|d| !trash.iter().any(|t| t == d) && (include_hidden || !hidden(d)), &|p, md| {
         // Skip icons and tiny thumbnails.

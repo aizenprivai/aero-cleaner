@@ -30,7 +30,7 @@ pub fn find_big_files(min: u64, limit: usize, progress: &(dyn Fn(u64) + Sync)) -
     use std::sync::Mutex;
     use std::sync::atomic::{AtomicU64, Ordering};
     let home = home();
-    let skip = [home.join(".local/share/Trash"), home.join(".Trash")];
+    let skip = [home.join(".local/share/Trash"), home.join(".Trash"), crate::holding::holding_dir()];
     let found = Mutex::new(Vec::new());
     let scanned = AtomicU64::new(0);
     crate::walk::par_walk(&home, &|dir| !skip.iter().any(|s| s == dir), &|path, md| {

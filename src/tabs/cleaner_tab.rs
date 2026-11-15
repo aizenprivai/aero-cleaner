@@ -116,8 +116,26 @@ impl App {
         } else {
             aero::orb(&p, sc, 12.0, th.go, "✔");
         }
-        let status = p.layout(crate::i18n::tr(self.status.clone()), regular(14.0), th.text, status_box.width() - 64.0);
+        // "Undo last clean" while something is kept from the last clean.
+        if self.undo_list.is_none() {
+            self.load_undo_list();
+        }
+        let th = &self.themes[self.theme];
+        let latest = self.undo_list.as_ref().and_then(|l| l.first()).filter(|h| crate::diskhistory::now().saturating_sub(h.when) < self.settings.undo_hours as u64 * 3600).cloned();
+        let undo_w = if latest.is_some() { 112.0 } else { 0.0 };
+        // At most two lines, so the box never overflows.
+        let mut job = egui::text::LayoutJob::simple(crate::i18n::tr(self.status.clone()), regular(14.0), th.text, status_box.width() - 64.0 - undo_w);
+        job.wrap.max_rows = 2;
+        let status = p.layout_job(job);
         p.galley(pos2(sc.x + 22.0, status_box.center().y - status.size().y / 2.0), status, th.text);
+        if let Some(held) = latest {
+            let r = Rect::from_min_size(pos2(status_box.max.x - undo_w - 6.0, status_box.center().y - 17.0), vec2(undo_w, 34.0));
+            let tip = crate::i18n::tr(format!("Puts back what the last clean removed ({}). Kept until it's {} hours old.", format_bytes(held.size), self.settings.undo_hours));
+            if aero::aqua_button(ui, r, "↩ Undo", th.accent, !busy && !self.undo_busy).on_hover_text(tip).clicked() {
+                self.restore_held(held);
+            }
+        }
+        let th = &self.themes[self.theme];
 
         let (accent, go, bubble_tint) = (th.accent, th.go, th.bubble);
         let can_clean = !busy && !self.selected().is_empty();

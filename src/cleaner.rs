@@ -551,10 +551,10 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
 /// Deletes the contents of a directory (or a single file) without following
 /// symlinks. The directory itself is kept. Returns the number of entries that
 /// could not be removed (usually files held by running apps).
-fn clear(p: &Path, skips: &[PathBuf]) -> usize {
+fn clear(p: &Path, skips: &[PathBuf], batch: Option<&crate::holding::Batch>) -> usize {
     let Ok(md) = fs::symlink_metadata(p) else { return 0 };
     if !md.is_dir() {
-        return fs::remove_file(p).is_err() as usize;
+        return crate::holding::dispose(p, false, batch).is_err() as usize;
     }
     let Ok(rd) = fs::read_dir(p) else { return 1 };
     let mut failed = 0;
@@ -566,12 +566,11 @@ fn clear(p: &Path, skips: &[PathBuf]) -> usize {
         let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
         // A folder that contains an excluded path: clean around it instead.
         if is_dir && skips.iter().any(|s| s.starts_with(&path)) {
-            failed += clear(&path, skips);
+            failed += clear(&path, skips, batch);
             continue;
         }
-        // std::fs::remove_dir_all does not follow symlinks.
-        let res = if is_dir { fs::remove_dir_all(&path) } else { fs::remove_file(&path) };
-        if res.is_err() {
+        // Moved into the undo batch, or deleted (remove_dir_all doesn't follow symlinks).
+        if crate::holding::dispose(&path, is_dir, batch).is_err() {
             failed += 1;
         }
     }
@@ -674,7 +673,20 @@ fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
 }
 
 /// Cleans the given categories, reporting progress lines through `log`.
-pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dyn Fn(String)) {
+/// With `hold`, user files go to an undo batch instead of being deleted.
+pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, hold: bool, log: &dyn Fn(String)) {
+    let label = CATEGORIES.iter().filter(|c| kinds.contains(&c.kind) && !c.root && c.kind != Kind::Trash).map(|c| c.name).collect::<Vec<_>>().join(", ");
+    let batch = if hold && !label.is_empty() { crate::holding::Batch::start(&label) } else { None };
+    if !hold && !label.is_empty() {
+        log("Disk almost full or undo turned off: cleaned files are deleted right away.".into());
+    }
+    clean_into(kinds, exclusions, journal_days, batch.as_ref(), log);
+    if let Some(b) = batch {
+        b.finish();
+    }
+}
+
+fn clean_into(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, batch: Option<&crate::holding::Batch>, log: &dyn Fn(String)) {
     // Merge stderr into stdout so a single pipe carries everything (no deadlock).
     let mut script = String::from("exec 2>&1\nexport LC_ALL=C\n");
     let mut need_root = false;
@@ -720,7 +732,9 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dy
         if kind == Kind::DevCache {
             make_writable(&go_mod_cache(&home()));
         }
-        let failed: usize = user_paths(kind).iter().map(|p| clear(p, &skips)).sum();
+        // Emptying the Trash is meant to be final: it isn't held.
+        let batch = if kind == Kind::Trash { None } else { batch };
+        let failed: usize = user_paths(kind).iter().map(|p| clear(p, &skips, batch)).sum();
         if failed > 0 {
             log(format!("   {failed} item(s) in use, skipped"));
         }
@@ -819,11 +833,31 @@ mod tests {
         fs::write(dir.join("skipme/c"), "x").unwrap();
 
         assert_eq!(path_size(&dir, &[dir.join("skipme")], &all), 1500);
-        assert_eq!(clear(&dir, &[dir.join("skipme")]), 0);
+        assert_eq!(clear(&dir, &[dir.join("skipme")], None), 0);
         assert!(dir.exists(), "directory itself is kept");
         assert!(!dir.join("a.bin").exists() && !dir.join("sub").exists() && !dir.join("link").exists());
         assert!(dir.join("skipme/c").exists(), "skipped path untouched");
         assert!(target.join("keep.txt").exists(), "symlink target untouched");
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn cleaning_with_undo_can_be_reverted() {
+        let base = std::env::temp_dir().join(format!("aero-undo-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let cache = base.join("cache");
+        fs::create_dir_all(cache.join("app/x")).unwrap();
+        fs::create_dir_all(cache.join("keep")).unwrap();
+        fs::write(cache.join("app/x/blob"), vec![7u8; 1234]).unwrap();
+        fs::write(cache.join("keep/me"), "kept").unwrap();
+        let batch = crate::holding::Batch::start_in(&base.join("holding"), "App cache").unwrap();
+        assert_eq!(clear(&cache, &[cache.join("keep")], Some(&batch)), 0);
+        batch.finish();
+        assert!(!cache.join("app").exists() && cache.join("keep/me").exists(), "cleaned around the folder to keep");
+        let held = crate::holding::list_in(&base.join("holding"));
+        assert_eq!(held[0].size, 1234);
+        assert_eq!(crate::holding::restore(&held[0]), (1, 0));
+        assert_eq!(fs::read(cache.join("app/x/blob")).unwrap().len(), 1234, "back after undo");
         fs::remove_dir_all(&base).unwrap();
     }
 
@@ -840,7 +874,7 @@ mod tests {
             fs::set_permissions(&p, perms).unwrap();
         }
         make_writable(&base);
-        assert_eq!(clear(&base, &[]), 0);
+        assert_eq!(clear(&base, &[], None), 0);
         assert!(base.exists() && fs::read_dir(&base).unwrap().next().is_none());
         fs::remove_dir_all(&base).unwrap();
     }
@@ -857,7 +891,7 @@ mod tests {
 
         let skips = vec![keep.clone()];
         assert_eq!(path_size(&base, &skips, &all), 300);
-        assert_eq!(clear(&base, &skips), 0);
+        assert_eq!(clear(&base, &skips, None), 0);
         assert!(keep.join("keep.bin").exists(), "excluded folder survives");
         assert!(!base.join("mozilla/firefox/junk.bin").exists() && !base.join("other").exists());
         fs::remove_dir_all(&base).unwrap();

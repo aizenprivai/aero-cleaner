@@ -11,6 +11,7 @@ mod diskhistory;
 mod diskmap;
 mod dupes;
 mod health;
+mod holding;
 mod i18n;
 mod platform;
 mod report;
@@ -59,6 +60,8 @@ enum Msg {
     BootToggled(Result<String, String>),
     UpdateChecked(Option<update::Update>),
     HealthDone(Vec<health::DiskHealth>),
+    UndoList(Vec<holding::Held>),
+    Restored(String),
 }
 
 /// Sends messages from worker threads and wakes the UI so it repaints only
@@ -113,6 +116,9 @@ struct App {
     keyboard_nav: bool,
     /// A newer release, when the opt-in update check found one.
     update: Option<update::Update>,
+    /// What's kept for undo, newest first (None until loaded).
+    undo_list: Option<Vec<holding::Held>>,
+    undo_busy: bool,
     items: Vec<Item>,
     phase: Phase,
     tx: Sender<Msg>,
@@ -191,11 +197,16 @@ impl App {
             disk_hist: Default::default(),
             keyboard_nav: false,
             update: None,
+            undo_list: None,
+            undo_busy: false,
         };
         app.items = app.initial_selection();
         app.apply_visuals(ctx);
         app.start_scan();
         app.start_update_check(false);
+        // Really delete what's past the undo window (in the background: it can be big).
+        let hours = app.settings.undo_hours;
+        std::thread::spawn(move || holding::purge(hours));
         app.refresh_disk();
         app
     }
@@ -280,9 +291,10 @@ impl App {
         let tx = self.notifier();
         let excl = self.settings.exclusions.clone();
         let days = self.settings.journal_days;
+        let hold = holding::should_hold(&self.settings);
         std::thread::spawn(move || {
             let log_tx = tx.clone();
-            cleaner::clean(&kinds, &excl, days, &move |line| {
+            cleaner::clean(&kinds, &excl, days, hold, &move |line| {
                 log_tx.send(Msg::Log(line));
             });
             tx.send(Msg::CleanDone);
@@ -297,7 +309,10 @@ impl App {
                     self.status = l.trim().to_string();
                     self.log.push(l);
                 }
-                Msg::CleanDone => self.start_scan(),
+                Msg::CleanDone => {
+                    self.undo_list = None;
+                    self.start_scan();
+                }
                 Msg::BigProgress(n) => self.big_scanning = Some(n),
                 Msg::Preview(lines) => {
                     if let Some(r) = &mut self.review {
@@ -357,6 +372,17 @@ impl App {
                     self.boot.loaded = true;
                 }
                 Msg::UpdateChecked(found) => self.update = found,
+                Msg::UndoList(list) => {
+                    self.undo_list = Some(list);
+                    self.undo_busy = false;
+                }
+                Msg::Restored(msg) => {
+                    self.status = msg.clone();
+                    self.settings_msg = msg;
+                    self.undo_busy = false;
+                    self.undo_list = None;
+                    self.start_scan();
+                }
                 Msg::HealthDone(drives) => {
                     self.disk_hist.health = Some(drives);
                     self.disk_hist.health_loading = false;
@@ -598,6 +624,39 @@ const SCREEN_KEYS: [egui::Key; 10] =
     [egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4, egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8, egui::Key::Num9, egui::Key::Num0];
 
 impl App {
+    /// Loads what's held for undo in the background (sizes take a moment).
+    fn load_undo_list(&mut self) {
+        if self.undo_busy {
+            return;
+        }
+        self.undo_busy = true;
+        let tx = self.notifier();
+        std::thread::spawn(move || tx.send(Msg::UndoList(holding::list())));
+    }
+
+    /// Puts a held clean back. Refused while a browser runs if it would
+    /// overwrite a browser database.
+    fn restore_held(&mut self, held: holding::Held) {
+        let browsers = cleaner::running_browsers();
+        if held.has_replace && !browsers.is_empty() {
+            let msg = format!("Close {} first, then undo.", browsers.join(" and "));
+            self.status = msg.clone();
+            self.settings_msg = msg;
+            return;
+        }
+        self.undo_busy = true;
+        let tx = self.notifier();
+        std::thread::spawn(move || {
+            let (restored, skipped) = holding::restore(&held);
+            let msg = if skipped == 0 {
+                format!("Restored {restored} item(s). Everything is back.")
+            } else {
+                format!("Restored {restored} item(s); {skipped} skipped because a newer version exists.")
+            };
+            tx.send(Msg::Restored(msg));
+        });
+    }
+
     /// Reads free space again and adds it to the disk history (at most hourly).
     fn refresh_disk(&mut self) {
         self.disk = tools::disk_usage();
@@ -812,6 +871,15 @@ mod ui_tests {
                     })
                     .collect();
                 st.disk_hist.growth = Some((vec![("Videos/OBS".into(), 6_200_000_000), (".cache/yarn".into(), 1_100_000_000), ("Downloads".into(), 420_000_000)], 7));
+                h.run_steps(2);
+            }
+            if matches!(tab, Tab::Settings | Tab::Cleaner) && std::env::var("AERO_SHOT_DEMO").is_ok() {
+                let now = diskhistory::now();
+                let held =
+                    |ago: u64, label: &str, size: u64| holding::Held { dir: "/nonexistent".into(), when: now - ago, label: label.into(), size, items: 3, has_replace: false };
+                let st = h.state_mut();
+                st.undo_list = Some(vec![held(600, "App & browser cache, Thumbnail cache", 812_000_000), held(30_000, "Firefox: Browsing history", 41_000_000)]);
+                st.undo_busy = false;
                 h.run_steps(2);
             }
             if tab == Tab::Duplicates && std::env::var("AERO_SHOT_DEMO").is_ok() {

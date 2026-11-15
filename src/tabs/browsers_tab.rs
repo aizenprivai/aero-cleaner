@@ -135,11 +135,20 @@ impl App {
             self.browsers.confirm = None;
             let b = &self.browsers.list[bi];
             let names: Vec<&str> = parts.iter().map(|p| crate::i18n::t(p.label())).collect();
-            self.browsers.msg = match browsers::clean(b, &parts) {
+            let batch = if crate::holding::should_hold(&self.settings) {
+                crate::holding::Batch::start(&format!("{}: {}", b.name, parts.iter().map(|p| p.label()).collect::<Vec<_>>().join(", ")))
+            } else {
+                None
+            };
+            self.browsers.msg = match browsers::clean(b, &parts, batch.as_ref()) {
                 Ok(0) => format!("{} cleaned: {}", b.name, names.join(", ")),
                 Ok(n) => format!("{} cleaned, {n} item(s) skipped", b.name),
                 Err(e) => e,
             };
+            if let Some(batch) = batch {
+                batch.finish();
+                self.undo_list = None;
+            }
             self.start_browser_scan();
             if self.phase == Phase::Idle {
                 self.start_scan();

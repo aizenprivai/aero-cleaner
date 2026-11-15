@@ -74,7 +74,8 @@ pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progres
     // (size, device, inode, path)
     let files: Mutex<Vec<(u64, u64, u64, PathBuf)>> = Mutex::new(Vec::new());
     let count = AtomicUsize::new(0);
-    crate::walk::par_walk(root, &|dir| dir != skip && dir != mac_trash && (include_hidden || !is_hidden(dir)), &|path, md| {
+    let held = crate::holding::holding_dir();
+    crate::walk::par_walk(root, &|dir| dir != skip && dir != mac_trash && dir != held && (include_hidden || !is_hidden(dir)), &|path, md| {
         if !include_hidden && is_hidden(path) {
             return;
         }
