@@ -5,6 +5,8 @@ on:
     branches: [master]
     tags: ["v*"]
   pull_request:
+  # "Run workflow" on GitHub builds every package without publishing a release.
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -41,7 +43,7 @@ jobs:
   # The jobs below only run for a version tag (e.g. v1.1.0).
   build-deb:
     needs: [lint, test]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -61,27 +63,56 @@ jobs:
 
   build-windows:
     needs: [lint, test]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
+    env:
+      # Optional code signing (see README "Signing releases"). Without these
+      # secrets the .exe and installer are built unsigned.
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build .exe
         run: cargo build --profile dist
-      - name: Package .zip
+      - name: Prepare signing
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          "SIGNTOOL=$($signtool.FullName)" >> $env:GITHUB_ENV
+      - name: Sign AeroClean.exe
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: '& $env:SIGNTOOL sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 target/dist/aero-cleaner.exe'
+      - name: Build installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Q "/DVersion=$version" "/DSource=$PWD\target\dist\aero-cleaner.exe" "/O$PWD\dist" packaging\windows\aeroclean.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Sign installer
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*-setup.exe | ForEach-Object { & $env:SIGNTOOL sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $_.FullName }
+          Remove-Item "$env:RUNNER_TEMP\cert.pfx"
+      - name: Package portable .zip
         shell: pwsh
         run: |
           $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
-          $name = "AeroClean-$version-windows-x64"
+          $name = "AeroClean-$version-windows-x64-portable"
           New-Item -ItemType Directory -Path "dist/$name" | Out-Null
           Copy-Item target/dist/aero-cleaner.exe "dist/$name/AeroClean.exe"
           Copy-Item LICENSE "dist/$name/LICENSE.txt"
           @"
-          AeroClean $version for Windows 10 and 11
+          AeroClean $version for Windows 10 and 11 (portable)
 
           Double-click AeroClean.exe. No installation needed; on first launch it adds itself to the Start Menu.
-          Windows SmartScreen may warn that the app is from an unknown publisher (the .exe isn't code-signed yet): click "More info" then "Run anyway".
+          Prefer the installer (AeroClean-$version-windows-setup.exe) if you want an uninstaller.
           Cleaning system items asks for administrator permission once per clean.
 
           https://github.com/${{ github.repository }}  -  MIT License
@@ -90,27 +121,52 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*-setup.exe
 
   build-macos:
     needs: [lint, test]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
+    env:
+      # Optional Developer ID signing and notarization (see README "Signing
+      # releases"). Without these secrets the app is signed ad hoc.
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
-      - name: Build AeroClean.app
+      - name: Import Developer ID certificate
+        if: env.MACOS_CERTIFICATE != ''
+        run: |
+          KC="$RUNNER_TEMP/build.keychain-db"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p ci "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p ci "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          IDENTITY=$(security find-identity -v -p codesigning "$KC" | grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"')
+          echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+      - name: Build AeroClean.dmg
         run: packaging/build-macos.sh
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: target/macos/*.zip
+          path: target/macos/*.dmg
 
   publish:
     needs: [build-deb, build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
       contents: write

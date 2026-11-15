@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Builds a universal (Apple Silicon + Intel) AeroClean.app and zips it:
-#   target/macos/AeroClean-<version>-macos.zip
+# Builds a universal (Apple Silicon + Intel) AeroClean.app as a disk image:
+#   target/macos/AeroClean-<version>-macos.dmg
 # Runs on macOS. Needs: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+#
+# Optional, for an app that opens without a Gatekeeper warning:
+#   APPLE_SIGNING_IDENTITY  "Developer ID Application: Name (TEAMID)", already
+#                           in the keychain. Without it the app is signed ad hoc.
+#   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD
+#                           notarize with Apple (app-specific password).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 command -v cargo >/dev/null || { [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"; }
@@ -76,30 +82,54 @@ cat > "$APP/Contents/Info.plist" <<EOF
 EOF
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
 
-# Ad-hoc signature: required to run on Apple Silicon. Not notarized yet.
-codesign --force --deep --sign - "$APP"
+IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
+if [ -n "$IDENTITY" ]; then
+    echo ">> Signing with $IDENTITY (hardened runtime)"
+    codesign --force --options runtime --timestamp --entitlements packaging/macos/entitlements.plist --sign "$IDENTITY" "$APP"
+else
+    # Ad-hoc signature: required to run on Apple Silicon.
+    echo ">> Signing ad hoc (no Developer ID given)"
+    codesign --force --deep --sign - "$APP"
+fi
+codesign --verify --strict "$APP"
 
-echo ">> Packaging"
-cp LICENSE "$OUT/LICENSE.txt"
-cat > "$OUT/README.txt" <<EOF
+NOTARIZE=no
+if [ -n "$IDENTITY" ] && [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then
+    NOTARIZE=yes
+fi
+
+echo ">> Building the disk image"
+STAGE="$OUT/dmg"
+mkdir -p "$STAGE"
+mv "$APP" "$STAGE/"
+ln -s /Applications "$STAGE/Applications"
+cp LICENSE "$STAGE/LICENSE.txt"
+if [ "$NOTARIZE" = no ]; then
+    cat > "$STAGE/README.txt" <<EOF
 AeroClean $VERSION for macOS 11 or later (Apple Silicon and Intel)
-================================================================
 
-Drag AeroClean.app into your Applications folder, then open it.
+Drag AeroClean into the Applications folder, then open it.
 
-The app isn't notarized by Apple yet, so the first time macOS says it
-"cannot be opened". Right-click AeroClean.app, choose Open, then Open again.
-(On macOS 15: open it once, then go to System Settings > Privacy & Security
-and click "Open Anyway".)
-
-Cleaning system items (old system logs, crash reports...) asks for your
-administrator password once per clean.
-
-Settings and history:  ~/Library/Application Support/AeroClean
+This copy isn't notarized by Apple, so the first time macOS says it
+can't confirm it's safe. Click Done, then open System Settings >
+Privacy & Security and click "Open Anyway" next to AeroClean.
 
 https://github.com/aizenprivai/aero-cleaner  -  MIT License
 EOF
-# The zip holds a folder with the app, the README and the license.
-# ditto keeps the code signature and permissions intact.
-(cd "$OUT" && mkdir -p "$NAME" && mv AeroClean.app README.txt LICENSE.txt "$NAME/" && ditto -c -k --keepParent "$NAME" "$NAME.zip")
-echo "Built $OUT/$NAME.zip ($(du -h "$OUT/$NAME.zip" | cut -f1))"
+fi
+DMG="$OUT/$NAME.dmg"
+hdiutil create -volname "AeroClean $VERSION" -srcfolder "$STAGE" -ov -format UDZO -quiet "$DMG"
+rm -rf "$STAGE"
+if [ -n "$IDENTITY" ]; then
+    codesign --force --timestamp --sign "$IDENTITY" "$DMG"
+fi
+
+if [ "$NOTARIZE" = yes ]; then
+    echo ">> Notarizing with Apple (usually a few minutes)"
+    xcrun notarytool submit "$DMG" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+    xcrun stapler staple "$DMG"
+    spctl --assess --type open --context context:primary-signature -v "$DMG"
+else
+    echo ">> Not notarized (no Apple credentials given)"
+fi
+echo "Built $DMG ($(du -h "$DMG" | cut -f1))"
