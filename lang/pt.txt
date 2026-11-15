@@ -1588,5 +1588,5 @@ Turn sounds on in Settings, under Sounds.
 # ----- Flatpak -----
 Update with Flatpak
 = Atualizar com o Flatpak
-Updates come from Flathub: your software center, or flatpak update
-= As atualizações vêm do Flathub: a sua loja de aplicativos, ou flatpak update
+Updates come through Flatpak: flatpak update
+= As atualizações vêm pelo Flatpak: flatpak update

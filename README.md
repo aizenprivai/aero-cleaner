@@ -113,7 +113,7 @@ The repository is signed with the key `BBD3 DC57 ADBF B46D 6957  8D4D 7F4A 3626 
 - **Fedora, openSUSE:** `aero-cleaner-<version>-1.x86_64.rpm`, then `sudo dnf install ./aero-cleaner-*.rpm` (or `sudo zypper install`)
 - **Arch:** the release's `PKGBUILD`, then `makepkg -si`
 - **Any distro:** `AeroClean-<version>-x86_64.AppImage`, make it executable and run it (system cleans then use one password prompt instead of the helper)
-- **Flatpak:** coming to Flathub. The Flatpak cleans your home folder directly and runs system items (package caches, the journal, logs) on your system through Flatpak's host access, with one password prompt (or the helper, if the `.deb`/`.rpm` is installed too). It updates through your software center.
+- **Flatpak:** not on Flathub, but you can build it yourself from `packaging/flatpak/` (see below). It cleans your home folder directly and runs system items (package caches, the journal, logs) on your system through Flatpak's host access, with one password prompt (or the helper, if the `.deb`/`.rpm` is installed too).
 
 **From source** (needs [Rust](https://rustup.rs)):
 

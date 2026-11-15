@@ -128,7 +128,7 @@
 |---|---|---|---|
 | v2.x | Leftovers | S | – |
 | **v2.1** | **Theme Studio: fully modular themes** | **L** | **Keeping the 6 built-in themes pixel-identical; scene performance** |
-| v2.2 | Distribution | M | Accounts for Flathub and an APT repository |
+| v2.2 | Distribution | M | A signing key for the APT repository |
 
 ## 🔜 v2.x – Leftovers
 - **Rules in the automatic clean:** let chosen rules run with the weekly clean.
@@ -208,10 +208,10 @@ Getting AeroClean, and keeping it up to date, the way each system expects.
 - The old file is migrated automatically the first time 2.2 starts, and kept as `settings.old`.
 - Unknown or broken values fall back to their defaults one by one, instead of losing the whole file.
 
-### Milestone 2 – Flatpak and Flathub
+### Milestone 2 – Flatpak
 - A Flatpak manifest built from source, offline (vendored crates), tested locally.
 - Inside the sandbox: user-level cleaning works directly; system cleaning goes through the privileged helper on the host.
-- Submitted to Flathub (after the 2.2 release: Flathub builds from a release tag). *Built, linted and tested locally.*
+- *Built and tested locally. Not published on Flathub (decided against); anyone can build it from `packaging/flatpak/`.*
 
 ### ✅ Milestone 3 – A signed APT repository
 - A dedicated signing key (made together; its private part only lives on your machine and in a GitHub secret).

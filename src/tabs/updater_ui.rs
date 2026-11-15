@@ -102,7 +102,7 @@ impl App {
                     }
                 } else if crate::platform::in_flatpak() {
                     // Flatpak updates itself, from your software center or `flatpak update`.
-                    let tip = crate::i18n::tr("Updates come from Flathub: your software center, or flatpak update");
+                    let tip = crate::i18n::tr("Updates come through Flatpak: flatpak update");
                     let _ = aero::aqua_button(ui, btn, "Update with Flatpak", th.accent, false).on_hover_text(tip);
                 } else {
                     let tip = crate::i18n::tr("This copy wasn't installed from a package, so it can't update itself");
