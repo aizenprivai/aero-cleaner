@@ -21,7 +21,7 @@ pub(crate) struct HistoryState {
 const DAY: u64 = 86400;
 
 impl App {
-    fn load_disk_history(&mut self) {
+    pub(crate) fn load_disk_history(&mut self) {
         self.refresh_disk();
         let h = &mut self.disk_hist;
         h.samples = diskhistory::load();

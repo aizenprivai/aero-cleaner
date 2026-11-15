@@ -9,6 +9,7 @@ mod dupes_tab;
 mod history_tab;
 mod leftovers_tab;
 mod map_tab;
+mod overview_tab;
 mod prelude;
 mod review;
 mod rules_ui;

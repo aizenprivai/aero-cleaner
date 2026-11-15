@@ -295,6 +295,12 @@ fn make_writable(p: &Path) {
     }
 }
 
+/// "Fix all safe items": password-free categories that only remove things
+/// apps re-create (never the Trash, never package removals).
+pub fn safe_kinds() -> Vec<Kind> {
+    CATEGORIES.iter().filter(|c| !c.root && c.default_on && !matches!(c.kind, Kind::Trash | Kind::Flatpak | Kind::Autoremove)).map(|c| c.kind).collect()
+}
+
 /// Folders the Cleaner's own user categories already clean, so imported
 /// rules don't count the same files twice.
 pub fn covered_paths() -> Vec<PathBuf> {

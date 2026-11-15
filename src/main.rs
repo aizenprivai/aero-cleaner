@@ -15,6 +15,7 @@ mod health;
 mod holding;
 mod i18n;
 mod leftovers;
+mod overview;
 mod platform;
 mod report;
 mod rules;
@@ -108,6 +109,7 @@ enum Phase {
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 enum Tab {
+    Overview,
     Cleaner,
     Browsers,
     Developer,
@@ -320,6 +322,11 @@ impl App {
     fn open_review(&mut self) {
         let kinds = self.selected();
         let chosen_rules = self.selected_rules();
+        self.open_review_for(kinds, chosen_rules);
+    }
+
+    /// The "Ready to clean?" sheet for these categories and rules.
+    fn open_review_for(&mut self, kinds: Vec<Kind>, chosen_rules: Vec<rules::Rule>) {
         if kinds.is_empty() && chosen_rules.is_empty() {
             self.status = "Pick at least one thing to clean.".into();
             return;
@@ -589,7 +596,16 @@ impl eframe::App for App {
         let sidebar = Rect::from_min_max(pos2(inner.min.x - 6.0, nav_top), pos2(inner.min.x + 164.0, inner.max.y));
         aero::surface(&p, sidebar, 16.0, th, false, None);
         let groups: [(&str, &[(Tab, &str, &str)]); 3] = [
-            ("CLEAN", &[(Tab::Cleaner, "🚿", "Cleaner"), (Tab::Browsers, "🌐", "Browsers"), (Tab::Developer, "🛠", "Developer"), (Tab::Leftovers, "📁", "Leftovers")]),
+            (
+                "CLEAN",
+                &[
+                    (Tab::Overview, "🏠", "Overview"),
+                    (Tab::Cleaner, "🚿", "Cleaner"),
+                    (Tab::Browsers, "🌐", "Browsers"),
+                    (Tab::Developer, "🛠", "Developer"),
+                    (Tab::Leftovers, "📁", "Leftovers"),
+                ],
+            ),
             ("FIND SPACE", &[(Tab::BigFiles, "🐘", "Big files"), (Tab::Duplicates, "📑", "Duplicates"), (Tab::DiskMap, "🗺", "Disk map"), (Tab::DiskHistory, "📈", "Disk history")]),
             ("SYSTEM", &[(Tab::Boot, "⏱", "Boot time"), (Tab::Startup, "🚀", "Startup"), (Tab::Themes, "🎨", "Themes"), (Tab::Settings, "⚙", "Settings")]),
         ];
@@ -639,6 +655,7 @@ impl eframe::App for App {
 
         let area = Rect::from_min_max(pos2(sidebar.max.x + 14.0, nav_top), pos2(inner.max.x + 6.0, inner.max.y));
         match self.tab {
+            Tab::Overview => self.overview_tab(ui, area),
             Tab::Cleaner => self.cleaner_tab(ui, area, spin, time),
             Tab::Browsers => self.browsers_tab(ui, area, spin, time),
             Tab::Developer => self.dev_tab(ui, area, spin, time),
@@ -702,7 +719,8 @@ fn start_tab() -> Tab {
         Some("startup") => Tab::Startup,
         Some("themes") => Tab::Themes,
         Some("settings") => Tab::Settings,
-        _ => Tab::Cleaner,
+        Some("cleaner") => Tab::Cleaner,
+        _ => Tab::Overview,
     }
 }
 
@@ -819,7 +837,7 @@ const USAGE: &str = "AeroClean
 
 Usage:
   aero-cleaner                 open the app
-  aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, leftovers, big, dupes, map, history, boot, startup, themes, settings)
+  aero-cleaner --tab <name>    open on a screen (overview, cleaner, browsers, dev, leftovers, big, dupes, map, history, boot, startup, themes, settings)
   aero-cleaner clean --auto    run the automatic clean (thumbnails, app caches, Trash if enabled) and notify
   aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
                  [--auto]      only what the automatic clean would remove
@@ -926,7 +944,8 @@ mod ui_tests {
     use super::*;
     use egui_kittest::Harness;
 
-    const ALL_TABS: [Tab; 12] = [
+    const ALL_TABS: [Tab; 13] = [
+        Tab::Overview,
         Tab::Cleaner,
         Tab::Browsers,
         Tab::Developer,
@@ -1144,13 +1163,13 @@ mod ui_tests {
     fn ctrl_number_jumps_to_a_screen() {
         let mut h = harness();
         h.run_steps(1);
-        h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num3);
+        h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num4);
         h.run_steps(1);
         assert_eq!(h.state().tab, Tab::Developer);
-        // Ctrl+0 is the tenth screen: Startup (Linux, Windows) or Themes (macOS, no Boot time).
+        // Ctrl+0 is the tenth screen: Boot time (Linux, Windows) or Startup (macOS, no Boot time).
         h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num0);
         h.run_steps(1);
-        assert_eq!(h.state().tab, if platform::IS_MACOS { Tab::Themes } else { Tab::Startup });
+        assert_eq!(h.state().tab, if platform::IS_MACOS { Tab::Startup } else { Tab::Boot });
     }
 
     #[test]
