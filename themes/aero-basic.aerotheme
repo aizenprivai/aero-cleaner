@@ -1,0 +1,57 @@
+# Aero Basic: a built-in AeroClean theme.
+# Copy it, change what you like, and save it in AeroClean's themes folder.
+format = 1
+
+[meta]
+name = "Aero Basic"
+description = "High contrast, plain and calm"
+author = "AeroClean"
+
+[colors]
+text = "#000000"
+soft = "#262626"
+glass = "#ffffff"
+accent = "#0048a8"
+go = "#007000"
+user_orb = "#0050b4"
+root_orb = "#b44800"
+logo = "#006e3c"
+bubble = "#ecf0f6"
+
+[material]
+dark_glass = false
+corners = 1.0
+gloss = 1.0
+glass = 1.0
+buttons = "aqua"
+
+[font]
+family = "system"
+size = 1.0
+
+[motion]
+speed = 1.0
+transition = "none"
+
+[sound]
+pack = "none"
+volume = 0.5
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#c4d2e4"], [0.5, "#dee6f0"], [0.8, "#ecf0f6"], [1.0, "#f4f6fa"]]
+
+[[scene.layers]]
+type = "sun"
+x = 0.86
+y = 0.1
+color = "#fafafa"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#c8d4cc"], [0.12, "#beccc2"], [0.3, "#b6c4ba"], [1.0, "#b0beb4"]]
+front = [[0.0, "#d6e0d8"], [0.1, "#ccd8ce"], [0.3, "#c4d0c6"], [1.0, "#becac0"]]
+
+[[scene.layers]]
+type = "bubbles"
+count = 18

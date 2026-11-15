@@ -1,0 +1,63 @@
+# Aqua Abyss: a built-in AeroClean theme.
+# Copy it, change what you like, and save it in AeroClean's themes folder.
+format = 1
+
+[meta]
+name = "Aqua Abyss"
+description = "Underwater light and sandy dunes"
+author = "AeroClean"
+
+[colors]
+text = "#053c50"
+soft = "#1e6478"
+glass = "#d7fafa"
+accent = "#14a0be"
+go = "#00b991"
+user_orb = "#14aad2"
+root_orb = "#ff785a"
+logo = "#00b4c8"
+bubble = "#c8ffff"
+
+[material]
+dark_glass = false
+corners = 1.0
+gloss = 1.0
+glass = 1.0
+buttons = "aqua"
+
+[font]
+family = "system"
+size = 1.0
+
+[motion]
+speed = 1.0
+transition = "none"
+
+[sound]
+pack = "none"
+volume = 0.5
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#82ebf5"], [0.35, "#1eaac8"], [0.75, "#0a5f8c"], [1.0, "#05325f"]]
+
+[[scene.layers]]
+type = "rays"
+x = 0.5
+y = -0.2
+opacity = 60
+
+[[scene.layers]]
+type = "sun"
+x = 0.5
+y = -0.2
+color = "#dcffff"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#e6d7a5"], [0.12, "#c8b47d"], [0.3, "#a58c5a"], [1.0, "#826941"]]
+front = [[0.0, "#faebb9"], [0.1, "#e1c88c"], [0.3, "#b99b64"], [1.0, "#967846"]]
+
+[[scene.layers]]
+type = "bubbles"
+count = 18

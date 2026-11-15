@@ -45,6 +45,7 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English, 
 
 ### Make it yours
 - **6 themes:** Frutiger Aero, Aqua Abyss, Sunset Vista, Aurora Night, Sakura Spring and the high-contrast **Aero Basic**.
+- **Your own themes:** a theme is a small `.aerotheme` file (colors, roundness, gloss, glass, button style, font, animation speed, and the background as layers). Start from one in [`themes/`](themes/), change what you like (a file only needs what's different), then `aero-cleaner theme apply my-theme.aerotheme`. `aero-cleaner theme check` explains any mistake.
 - **5 languages:** English, French, Spanish, German and Portuguese, chosen from your system or in Settings. Each is a plain text file in `lang/`, so translations are easy to fix or add.
 - **Accessibility:** screen readers see every button, checkbox and screen; text and controls from 100% to 200%.
 - **Settings:** folders to keep, how long to keep cleaned files, journal retention, big file size, a remembered selection.

@@ -1,0 +1,63 @@
+# Sakura Spring: a built-in AeroClean theme.
+# Copy it, change what you like, and save it in AeroClean's themes folder.
+format = 1
+
+[meta]
+name = "Sakura Spring"
+description = "Pastel skies and cherry blossoms"
+author = "AeroClean"
+
+[colors]
+text = "#641e46"
+soft = "#965073"
+glass = "#ffecf6"
+accent = "#e66eaa"
+go = "#5fb94b"
+user_orb = "#f078b4"
+root_orb = "#a06ee6"
+logo = "#f082b4"
+bubble = "#ffcde4"
+
+[material]
+dark_glass = false
+corners = 1.0
+gloss = 1.0
+glass = 1.0
+buttons = "aqua"
+
+[font]
+family = "system"
+size = 1.0
+
+[motion]
+speed = 1.0
+transition = "none"
+
+[sound]
+pack = "none"
+volume = 0.5
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#96aaf0"], [0.4, "#d2bef5"], [0.75, "#ffd7eb"], [1.0, "#fff0f6"]]
+
+[[scene.layers]]
+type = "rays"
+x = 0.14
+y = 0.12
+opacity = 35
+
+[[scene.layers]]
+type = "sun"
+x = 0.14
+y = 0.12
+color = "#fffaf0"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#c3ee9b"], [0.12, "#9bd473"], [0.3, "#73b655"], [1.0, "#55963c"]]
+front = [[0.0, "#ffcde1"], [0.1, "#f0aac8"], [0.3, "#d787af"], [1.0, "#b96996"]]
+
+[[scene.layers]]
+type = "bubbles"
+count = 18

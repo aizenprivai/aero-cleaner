@@ -1,0 +1,64 @@
+# Aurora Night: a built-in AeroClean theme.
+# Copy it, change what you like, and save it in AeroClean's themes folder.
+format = 1
+
+[meta]
+name = "Aurora Night"
+description = "Smoked glass and northern lights"
+author = "AeroClean"
+
+[colors]
+text = "#e8f5ff"
+soft = "#a0c3e4"
+glass = "#142850"
+accent = "#2878e6"
+go = "#1eb982"
+user_orb = "#3282f0"
+root_orb = "#e67828"
+logo = "#3cc8c8"
+bubble = "#96dcff"
+
+[material]
+dark_glass = true
+corners = 1.0
+gloss = 1.0
+glass = 1.0
+buttons = "aqua"
+
+[font]
+family = "system"
+size = 1.0
+
+[motion]
+speed = 1.0
+transition = "none"
+
+[sound]
+pack = "none"
+volume = 0.5
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#04081c"], [0.4, "#0a1c44"], [0.75, "#143a6c"], [1.0, "#285a8c"]]
+
+[[scene.layers]]
+type = "stars"
+count = 90
+
+[[scene.layers]]
+type = "aurora"
+
+[[scene.layers]]
+type = "moon"
+x = 0.82
+y = 0.13
+color = "#e1eeff"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#285f69"], [0.12, "#194650"], [0.3, "#0f2d37"], [1.0, "#081c24"]]
+front = [[0.0, "#1e4b50"], [0.1, "#12343c"], [0.3, "#0a2028"], [1.0, "#05141a"]]
+
+[[scene.layers]]
+type = "bubbles"
+count = 18

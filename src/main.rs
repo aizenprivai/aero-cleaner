@@ -270,8 +270,15 @@ impl App {
     }
 
     fn apply_visuals(&self, ctx: &egui::Context) {
-        let dark = self.themes[self.theme].dark;
-        ctx.set_visuals(if dark { egui::Visuals::dark() } else { egui::Visuals::light() });
+        let th = &self.themes[self.theme];
+        ctx.set_visuals(if th.dark { egui::Visuals::dark() } else { egui::Visuals::light() });
+        aero::set_material(th.material);
+        // Only reload fonts when the theme asks for a different one.
+        let builtin = th.font == theme::FontChoice::Builtin;
+        if ctx.data(|d| d.get_temp::<bool>(egui::Id::unique("aero-font-builtin"))) != Some(builtin) {
+            setup_fonts_with(ctx, builtin);
+            ctx.data_mut(|d| d.insert_temp(egui::Id::unique("aero-font-builtin"), builtin));
+        }
     }
 
     /// Text and controls size. The smallest window grows with it, so the
@@ -565,11 +572,12 @@ impl eframe::App for App {
         let (focused, minimized, dt) = ui.input(|i| (i.viewport().focused.unwrap_or(true), i.viewport().minimized.unwrap_or(false), i.stable_dt));
         let animate = focused && !minimized && !self.settings.reduce_motion;
         if animate {
-            self.anim_t += dt.min(0.1) as f64;
+            self.anim_t += dt.min(0.1) as f64 * self.themes[self.theme].motion_speed as f64;
         }
         let t = self.anim_t as f32;
         let spin = time as f32;
         let th = &self.themes[self.theme];
+        aero::set_material(th.material);
 
         aero::background(ui.painter(), screen, t, th);
 
@@ -737,6 +745,12 @@ fn start_tab() -> Tab {
 }
 
 fn setup_fonts(ctx: &egui::Context) {
+    setup_fonts_with(ctx, false);
+    ctx.data_mut(|d| d.insert_temp(egui::Id::unique("aero-font-builtin"), false));
+}
+
+/// The system's UI font, or (`builtin`) only the font built into egui.
+fn setup_fonts_with(ctx: &egui::Context, builtin: bool) {
     let mut fonts = FontDefinitions::default();
     let defaults = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
     let mut add = |name: &str, (path, index): (&str, u32)| -> bool {
@@ -751,8 +765,8 @@ fn setup_fonts(ctx: &egui::Context) {
         }
     };
     let [regular_file, bold_file] = platform::font_files();
-    let have_regular = add("noto", regular_file);
-    let have_bold = add("noto-bold", bold_file);
+    let have_regular = !builtin && add("noto", regular_file);
+    let have_bold = !builtin && add("noto-bold", bold_file);
     if have_regular {
         fonts.families.entry(FontFamily::Proportional).or_default().insert(0, "noto".into());
     }
@@ -855,6 +869,10 @@ Usage:
                  [--auto]      only what the automatic clean would remove
                  [--json]      as JSON, sizes in bytes (for scripts)
   aero-cleaner report [--md]   print the cleaning history as CSV (or Markdown)
+  aero-cleaner theme list      list themes (built-in and yours)
+  aero-cleaner theme check <file>           check a theme file and explain any problem
+  aero-cleaner theme apply <name or file>   use a theme (a file is added to your themes)
+  aero-cleaner theme export <name> [file]   save a theme's full settings as a file
   aero-cleaner check-disk      notify if free disk space is below the alert threshold";
 
 fn main() -> eframe::Result {
@@ -895,6 +913,17 @@ fn main() -> eframe::Result {
         Some("--elevated-clean") if args.len() == 3 => {
             let kinds: Vec<cleaner::Kind> = args[2].split(',').filter_map(cleaner::kind_from_name).collect();
             cleaner::elevated_clean(&kinds, std::path::Path::new(&args[1]));
+            return Ok(());
+        }
+        Some("theme") => {
+            let rest: Vec<&str> = args.iter().skip(1).map(String::as_str).collect();
+            match theme::cli(&rest) {
+                Ok(out) => println!("{out}"),
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            }
             return Ok(());
         }
         Some("report") => {
@@ -1202,6 +1231,70 @@ mod ui_tests {
         assert!(h.query_by_label("Clean now").is_some());
         // "Trash" on Linux and macOS, "Recycle Bin" on Windows.
         assert!(h.query_by_role_and_label(egui::Role::CheckBox, CATEGORIES[0].name).is_some(), "rows are checkboxes");
+    }
+
+    /// Every theme's look, frozen (fixed sizes, no animation), for
+    /// before/after comparisons when the theme engine changes:
+    /// `AERO_SHOTS=dir cargo test theme_snapshots -- --ignored`
+    #[test]
+    #[ignore]
+    fn theme_snapshots() {
+        let dir = std::path::PathBuf::from(std::env::var("AERO_SHOTS").unwrap_or_else(|_| "target/theme-snapshots".into()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let mut h = Harness::builder().with_size(vec2(1080.0, 800.0)).wgpu().build_eframe(|cc| {
+            setup_fonts(&cc.egui_ctx);
+            App::new(&cc.egui_ctx)
+        });
+        // Let the startup scan finish first: it refreshes the (real) disk figure.
+        for _ in 0..400 {
+            h.run_steps(1);
+            if h.state().phase == Phase::Idle && h.state().items.iter().all(|i| i.result.is_some()) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let count = h.state().themes.len();
+        for (tab, tab_name) in [(Tab::Themes, "themes"), (Tab::Cleaner, "cleaner")] {
+            for i in 0..count {
+                let st = h.state_mut();
+                st.settings.reduce_motion = true;
+                st.anim_t = 7.5;
+                st.theme = i;
+                st.tab = tab;
+                st.phase = Phase::Idle;
+                st.disk = Some((512_000_000_000, 214_000_000_000));
+                st.update = None;
+                st.undo_list = Some(vec![]);
+                st.rules.clear();
+                st.rule_scans.clear();
+                for (k, it) in st.items.iter_mut().enumerate() {
+                    it.result = Some(cleaner::ScanResult { size: Some(1_000_000 * (k as u64 + 1)), note: String::new(), available: true });
+                }
+                st.status = "Scan complete. Choose what to clean.".into();
+                let ctx = h.ctx.clone();
+                h.state().apply_visuals(&ctx);
+                h.run_steps(3);
+                let name = h.state().themes[i].name.to_string().replace(' ', "-");
+                h.render().unwrap().save(dir.join(format!("{tab_name}-{name}.png"))).unwrap();
+            }
+        }
+        // A theme file that changes the material: it must look different.
+        let lib = theme::load_library(std::path::Path::new("/nonexistent"));
+        let text = "format = 1\n[meta]\nname = \"Flat test\"\n[material]\ncorners = 0.25\ngloss = 0.0\nbuttons = \"flat\"\n[font]\nfamily = \"builtin\"\nsize = 1.1\n";
+        let variant = theme::parse(text, &lib.resolved, None, false).unwrap().theme;
+        let st = h.state_mut();
+        st.themes.push(variant);
+        st.theme = st.themes.len() - 1;
+        st.tab = Tab::Cleaner;
+        let ctx = h.ctx.clone();
+        h.state().apply_visuals(&ctx);
+        h.run_steps(3);
+        let img = h.render().unwrap();
+        img.save(dir.join("cleaner-material-variant.png")).unwrap();
+        let classic = image::open(dir.join("cleaner-Frutiger-Aero.png")).unwrap().to_rgba8();
+        assert_ne!(img.as_raw(), classic.as_raw(), "material settings change the look");
     }
 
     #[test]

@@ -1,0 +1,63 @@
+# Frutiger Aero: a built-in AeroClean theme.
+# Copy it, change what you like, and save it in AeroClean's themes folder.
+format = 1
+
+[meta]
+name = "Frutiger Aero"
+description = "Blue skies, green hills, bubbles"
+author = "AeroClean"
+
+[colors]
+text = "#0c3c6e"
+soft = "#325f8c"
+glass = "#e1f5ff"
+accent = "#1e82e1"
+go = "#32af1e"
+user_orb = "#1e8ce6"
+root_orb = "#ff961e"
+logo = "#28af5a"
+bubble = "#dcf5ff"
+
+[material]
+dark_glass = false
+corners = 1.0
+gloss = 1.0
+glass = 1.0
+buttons = "aqua"
+
+[font]
+family = "system"
+size = 1.0
+
+[motion]
+speed = 1.0
+transition = "none"
+
+[sound]
+pack = "none"
+volume = 0.5
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#0a58b4"], [0.4, "#40aaee"], [0.72, "#beecff"], [1.0, "#ebfaff"]]
+
+[[scene.layers]]
+type = "rays"
+x = 0.86
+y = 0.1
+opacity = 45
+
+[[scene.layers]]
+type = "sun"
+x = 0.86
+y = 0.1
+color = "#fffff0"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#96e16e"], [0.12, "#5ab93c"], [0.3, "#28821e"], [1.0, "#1e6414"]]
+front = [[0.0, "#b9f578"], [0.1, "#6ecd3c"], [0.3, "#32961e"], [1.0, "#1e6e14"]]
+
+[[scene.layers]]
+type = "bubbles"
+count = 18

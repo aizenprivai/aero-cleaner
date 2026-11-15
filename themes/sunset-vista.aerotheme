@@ -1,0 +1,63 @@
+# Sunset Vista: a built-in AeroClean theme.
+# Copy it, change what you like, and save it in AeroClean's themes folder.
+format = 1
+
+[meta]
+name = "Sunset Vista"
+description = "Warm sky over purple mountains"
+author = "AeroClean"
+
+[colors]
+text = "#5a1e3c"
+soft = "#8c465f"
+glass = "#ffebe1"
+accent = "#eb6937"
+go = "#dc3c7d"
+user_orb = "#f07d3c"
+root_orb = "#aa4bc8"
+logo = "#f05a5a"
+bubble = "#ffe1cd"
+
+[material]
+dark_glass = false
+corners = 1.0
+gloss = 1.0
+glass = 1.0
+buttons = "aqua"
+
+[font]
+family = "system"
+size = 1.0
+
+[motion]
+speed = 1.0
+transition = "none"
+
+[sound]
+pack = "none"
+volume = 0.5
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#3c2878"], [0.35, "#c85082"], [0.7, "#ffa050"], [1.0, "#ffe196"]]
+
+[[scene.layers]]
+type = "rays"
+x = 0.75
+y = 0.6
+opacity = 30
+
+[[scene.layers]]
+type = "sun"
+x = 0.75
+y = 0.6
+color = "#fff0be"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#af6996"], [0.12, "#8c5082"], [0.3, "#693769"], [1.0, "#502855"]]
+front = [[0.0, "#824678"], [0.1, "#643264"], [0.3, "#4b2350"], [1.0, "#37193c"]]
+
+[[scene.layers]]
+type = "bubbles"
+count = 18

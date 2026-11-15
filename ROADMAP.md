@@ -138,7 +138,7 @@
 - **Readable by default:** a contrast guard warns when text would be hard to read, and Reduce motion and battery saving always win over a theme's animations.
 - Nothing is downloaded without a click, and gallery downloads are checked (SHA-256, size, validation) before they're applied.
 
-### Milestone 1 – The theme engine
+### ✅ Milestone 1 – The theme engine
 - **Theme file** (`.aerotheme`, TOML inside, with a schema version for future upgrades):
   - `[meta]`: name, author, description, version, base theme.
   - `[colors]`: named tokens: text, soft text, glass, accent, go, warning, danger, user and system orbs, logo.

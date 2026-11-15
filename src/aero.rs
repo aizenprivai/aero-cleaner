@@ -2,8 +2,9 @@
 //! buttons, bubbles and a sunny sky. Everything is drawn with meshes since
 //! egui has no built-in gradients.
 
-use crate::theme::Theme;
+use crate::theme::{ButtonStyle, Layer, Material, Theme};
 use eframe::egui::{Align2, Color32, FontFamily, FontId, Mesh, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2, pos2};
+use std::cell::Cell;
 use std::f32::consts::TAU;
 
 pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color32 {
@@ -26,12 +27,40 @@ pub fn darken(c: Color32, t: f32) -> Color32 {
     lerp(c, Color32::from_rgba_premultiplied(0, 0, 0, c.a()), t)
 }
 
+thread_local! {
+    /// The current theme's material, set once per frame before drawing.
+    static MATERIAL: Cell<Material> = const { Cell::new(Material::CLASSIC) };
+}
+
+pub fn set_material(m: Material) {
+    MATERIAL.with(|c| c.set(m));
+}
+
+fn mat() -> Material {
+    MATERIAL.with(|c| c.get())
+}
+
+/// An alpha scaled by a material factor (exactly unchanged at 1.0).
+fn scaled(a: u8, f: f32) -> u8 {
+    (a as f32 * f).round().clamp(0.0, 255.0) as u8
+}
+
+/// Shine alpha, following the theme's gloss.
+fn shine(a: u8) -> u8 {
+    scaled(a, mat().gloss)
+}
+
+/// Glass alpha, following the theme's glass opacity.
+fn frost(a: u8) -> u8 {
+    scaled(a, mat().glass)
+}
+
 pub fn bold(size: f32) -> FontId {
-    FontId::new(size, FontFamily::Name("bold".into()))
+    FontId::new(size * mat().font_size, FontFamily::Name("bold".into()))
 }
 
 pub fn regular(size: f32) -> FontId {
-    FontId::proportional(size)
+    FontId::proportional(size * mat().font_size)
 }
 
 /// Color at position `t` (0..1) along a list of gradient stops.
@@ -74,7 +103,7 @@ fn fill_vgrad(painter: &Painter, y0: f32, y1: f32, extent: impl Fn(f32) -> (f32,
 
 /// Horizontal extent of a rounded rectangle at height `y`.
 fn rrect_extent(rect: Rect, r: f32) -> impl Fn(f32) -> (f32, f32) {
-    let r = r.min(rect.width() / 2.0).min(rect.height() / 2.0);
+    let r = (r * mat().corners).min(rect.width() / 2.0).min(rect.height() / 2.0);
     move |y| {
         let dy = if y < rect.min.y + r {
             rect.min.y + r - y
@@ -133,7 +162,7 @@ pub fn radial(painter: &Painter, c: Pos2, r: f32, inner: Color32, outer: Color32
 }
 
 pub fn rrect_outline(painter: &Painter, rect: Rect, r: f32, stroke: Stroke) {
-    let r = r.min(rect.width() / 2.0).min(rect.height() / 2.0);
+    let r = (r * mat().corners).min(rect.width() / 2.0).min(rect.height() / 2.0);
     let mut pts = Vec::with_capacity(48);
     let corners = [
         (pos2(rect.max.x - r, rect.min.y + r), -0.25),
@@ -202,9 +231,9 @@ pub fn glass_panel(painter: &Painter, rect: Rect, r: f32, theme: &Theme) {
     }
     let gl = theme.glass;
     let (fill, gloss_a, border) = if theme.dark {
-        ([(0.0, with_alpha(lighten(gl, 0.15), 200)), (0.5, with_alpha(gl, 170)), (1.0, with_alpha(darken(gl, 0.3), 190))], 55, rgba(255, 255, 255, 90))
+        ([(0.0, with_alpha(lighten(gl, 0.15), frost(200))), (0.5, with_alpha(gl, frost(170))), (1.0, with_alpha(darken(gl, 0.3), frost(190)))], shine(55), rgba(255, 255, 255, 90))
     } else {
-        ([(0.0, rgba(255, 255, 255, 165)), (0.5, with_alpha(lighten(gl, 0.5), 115)), (1.0, with_alpha(gl, 140))], 150, rgba(255, 255, 255, 230))
+        ([(0.0, rgba(255, 255, 255, frost(165))), (0.5, with_alpha(lighten(gl, 0.5), frost(115))), (1.0, with_alpha(gl, frost(140)))], shine(150), rgba(255, 255, 255, 230))
     };
     rrect_grad(painter, rect, r, &fill);
     let gloss = Rect::from_min_max(rect.min + Vec2::splat(2.0), pos2(rect.max.x - 2.0, rect.min.y + (rect.height() * 0.45).min(70.0)));
@@ -216,10 +245,10 @@ pub fn glass_panel(painter: &Painter, rect: Rect, r: f32, theme: &Theme) {
 /// Translucent inner surface (list rows, boxes) that suits light or dark glass.
 pub fn surface(painter: &Painter, rect: Rect, r: f32, theme: &Theme, hovered: bool, tint: Option<Color32>) {
     let (top, bottom, border) = if theme.dark {
-        let a = if hovered { 70 } else { 38 };
+        let a = frost(if hovered { 70 } else { 38 });
         (rgba(255, 255, 255, a), with_alpha(tint.unwrap_or(Color32::WHITE), a / 2), rgba(255, 255, 255, 70))
     } else {
-        let a = if hovered { 215 } else { 155 };
+        let a = frost(if hovered { 215 } else { 155 });
         // The tint alphas the released look has always used (they used to
         // come from an 8-bit `a * 3 / 5` that wrapped around in release builds).
         let tint_a = if hovered { 26 } else { 41 };
@@ -260,17 +289,26 @@ pub fn aqua_button(ui: &mut Ui, rect: Rect, label: &str, base: Color32, enabled:
         c = lighten(c, 0.15);
     }
     let r = rect.height() / 2.0;
+    let style = mat().buttons;
 
     // Soft shadow + outer glow when hovered.
-    rrect_grad(p, rect.translate(Vec2::new(0.0, 3.0)).expand(1.0), r, &[(0.0, rgba(0, 30, 70, 0)), (1.0, rgba(0, 30, 70, 70))]);
+    if style != ButtonStyle::Flat {
+        rrect_grad(p, rect.translate(Vec2::new(0.0, 3.0)).expand(1.0), r, &[(0.0, rgba(0, 30, 70, 0)), (1.0, rgba(0, 30, 70, 70))]);
+    }
     if enabled && resp.hovered() {
         for i in 1..=4 {
             rrect_outline(p, rect.expand(i as f32 * 1.5), r + i as f32 * 1.5, Stroke::new(1.5, lighten(c, 0.5).gamma_multiply(0.25 / i as f32)));
         }
     }
-    rrect_grad(p, rect, r, &[(0.0, lighten(c, 0.35)), (0.5, c), (0.85, darken(c, 0.05)), (1.0, lighten(c, 0.45))]);
-    let gloss = Rect::from_min_max(rect.min + Vec2::new(r * 0.5, 2.0), pos2(rect.max.x - r * 0.5, rect.center().y));
-    rrect_grad(p, gloss, r * 0.8, &[(0.0, rgba(255, 255, 255, 215)), (1.0, rgba(255, 255, 255, 35))]);
+    match style {
+        ButtonStyle::Flat => rrect_grad(p, rect, r, &[(0.0, c), (1.0, c)]),
+        ButtonStyle::Soft => rrect_grad(p, rect, r, &[(0.0, lighten(c, 0.2)), (1.0, darken(c, 0.05))]),
+        ButtonStyle::Aqua => {
+            rrect_grad(p, rect, r, &[(0.0, lighten(c, 0.35)), (0.5, c), (0.85, darken(c, 0.05)), (1.0, lighten(c, 0.45))]);
+            let gloss = Rect::from_min_max(rect.min + Vec2::new(r * 0.5, 2.0), pos2(rect.max.x - r * 0.5, rect.center().y));
+            rrect_grad(p, gloss, r * 0.8, &[(0.0, rgba(255, 255, 255, shine(215))), (1.0, rgba(255, 255, 255, shine(35)))]);
+        }
+    }
     rrect_outline(p, rect, r, Stroke::new(1.2, darken(c, 0.4)));
     shadowed(p, rect.center() + Vec2::new(0.0, 1.0), Align2::CENTER_CENTER, label, bold((rect.height() * 0.33).clamp(12.0, 17.0)), Color32::WHITE);
     if enabled { resp.on_hover_cursor(eframe::egui::CursorIcon::PointingHand) } else { resp }
@@ -283,7 +321,7 @@ pub fn orb(painter: &Painter, c: Pos2, r: f32, base: Color32, glyph: &str) {
     painter.circle_stroke(c, r, Stroke::new(1.0, darken(base, 0.35)));
     painter.text(c + Vec2::new(0.0, r * 0.08), Align2::CENTER_CENTER, glyph, regular(r * 1.0), Color32::WHITE);
     let hl = Rect::from_center_size(c - Vec2::new(0.0, r * 0.48), Vec2::new(r * 1.3, r * 0.85));
-    rrect_grad(painter, hl, r * 0.42, &[(0.0, rgba(255, 255, 255, 220)), (1.0, rgba(255, 255, 255, 10))]);
+    rrect_grad(painter, hl, r * 0.42, &[(0.0, rgba(255, 255, 255, shine(220))), (1.0, rgba(255, 255, 255, shine(10)))]);
 }
 
 /// Glossy bubble checkbox, green when checked.
@@ -295,7 +333,7 @@ pub fn bubble_check(painter: &Painter, c: Pos2, r: f32, checked: bool, hovered: 
         let stroke = if hovered { accent } else { rgba(110, 150, 185, 255) };
         painter.circle_stroke(c, r, Stroke::new(1.5, stroke));
         let hl = Rect::from_center_size(c - Vec2::new(0.0, r * 0.45), Vec2::new(r * 1.2, r * 0.8));
-        rrect_grad(painter, hl, r * 0.4, &[(0.0, rgba(255, 255, 255, 255)), (1.0, rgba(255, 255, 255, 0))]);
+        rrect_grad(painter, hl, r * 0.4, &[(0.0, rgba(255, 255, 255, shine(255))), (1.0, rgba(255, 255, 255, 0))]);
     }
 }
 
@@ -321,75 +359,93 @@ pub fn hash(i: u32, salt: u32) -> f32 {
 /// Sky, sun (or moon and aurora), rolling hills and rising bubbles.
 /// Scales with `rect`, so it also draws the small previews in the theme tab.
 pub fn background(painter: &Painter, rect: Rect, time: f32, theme: &Theme) {
+    for layer in &theme.scene {
+        draw_layer(painter, rect, time, layer);
+    }
+}
+
+/// One scene layer. Positions are fractions of the area.
+pub fn draw_layer(painter: &Painter, rect: Rect, time: f32, layer: &Layer) {
     let (w, h) = (rect.width(), rect.height());
     let scale = (h / 740.0).clamp(0.15, 1.5);
-    rrect_grad(painter, rect, 0.0, &theme.sky);
-
-    let sun = rect.min + Vec2::new(w * theme.sun.x, h * theme.sun.y);
-    if theme.night {
-        // Twinkling stars.
-        for i in 0..90 {
-            let p = rect.min + Vec2::new(hash(i, 21) * w, hash(i, 22) * h * 0.75);
-            let tw = ((time * (1.0 + hash(i, 23) * 2.0) + i as f32).sin() * 0.5 + 0.5) * 200.0 + 40.0;
-            painter.circle_filled(p, (0.6 + hash(i, 24) * 1.2) * scale.max(0.5), rgba(255, 255, 255, tw as u8));
+    let at = |pos: Vec2| rect.min + Vec2::new(w * pos.x, h * pos.y);
+    match layer {
+        Layer::Sky { stops } => rrect_grad(painter, rect, 0.0, stops),
+        Layer::Stars { count } => {
+            // Twinkling stars.
+            for i in 0..*count {
+                let p = rect.min + Vec2::new(hash(i, 21) * w, hash(i, 22) * h * 0.75);
+                let tw = ((time * (1.0 + hash(i, 23) * 2.0) + i as f32).sin() * 0.5 + 0.5) * 200.0 + 40.0;
+                painter.circle_filled(p, (0.6 + hash(i, 24) * 1.2) * scale.max(0.5), rgba(255, 255, 255, tw as u8));
+            }
         }
-        // Aurora: soft wavy curtains of light.
-        for (k, col) in [(0, rgba(80, 255, 170, 70)), (1, rgba(120, 180, 255, 55)), (2, rgba(190, 120, 255, 40))] {
-            let base = rect.min.y + h * (0.2 + k as f32 * 0.08);
-            let height = h * 0.16;
-            let mut mesh = Mesh::default();
-            let steps = 60;
-            for s in 0..=steps {
-                let fx = s as f32 / steps as f32;
-                let x = rect.min.x + fx * w;
-                let y = base + ((fx * 7.0 + time * 0.35 + k as f32 * 2.0).sin() * 0.6 + (fx * 13.0 - time * 0.2).sin() * 0.4) * h * 0.05;
-                let fade = (fx * std::f32::consts::PI).sin();
-                let c = with_alpha(col, (col.a() as f32 * fade) as u8);
-                mesh.colored_vertex(pos2(x, y - height * 0.25), with_alpha(col, 0));
-                mesh.colored_vertex(pos2(x, y), c);
-                mesh.colored_vertex(pos2(x, y + height), with_alpha(col, 0));
-                if s > 0 {
-                    let i = (s * 3) as u32;
-                    for j in 0..2 {
-                        mesh.add_triangle(i - 3 + j, i + j, i - 2 + j);
-                        mesh.add_triangle(i - 2 + j, i + j, i + 1 + j);
+        Layer::Aurora => {
+            // Soft wavy curtains of light.
+            for (k, col) in [(0, rgba(80, 255, 170, 70)), (1, rgba(120, 180, 255, 55)), (2, rgba(190, 120, 255, 40))] {
+                let base = rect.min.y + h * (0.2 + k as f32 * 0.08);
+                let height = h * 0.16;
+                let mut mesh = Mesh::default();
+                let steps = 60;
+                for s in 0..=steps {
+                    let fx = s as f32 / steps as f32;
+                    let x = rect.min.x + fx * w;
+                    let y = base + ((fx * 7.0 + time * 0.35 + k as f32 * 2.0).sin() * 0.6 + (fx * 13.0 - time * 0.2).sin() * 0.4) * h * 0.05;
+                    let fade = (fx * std::f32::consts::PI).sin();
+                    let c = with_alpha(col, (col.a() as f32 * fade) as u8);
+                    mesh.colored_vertex(pos2(x, y - height * 0.25), with_alpha(col, 0));
+                    mesh.colored_vertex(pos2(x, y), c);
+                    mesh.colored_vertex(pos2(x, y + height), with_alpha(col, 0));
+                    if s > 0 {
+                        let i = (s * 3) as u32;
+                        for j in 0..2 {
+                            mesh.add_triangle(i - 3 + j, i + j, i - 2 + j);
+                            mesh.add_triangle(i - 2 + j, i + j, i + 1 + j);
+                        }
                     }
                 }
-            }
-            painter.add(Shape::mesh(mesh));
-        }
-        // Moon.
-        radial(painter, sun, 120.0 * scale, with_alpha(theme.sun_color, 70), with_alpha(theme.sun_color, 0));
-        circle_grad(painter, sun, 26.0 * scale, &[(0.0, Color32::WHITE), (1.0, theme.sun_color)]);
-    } else {
-        // Sun and slowly turning light rays.
-        if theme.rays > 0 {
-            for i in 0..9 {
-                let a0 = time * 0.03 + i as f32 / 9.0 * TAU;
-                let mut mesh = Mesh::default();
-                mesh.colored_vertex(sun, rgba(255, 255, 255, theme.rays));
-                mesh.colored_vertex(sun + Vec2::angled(a0) * w * 1.6, rgba(255, 255, 255, 0));
-                mesh.colored_vertex(sun + Vec2::angled(a0 + 0.13) * w * 1.6, rgba(255, 255, 255, 0));
-                mesh.add_triangle(0, 1, 2);
                 painter.add(Shape::mesh(mesh));
             }
         }
-        radial(painter, sun, w * 0.35, with_alpha(theme.sun_color, 170), with_alpha(theme.sun_color, 0));
-        radial(painter, sun, 34.0 * scale, Color32::WHITE, with_alpha(theme.sun_color, 0));
-    }
-
-    // Two layers of hills.
-    circle_grad(painter, rect.min + Vec2::new(w * 0.78, h * 1.55), h * 0.78, &theme.hill_back);
-    circle_grad(painter, rect.min + Vec2::new(w * 0.15, h * 1.75), h * 0.92, &theme.hill_front);
-
-    // Rising bubbles.
-    for i in 0..18 {
-        let r = (8.0 + hash(i, 1) * 28.0) * scale;
-        let speed = (12.0 + hash(i, 2) * 22.0) * scale;
-        let span = h + 2.0 * r;
-        let y = rect.max.y + r - ((time * speed + hash(i, 3) * span) % span);
-        let x = rect.min.x + hash(i, 4) * w + (time * 0.6 + i as f32).sin() * 14.0 * scale;
-        bubble(painter, pos2(x, y), r, 0.55 + hash(i, 5) * 0.45, theme.bubble);
+        Layer::Moon { pos, color } => {
+            let c = at(*pos);
+            radial(painter, c, 120.0 * scale, with_alpha(*color, 70), with_alpha(*color, 0));
+            circle_grad(painter, c, 26.0 * scale, &[(0.0, Color32::WHITE), (1.0, *color)]);
+        }
+        Layer::Rays { pos, opacity } => {
+            // Slowly turning light rays.
+            if *opacity > 0 {
+                let c = at(*pos);
+                for i in 0..9 {
+                    let a0 = time * 0.03 + i as f32 / 9.0 * TAU;
+                    let mut mesh = Mesh::default();
+                    mesh.colored_vertex(c, rgba(255, 255, 255, *opacity));
+                    mesh.colored_vertex(c + Vec2::angled(a0) * w * 1.6, rgba(255, 255, 255, 0));
+                    mesh.colored_vertex(c + Vec2::angled(a0 + 0.13) * w * 1.6, rgba(255, 255, 255, 0));
+                    mesh.add_triangle(0, 1, 2);
+                    painter.add(Shape::mesh(mesh));
+                }
+            }
+        }
+        Layer::Sun { pos, color } => {
+            let c = at(*pos);
+            radial(painter, c, w * 0.35, with_alpha(*color, 170), with_alpha(*color, 0));
+            radial(painter, c, 34.0 * scale, Color32::WHITE, with_alpha(*color, 0));
+        }
+        Layer::Hills { back, front } => {
+            circle_grad(painter, rect.min + Vec2::new(w * 0.78, h * 1.55), h * 0.78, back);
+            circle_grad(painter, rect.min + Vec2::new(w * 0.15, h * 1.75), h * 0.92, front);
+        }
+        Layer::Bubbles { color, count } => {
+            // Rising bubbles.
+            for i in 0..*count {
+                let r = (8.0 + hash(i, 1) * 28.0) * scale;
+                let speed = (12.0 + hash(i, 2) * 22.0) * scale;
+                let span = h + 2.0 * r;
+                let y = rect.max.y + r - ((time * speed + hash(i, 3) * span) % span);
+                let x = rect.min.x + hash(i, 4) * w + (time * 0.6 + i as f32).sin() * 14.0 * scale;
+                bubble(painter, pos2(x, y), r, 0.55 + hash(i, 5) * 0.45, *color);
+            }
+        }
     }
 }
 
@@ -403,7 +459,7 @@ pub fn nav_item(ui: &mut Ui, rect: Rect, icon: &str, label: &str, active: bool, 
         let c = theme.accent;
         rrect_grad(p, rect, r, &[(0.0, lighten(c, 0.35)), (0.5, c), (0.85, darken(c, 0.05)), (1.0, lighten(c, 0.4))]);
         let gloss = Rect::from_min_max(rect.min + Vec2::new(6.0, 2.0), pos2(rect.max.x - 6.0, rect.center().y));
-        rrect_grad(p, gloss, r * 0.7, &[(0.0, rgba(255, 255, 255, 190)), (1.0, rgba(255, 255, 255, 25))]);
+        rrect_grad(p, gloss, r * 0.7, &[(0.0, rgba(255, 255, 255, shine(190))), (1.0, rgba(255, 255, 255, shine(25)))]);
         rrect_outline(p, rect, r, Stroke::new(1.2, darken(c, 0.4)));
         Color32::WHITE
     } else {
