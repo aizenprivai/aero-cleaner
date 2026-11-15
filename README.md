@@ -2,15 +2,18 @@
 
 <h1 align="center">AeroClean</h1>
 
-<p align="center">A system cleaner for <b>Linux</b> (Mint, Ubuntu), <b>Windows 10/11</b> and <b>macOS 11+</b> with a glossy 2000s <b>Frutiger Aero</b> look.<br>
-Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English and French.</p>
+<p align="center">A system cleaner for <b>Linux</b> (Mint, Ubuntu, Fedora, Arch, openSUSE), <b>Windows 10/11</b> and <b>macOS 11+</b> with a glossy 2000s <b>Frutiger Aero</b> look.<br>
+Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English, French, Spanish, German and Portuguese.</p>
 
 ![Cleaner](docs/screenshots/cleaner.png)
 
 ## Features
 
+### Overview
+- **Your PC at a glance:** AeroClean opens on a health score out of 100 built from free space, junk waiting to be cleaned, drive health, boot time and being up to date, with a card per area and **✨ Fix all safe items** (it still shows you the list first).
+
 ### Clean
-- **Cleaner:** caches, thumbnails, the Trash, crash reports, old logs and temp files, unused packages (APT and Flatpak on Linux, Homebrew on macOS, superseded components on Windows) and developer download caches (Cargo, npm, pnpm, Yarn, Go, Maven, Gradle). System items ask for your password **once**.
+- **Cleaner:** caches, thumbnails, the Trash, crash reports, old logs and temp files, unused packages (APT, DNF, pacman or zypper plus Flatpak and old Snap revisions on Linux, Homebrew on macOS, superseded components on Windows) and developer download caches (Cargo, npm, pnpm, Yarn, Go, Maven, Gradle). System items ask for your password once, through a small helper that does each system operation on its own (see Safety).
 - **Review first:** a "Ready to clean?" sheet lists exactly what will go, and warns you if a browser is open.
 - **Undo:** cleaned files are kept for 24 hours (3 days, a week or off). **↩ Undo** puts the last clean back, and Settings lists every kept clean. Nothing is kept when the disk is almost full.
 - **My rules:** your own rules, like "`*.iso` in `~/Downloads` older than 30 days", made in an editor and cleaned with everything else. Share them as a plain text file, or import **BleachBit**'s cleaners for the apps you have installed.
@@ -41,11 +44,12 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 - **Cleaning reports:** export your cleaning history as CSV or Markdown.
 
 ### Make it yours
-- **5 themes:** Frutiger Aero, Aqua Abyss, Sunset Vista, Aurora Night and Sakura Spring.
-- **English and French**, chosen automatically from your system or in Settings.
+- **6 themes:** Frutiger Aero, Aqua Abyss, Sunset Vista, Aurora Night, Sakura Spring and the high-contrast **Aero Basic**.
+- **5 languages:** English, French, Spanish, German and Portuguese, chosen from your system or in Settings. Each is a plain text file in `lang/`, so translations are easy to fix or add.
+- **Accessibility:** screen readers see every button, checkbox and screen; text and controls from 100% to 200%.
 - **Settings:** folders to keep, how long to keep cleaned files, journal retention, big file size, a remembered selection.
 - **Keyboard:** Tab and the arrow keys move between controls, Space or Enter activates them, Ctrl+1…0 (Cmd on macOS) jumps to a screen.
-- **Update check** (optional, off by default): once a day it asks GitHub for the latest version number. Nothing about you is sent.
+- **Updates:** **Check now** and **Update now** in Settings. The new package comes only from this project's releases and is checked against the release's `SHA256SUMS` before it's installed. The daily check is optional and off by default; nothing about you is sent.
 - **Battery friendly:** animations pause when the window isn't active, and there's a "Reduce motion" option.
 
 | | |
@@ -64,7 +68,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 |---|---|---|---|
 | User items | Trash, `~/.cache`, thumbnails, Flatpak runtimes | Recycle Bin, `%TEMP%`, shader caches, Explorer thumbnail cache, crash dumps | Trash (through Finder), `~/Library/Caches`, Quick Look thumbnails, crash reports, Xcode DerivedData, Homebrew downloads and unused packages |
 | System items | APT cache, unused packages, journal, logs, `/var` temp | Windows Update downloads, Delivery Optimization, Windows Temp, crash dumps, old logs, DISM component cleanup | Old logs in `/private/var/log`, system crash reports, `/private/var/tmp` |
-| Permission | One password prompt (pkexec) | One UAC prompt (an elevated copy of AeroClean, no scripts) | One administrator prompt (osascript) |
+| Permission | polkit, per operation (D-Bus helper) | One UAC prompt (an elevated copy of AeroClean, no scripts) | One administrator prompt (osascript) |
 | Startup apps | `.desktop` autostart overrides | Registry and Startup folder, toggled like Task Manager | Launch agents, turned off per user with `launchctl disable` (plist files untouched) |
 | Automation | systemd user timers, notifications | Task Scheduler, toast notifications | launchd agents, notifications |
 | Boot time | ✅ | ✅ (read-only, from the event log) | not yet |
@@ -77,6 +81,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 - Big files and duplicates go to the **Trash**, so they can be restored.
 - Cleaned files are kept for 24 hours so a clean can be undone. Custom rules only ever delete files, only inside your home folder.
 - System files are never edited: startup changes are per-user overrides.
+- **No shell runs as root (Linux packages):** system cleans go through a D-Bus helper with a fixed list of operations, each with its own polkit permission and checked inputs; system-critical services can't be turned off. Admins can let the safe `clean-*` operations run without a password with the example rule in `/usr/share/doc/aero-cleaner/`. Without the helper (source builds, AppImage) AeroClean uses one pkexec prompt.
 - Every cleaning step is covered by automated tests that run on throwaway folders.
 
 ## Install
@@ -85,11 +90,11 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 
 **macOS:** download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. The app isn't notarized by Apple, so macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security. You only do this once per version.
 
-**Linux, from a release:** download `aero-cleaner_<version>_amd64.deb` from the Releases page, then:
-
-```sh
-sudo apt install ./aero-cleaner_*_amd64.deb
-```
+**Linux, from a release** (Releases page):
+- **Mint, Ubuntu, Debian:** `aero-cleaner_<version>_amd64.deb`, then `sudo apt install ./aero-cleaner_*_amd64.deb`
+- **Fedora, openSUSE:** `aero-cleaner-<version>-1.x86_64.rpm`, then `sudo dnf install ./aero-cleaner-*.rpm` (or `sudo zypper install`)
+- **Arch:** the release's `PKGBUILD`, then `makepkg -si`
+- **Any distro:** `AeroClean-<version>-x86_64.AppImage`, make it executable and run it (system cleans then use one password prompt instead of the helper)
 
 **From source** (needs [Rust](https://rustup.rs)):
 
@@ -100,11 +105,11 @@ aero-cleaner   # the first run adds AeroClean to your menu
 ```
 
 **Build the packages yourself:**
-- `packaging/build-deb.sh` builds the `.deb` (needs `librsvg2-bin`).
+- `packaging/build-deb.sh`, `build-rpm.sh` and `build-appimage.sh` build the Linux packages (need `librsvg2-bin`; `rpm` for the `.rpm`).
 - `packaging/build-windows.sh` cross-compiles the portable Windows `.zip` from Linux (needs `mingw-w64` and `rustup target add x86_64-pc-windows-gnu`). The installer is built by CI with Inno Setup (`packaging/windows/aeroclean.iss`).
 - `packaging/build-macos.sh` builds the universal `AeroClean.app` and its `.dmg` on a Mac (needs `rustup target add aarch64-apple-darwin x86_64-apple-darwin`).
 
-Packages are written to `target/deb/`, `target/windows/` and `target/macos/`.
+Packages are written to `target/deb/`, `target/rpm/`, `target/appimage/`, `target/windows/` and `target/macos/`.
 
 ## Command line
 

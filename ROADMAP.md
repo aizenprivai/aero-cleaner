@@ -91,6 +91,15 @@
 - **Cleaning reports:** CSV or Markdown from Settings, `aero-cleaner report [--md]`
 - Text that ran out of its space in French or small windows now shrinks, then ends with "…"; shared file/folder pickers work on Windows
 
+**v2.0 – Trusted & everywhere**
+- **Privileged helper:** a D-Bus system service (`org.aeroclean.Helper1`) with one polkit action per operation, no shell as root, checked inputs, quits when idle; pkexec stays as a fallback
+- **Every major distro:** APT, DNF, pacman and zypper backends, old Snap revisions, CI on Fedora, Arch and openSUSE
+- **Packages:** `.rpm`, AppImage and an AUR `PKGBUILD` with every release
+- **Update button in Settings:** check now, what's new, Update now (verified against `SHA256SUMS`)
+- **Overview** home screen with a health score and Fix all safe items
+- **Accessibility:** screen reader labels, the high-contrast Aero Basic theme, UI scale up to 200%
+- **Languages:** translations moved to `lang/*.txt`; Spanish, German and Portuguese
+
 ---
 
 # 🗺 Road to 2.0
@@ -106,10 +115,10 @@
 
 | Version | Theme | Size | Main risk |
 |---|---|---|---|
-| v1.5.x | Leftovers | S | – |
-| **v2.0** | **Trusted & everywhere** | **L** | **Privileged helper security, distro differences** |
+| v2.x | Leftovers | S | – |
+| v2.1 | Aero extras & distribution | M | Accounts for Flathub and an APT repository |
 
-## 🔜 v1.5.x – Leftovers
+## 🔜 v2.x – Leftovers
 - **Rules in the automatic clean:** let chosen rules run with the weekly clean.
 - **BleachBit at scale:** test the importer against BleachBit's full cleaner set and report what was skipped and why.
 - **Windows signing:** the pipeline is ready; it needs a code signing certificate (or Azure Trusted Signing) added as secrets.
@@ -118,32 +127,11 @@
 - **Release polish:** Mac and Windows screenshots in the README.
 - **Similar photos at scale:** compare in buckets instead of every pair once libraries reach tens of thousands of photos, and read the small embedded JPEG thumbnail instead of decoding the full photo.
 
-## 🚀 v2.0 – Trusted & everywhere
-- **Privileged helper (security):** replace `pkexec sh -c "<script>"` with a small D-Bus system service.
-  - One polkit action per operation: clean APT cache, vacuum journal, toggle service, and so on.
-  - No shell ever runs as root, and every request is validated.
-  - Admins can choose "don't ask for my password for safe items".
-  - *Breaking change:* system cleaning then requires the installed package.
-- **Every major distro:**
-  - Package-manager backends for APT, DNF (Fedora), pacman (Arch) and zypper (openSUSE).
-  - Distro-aware categories: dnf cache, `paccache`, orphan packages, old Snap revisions on Ubuntu.
-  - CI runs the tests in Fedora, Arch and openSUSE containers.
-- **Packaging & updates:**
-  - **Update button in Settings:** "Check for updates" works any time (not only once a day), shows what's new, and **Update now** downloads the right package for this system, checks it against the release's `SHA256SUMS`, then installs it: the `.deb` with one password prompt on Linux, the installer on Windows, the `.dmg` opened for you on macOS. Nothing is downloaded without that click.
-  - `.rpm`, an AUR `PKGBUILD` and an AppImage.
-  - Flathub: user-level features inside the sandbox, system features through the helper.
-  - A **signed APT repository** on GitHub Pages, so `apt upgrade` keeps AeroClean up to date.
-- **Overview home screen:** one health score built from free space, junk found, boot time, disk health and pending updates, plus a one-click **Fix all safe items**.
-- **Settings 2.0:** move to TOML, with automatic migration from the 1.x file. You won't notice the switch.
-- **Accessibility:**
-  - Screen reader support (AccessKit).
-  - A high-contrast "Aero Basic" theme.
-  - UI scale from 100 to 200%.
-- **More languages:** one file per language, so community translations are easy. Spanish, German and Portuguese come first.
-- **Aero extras:**
-  - A theme editor: sky, glass and accent colors, saved as a shareable file.
-  - Optional 2000s-style UI sounds.
-  - Smooth glassy page transitions.
+## ✨ v2.1 – Aero extras & distribution
+- **Settings 2.0:** move to TOML, with automatic migration from the 1.x file.
+- **Flathub:** user-level features inside the sandbox, system features through the helper (needs a Flathub account).
+- **A signed APT repository** on GitHub Pages, so `apt upgrade` keeps AeroClean up to date (needs a signing key).
+- **Aero extras:** a theme editor saved as a shareable file, optional 2000s-style UI sounds, glassy page transitions.
 
 ## 🚫 Not planned
 - **"RAM booster", "registry cleaner", "driver updater":** these don't help on Linux.
