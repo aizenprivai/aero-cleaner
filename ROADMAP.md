@@ -189,9 +189,26 @@
 **Done when:** the 6 built-in themes are files and look exactly as before, the Studio can recreate any of them from scratch, themes round-trip through export/import and the gallery, and every new layer respects Reduce motion.
 
 ## 📦 v2.2 – Distribution
-- **Settings 2.0:** move to TOML (like themes), with automatic migration from the current file.
-- **Flathub:** user-level features inside the sandbox, system features through the helper (needs a Flathub account).
-- **A signed APT repository** on GitHub Pages, so `apt upgrade` keeps AeroClean up to date (needs a signing key).
+
+Getting AeroClean, and keeping it up to date, the way each system expects.
+
+### ✅ Milestone 1 – Settings 2.0
+- Settings move to `settings.toml` (like themes): grouped, commented, easy to read and edit by hand.
+- The old file is migrated automatically the first time 2.2 starts, and kept as `settings.old`.
+- Unknown or broken values fall back to their defaults one by one, instead of losing the whole file.
+
+### Milestone 2 – Flatpak and Flathub
+- A Flatpak manifest built from source, offline (vendored crates), tested locally.
+- Inside the sandbox: user-level cleaning works directly; system cleaning goes through the privileged helper on the host.
+- Submitted to Flathub.
+
+### Milestone 3 – A signed APT repository
+- A dedicated signing key (made together; its private part only lives on your machine and in a GitHub secret).
+- Each release publishes the `.deb` into an APT repository on GitHub Pages, so `apt upgrade` keeps AeroClean up to date.
+
+### Milestone 4 – Winget and Homebrew
+- A winget manifest, so `winget install AeroClean` works on Windows.
+- A Homebrew cask in AeroClean's own tap (the main Homebrew repository only takes notarized apps).
 
 ## 🚫 Not planned
 - **"RAM booster", "registry cleaner", "driver updater":** these don't help on Linux.
