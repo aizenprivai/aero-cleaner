@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.aeroclean.Helper1
+Exec=/usr/bin/aero-cleaner --dbus-helper
+User=root

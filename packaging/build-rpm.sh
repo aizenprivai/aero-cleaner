@@ -37,6 +37,9 @@ cp -a $TOP/stage/. %{buildroot}/
 /usr/share/applications/aero-cleaner.desktop
 /usr/share/icons/hicolor/*/apps/aero-cleaner.*
 /usr/share/doc/aero-cleaner/
+/usr/share/dbus-1/system-services/org.aeroclean.Helper1.service
+/usr/share/dbus-1/system.d/org.aeroclean.Helper1.conf
+/usr/share/polkit-1/actions/org.aeroclean.helper.policy
 SPEC
 
 rpmbuild --define "_topdir $TOP" --define "_build_id_links none" -bb "$TOP/SPECS/aero-cleaner.spec" >/dev/null

@@ -168,7 +168,7 @@ fn windows_events(query: &str, count: u32) -> Vec<Event> {
     out.map(|o| parse_events(&String::from_utf8_lossy(&o.stdout))).unwrap_or_default()
 }
 
-fn is_critical(unit: &str) -> bool {
+pub(crate) fn is_critical(unit: &str) -> bool {
     const PREFIXES: &[&str] = &[
         "systemd-",
         "dbus",
@@ -260,7 +260,7 @@ fn parse_descriptions(text: &str) -> std::collections::HashMap<String, String> {
         .collect()
 }
 
-fn valid_unit(unit: &str) -> bool {
+pub(crate) fn valid_unit(unit: &str) -> bool {
     !unit.is_empty() && unit.ends_with(".service") && unit.chars().all(|c| c.is_ascii_alphanumeric() || "@._-".contains(c))
 }
 
@@ -270,6 +270,10 @@ pub fn set_enabled(unit: &str, enabled: bool) -> Result<(), String> {
         return Err(format!("{unit} can't be changed here"));
     }
     let action = if enabled { "enable" } else { "disable" };
+    #[cfg(target_os = "linux")]
+    if crate::helper::installed() {
+        return crate::helper::call(&format!("service-{action}"), unit).map(|_| ()).map_err(|e| if e == "cancelled" { "Password prompt was cancelled".into() } else { e });
+    }
     let out = Command::new("pkexec").args(["/usr/bin/systemctl", action, "--", unit]).output().map_err(|e| e.to_string())?;
     match out.status.code() {
         Some(0) => Ok(()),

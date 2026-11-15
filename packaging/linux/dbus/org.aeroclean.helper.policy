@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- One action per operation of AeroClean's helper. Admins can allow the
+     org.aeroclean.helper.clean-* ones without a password with a polkit rule. -->
+<policyconfig>
+  <vendor>AeroClean</vendor>
+  <vendor_url>https://github.com/aizenprivai/aero-cleaner</vendor_url>
+  <icon_name>aero-cleaner</icon_name>
+  <action id="org.aeroclean.helper.clean-package-cache">
+    <description>Clean the package cache</description>
+    <description xml:lang="fr">Nettoyer le cache des paquets</description>
+    <message>AeroClean wants to: clean the package cache</message>
+    <message xml:lang="fr">AeroClean veut : nettoyer le cache des paquets</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.remove-unused-packages">
+    <description>Remove unused packages</description>
+    <description xml:lang="fr">Supprimer les paquets inutiles</description>
+    <message>AeroClean wants to: remove unused packages</message>
+    <message xml:lang="fr">AeroClean veut : supprimer les paquets inutiles</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.clean-journal">
+    <description>Shrink the system journal</description>
+    <description xml:lang="fr">Réduire le journal système</description>
+    <message>AeroClean wants to: shrink the system journal</message>
+    <message xml:lang="fr">AeroClean veut : réduire le journal système</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.clean-rotated-logs">
+    <description>Delete old log files</description>
+    <description xml:lang="fr">Supprimer les anciens journaux</description>
+    <message>AeroClean wants to: delete old log files</message>
+    <message xml:lang="fr">AeroClean veut : supprimer les anciens journaux</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.clean-crash-reports">
+    <description>Delete crash reports</description>
+    <description xml:lang="fr">Supprimer les rapports de plantage</description>
+    <message>AeroClean wants to: delete crash reports</message>
+    <message xml:lang="fr">AeroClean veut : supprimer les rapports de plantage</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.clean-old-temp">
+    <description>Delete old temporary files</description>
+    <description xml:lang="fr">Supprimer les anciens fichiers temporaires</description>
+    <message>AeroClean wants to: delete old temporary files</message>
+    <message xml:lang="fr">AeroClean veut : supprimer les anciens fichiers temporaires</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.clean-old-snaps">
+    <description>Remove old snap revisions</description>
+    <description xml:lang="fr">Supprimer les anciennes révisions Snap</description>
+    <message>AeroClean wants to: remove old snap revisions</message>
+    <message xml:lang="fr">AeroClean veut : supprimer les anciennes révisions Snap</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+  <action id="org.aeroclean.helper.manage-services">
+    <description>Change which services start at boot</description>
+    <description xml:lang="fr">Changer les services lancés au démarrage</description>
+    <message>AeroClean wants to: change which services start at boot</message>
+    <message xml:lang="fr">AeroClean veut : changer les services lancés au démarrage</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

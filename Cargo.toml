@@ -36,6 +36,14 @@ windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Storage
 winreg = "0.55"
 trash = "5"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# Talking to the privileged helper (and serving it) on the system bus.
+zbus = "5"
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+# Tests talk to the helper over a private socket pair.
+zbus = { version = "5", features = ["p2p"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 # Moves files to the Trash through Finder, so "Put Back" works.
 trash = "5"

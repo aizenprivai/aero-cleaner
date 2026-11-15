@@ -38,8 +38,8 @@ Priority: optional
 Architecture: $ARCH
 Maintainer: $MAINTAINER
 Installed-Size: $INSTALLED_KB
-Depends: libc6 (>= 2.35), libgcc-s1, libgl1, libegl1, libxkbcommon0, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libxcursor1, libxi6, libxrandr2
-Recommends: pkexec | policykit-1, libnotify-bin, zenity, libglib2.0-bin, xdg-utils
+Depends: libc6 (>= 2.35), dbus, polkitd | policykit-1, libgcc-s1, libgl1, libegl1, libxkbcommon0, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libxcursor1, libxi6, libxrandr2
+Recommends: pkexec, libnotify-bin, zenity, libglib2.0-bin, xdg-utils
 Description: Frutiger Aero style system cleaner
  AeroClean frees disk space: caches, trash, old logs, unused packages,
  browser data, developer build folders, duplicates, similar photos,
@@ -50,6 +50,16 @@ Description: Frutiger Aero style system cleaner
  Glossy 2000s "Frutiger Aero" interface with 6 themes, in English,
  French, Spanish, German and Portuguese.
 EOF
+
+# Make the system bus read the helper's access rules right away.
+cat > "$STAGE/DEBIAN/postinst" <<'EOF'
+#!/bin/sh
+set -e
+if [ "$1" = configure ] && command -v systemctl >/dev/null && systemctl is-active --quiet dbus 2>/dev/null; then
+    systemctl reload dbus 2>/dev/null || true
+fi
+EOF
+chmod 755 "$STAGE/DEBIAN/postinst"
 
 echo ">> Building package"
 # Debian policy: no group/world-writable files, whatever the local umask is.

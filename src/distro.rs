@@ -139,7 +139,7 @@ fn parse_apt_simulation(out: &str) -> (Vec<String>, Option<u64>) {
 }
 
 /// `zypper packages --unneeded`: "S | Repository | Name | Version | Arch" rows.
-fn parse_zypper_unneeded(out: &str) -> Vec<String> {
+pub fn parse_zypper_unneeded(out: &str) -> Vec<String> {
     out.lines()
         .filter_map(|l| {
             let cols: Vec<&str> = l.split('|').map(str::trim).collect();

@@ -13,6 +13,8 @@ mod diskmap;
 mod distro;
 mod dupes;
 mod health;
+#[cfg(target_os = "linux")]
+mod helper;
 mod holding;
 mod i18n;
 mod leftovers;
@@ -858,6 +860,15 @@ Usage:
 fn main() -> eframe::Result {
     // Command-line mode, used by the systemd timers and the launcher's right-click actions.
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // Started by the system bus as root: serve, and touch nothing else.
+    #[cfg(target_os = "linux")]
+    if args.first().map(String::as_str) == Some("--dbus-helper") {
+        if let Err(e) = helper::serve() {
+            eprintln!("aero-cleaner helper: {e}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
     i18n::set_language(&Settings::load().language);
     let flag = |f: &str| args.iter().any(|a| a == f);
     // Windows: a GUI app has no console, so print into the terminal that started it.

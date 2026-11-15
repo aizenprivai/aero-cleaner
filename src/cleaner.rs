@@ -497,7 +497,7 @@ fn all(_: &Path, _: &fs::Metadata) -> bool {
 }
 
 #[cfg_attr(windows, allow(dead_code))]
-fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
+pub(crate) fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
     let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
     name.ends_with(".gz")
         || name.ends_with(".bz2")
@@ -505,7 +505,7 @@ fn is_rotated_log(p: &Path, _: &fs::Metadata) -> bool {
         || name.rsplit('.').next().is_some_and(|ext| !ext.is_empty() && ext.chars().all(|c| c.is_ascii_digit()) && name.contains('.'))
 }
 
-fn older_than(md: &fs::Metadata, days: u64) -> bool {
+pub(crate) fn older_than(md: &fs::Metadata, days: u64) -> bool {
     md.modified().ok().and_then(|m| SystemTime::now().duration_since(m).ok()).is_some_and(|age| age > Duration::from_secs(days * 86400))
 }
 
@@ -863,7 +863,28 @@ fn clean_into(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, batch: 
         }
     }
     #[cfg(target_os = "linux")]
-    unix_root_clean(&script, log);
+    if crate::helper::installed() {
+        helper_clean(kinds, journal_days, log);
+    } else {
+        unix_root_clean(&script, log);
+    }
+}
+
+/// System items through the installed helper: one polkit check per kind of
+/// operation (polkit remembers the password for a few minutes).
+#[cfg(target_os = "linux")]
+fn helper_clean(kinds: &[Kind], journal_days: u32, log: &dyn Fn(String)) {
+    log("Asking for administrator password...".into());
+    for &kind in kinds {
+        let Some((op, arg)) = crate::helper::op_for(kind, journal_days) else { continue };
+        let name = CATEGORIES.iter().find(|c| c.kind == kind).map(|c| c.name).unwrap_or(op);
+        log(format!(">> {name}"));
+        match crate::helper::call(op, &arg) {
+            Ok(out) => out.lines().filter(|l| !l.trim().is_empty()).for_each(|l| log(l.to_string())),
+            Err(e) if e == "cancelled" => return log("Password prompt was cancelled, system items were skipped.".into()),
+            Err(e) => log(format!("System cleanup failed: {e}")),
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]

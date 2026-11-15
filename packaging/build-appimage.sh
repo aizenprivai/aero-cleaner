@@ -11,6 +11,8 @@ APPDIR="$OUT/AeroClean.AppDir"
 [ -x target/dist/aero-cleaner ] || cargo build --profile dist
 rm -rf "$OUT" && mkdir -p "$OUT"
 packaging/linux/stage.sh "$APPDIR"
+# System files can't be installed from an AppImage: it uses the pkexec prompt instead.
+rm -rf "$APPDIR/usr/share/dbus-1" "$APPDIR/usr/share/polkit-1"
 # AppImage wants the desktop entry and icon at the top, and a plain Exec.
 sed 's|Exec=/usr/bin/aero-cleaner|Exec=aero-cleaner|' packaging/linux/aero-cleaner.desktop > "$APPDIR/aero-cleaner.desktop"
 cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/aero-cleaner.png" "$APPDIR/aero-cleaner.png"
