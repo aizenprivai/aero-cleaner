@@ -70,6 +70,10 @@ enum Msg {
     HealthDone(Vec<health::DiskHealth>),
     LeftoversDone(Vec<leftovers::Leftover>),
     UndoList(Vec<holding::Held>),
+    /// The "Check now" answer.
+    Release(Result<update::Release, String>),
+    UpdateProgress(u64, u64),
+    UpdateInstalled(Result<(String, update::Installer), String>),
     Restored(String),
 }
 
@@ -130,6 +134,7 @@ struct App {
     update: Option<update::Update>,
     /// What's kept for undo, newest first (None until loaded).
     undo_list: Option<Vec<holding::Held>>,
+    updater: tabs::UpdaterState,
     undo_busy: bool,
     items: Vec<Item>,
     phase: Phase,
@@ -223,6 +228,7 @@ impl App {
             keyboard_nav: false,
             update: None,
             undo_list: None,
+            updater: Default::default(),
             undo_busy: false,
         };
         app.items = app.initial_selection();
@@ -435,6 +441,32 @@ impl App {
                     self.boot.loaded = true;
                 }
                 Msg::UpdateChecked(found) => self.update = found,
+                Msg::Release(r) => {
+                    self.updater.checking = false;
+                    match r {
+                        Ok(rel) => {
+                            if rel.is_newer() {
+                                self.update = Some(update::Update { version: rel.version.clone(), url: rel.page.clone() });
+                            }
+                            self.updater.release = Some(rel);
+                        }
+                        Err(e) => self.updater.error = e,
+                    }
+                }
+                Msg::UpdateProgress(got, total) => self.updater.progress = Some((got, total)),
+                Msg::UpdateInstalled(r) => {
+                    self.updater.progress = None;
+                    match r {
+                        Ok((msg, kind)) => {
+                            self.updater.done = msg;
+                            // The Windows installer replaces this .exe: get out of its way.
+                            if kind == update::Installer::WindowsSetup {
+                                self.ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                            }
+                        }
+                        Err(e) => self.updater.error = e,
+                    }
+                }
                 Msg::UndoList(list) => {
                     self.undo_list = Some(list);
                     self.undo_busy = false;
@@ -545,12 +577,11 @@ impl eframe::App for App {
             let bar = Rect::from_min_size(pos2(pill.min.x, pill.max.y + 7.0), vec2(pill.width(), 20.0));
             tabs::disk_meter(&p, bar, size, avail, th);
         }
+        let mut open_updates = false;
         if let Some(up) = &self.update {
             let r = Rect::from_min_size(pos2(pill.min.x - 250.0, pill.min.y + 6.0), vec2(236.0, 34.0));
             let label = crate::i18n::tr(format!("✨ Version {} is out", up.version));
-            if aero::aqua_button(ui, r, &label, th.go, true).on_hover_text(crate::i18n::tr("Open the download page")).clicked() {
-                update::open(&up.url);
-            }
+            open_updates = aero::aqua_button(ui, r, &label, th.go, true).on_hover_text(crate::i18n::tr("See what's new and update")).clicked();
         }
 
         // Sidebar navigation, grouped like a 2000s control panel.
@@ -599,6 +630,12 @@ impl eframe::App for App {
             new_tab = *tab;
         }
         self.tab = new_tab;
+        if open_updates {
+            self.tab = Tab::Settings;
+            if self.updater.release.is_none() {
+                self.check_for_update_now();
+            }
+        }
 
         let area = Rect::from_min_max(pos2(sidebar.max.x + 14.0, nav_top), pos2(inner.max.x + 6.0, inner.max.y));
         match self.tab {
@@ -1033,6 +1070,15 @@ mod ui_tests {
                     })
                     .collect();
                 st.disk_hist.growth = Some((vec![("Videos/OBS".into(), 6_200_000_000), (".cache/yarn".into(), 1_100_000_000), ("Downloads".into(), 420_000_000)], 7));
+                h.run_steps(2);
+            }
+            if tab == Tab::Settings && demo {
+                h.state_mut().updater.release = Some(update::Release {
+                    version: "2.0.0".into(),
+                    notes: "## What's new\n- Update button in Settings\n- Overview home screen\n- Bigger text option".into(),
+                    page: format!("{}/releases", update::REPO),
+                    assets: vec![],
+                });
                 h.run_steps(2);
             }
             if matches!(tab, Tab::Settings | Tab::Cleaner) && std::env::var("AERO_SHOT_DEMO").is_ok() {

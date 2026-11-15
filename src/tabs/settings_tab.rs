@@ -58,6 +58,7 @@ impl App {
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
         let mut toggle_updates = false;
+        let mut updater_action: Option<super::UpdaterAction> = None;
         let (mut cycle_undo, mut empty_undo) = (false, false);
         let mut export: Option<bool> = None;
         let mut restore: Option<crate::holding::Held> = None;
@@ -280,6 +281,7 @@ impl App {
 
                 // ----- Updates -----
                 Self::section(ui, "UPDATES", th);
+                updater_action = Self::updater_rows(ui, row_w, th, &self.updater);
                 toggle_updates = toggle_row(
                     ui,
                     row_w,
@@ -441,6 +443,9 @@ impl App {
         }
         if let Some(h) = restore {
             self.restore_held(h);
+        }
+        if let Some(a) = updater_action {
+            self.run_updater_action(a);
         }
         if toggle_updates {
             self.settings.check_updates = !self.settings.check_updates;

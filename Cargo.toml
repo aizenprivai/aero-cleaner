@@ -18,6 +18,9 @@ rayon = "1"
 blake3 = "1"
 # Decoding photos for "similar photos" (perceptual hashes).
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+# Reading GitHub release information and checking downloads in the updater.
+serde_json = "1"
+sha2 = "0.10"
 
 [profile.dist]
 # Used for packaging (`cargo build --profile dist`): stripped, whole-program

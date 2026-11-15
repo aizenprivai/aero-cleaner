@@ -15,6 +15,7 @@ mod rules_ui;
 mod settings_tab;
 mod startup;
 mod themes_tab;
+mod updater_ui;
 
 pub(crate) use boot_tab::BootState;
 pub(crate) use browsers_tab::BrowserState;
@@ -25,6 +26,7 @@ pub(crate) use leftovers_tab::LeftoverState;
 pub(crate) use map_tab::MapState;
 pub(crate) use rules_ui::{RuleEditor, tilde};
 pub(crate) use settings_tab::AutoState;
+pub(crate) use updater_ui::{UpdaterAction, UpdaterState};
 
 use prelude::*;
 
