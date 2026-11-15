@@ -16,6 +16,7 @@ mod settings;
 mod tabs;
 mod theme;
 mod tools;
+mod update;
 #[cfg(windows)]
 mod windows;
 // Also built for tests on other systems: its text parsing is tested everywhere.
@@ -52,6 +53,7 @@ enum Msg {
     AutoDone(String),
     BootDone(Option<boot::BootTimes>, Vec<boot::BootTimes>, Vec<boot::Service>),
     BootToggled(Result<String, String>),
+    UpdateChecked(Option<update::Update>),
 }
 
 /// Sends messages from worker threads and wakes the UI so it repaints only
@@ -103,6 +105,8 @@ struct Item {
 struct App {
     /// The keyboard is being used to move around: show the focus ring.
     keyboard_nav: bool,
+    /// A newer release, when the opt-in update check found one.
+    update: Option<update::Update>,
     items: Vec<Item>,
     phase: Phase,
     tx: Sender<Msg>,
@@ -178,10 +182,12 @@ impl App {
             auto: Default::default(),
             boot: Default::default(),
             keyboard_nav: false,
+            update: None,
         };
         app.items = app.initial_selection();
         app.apply_visuals(ctx);
         app.start_scan();
+        app.start_update_check(false);
         app
     }
 
@@ -339,6 +345,7 @@ impl App {
                     self.boot.loading = false;
                     self.boot.loaded = true;
                 }
+                Msg::UpdateChecked(found) => self.update = found,
                 Msg::BootToggled(result) => {
                     self.boot.msg = match result {
                         Ok(m) => m,
@@ -423,6 +430,13 @@ impl eframe::App for App {
         if let Some((size, avail)) = self.disk {
             let bar = Rect::from_min_size(pos2(pill.min.x, pill.max.y + 7.0), vec2(pill.width(), 20.0));
             tabs::disk_meter(&p, bar, size, avail, th);
+        }
+        if let Some(up) = &self.update {
+            let r = Rect::from_min_size(pos2(pill.min.x - 250.0, pill.min.y + 6.0), vec2(236.0, 34.0));
+            let label = crate::i18n::tr(format!("✨ Version {} is out", up.version));
+            if aero::aqua_button(ui, r, &label, th.go, true).on_hover_text(crate::i18n::tr("Open the download page")).clicked() {
+                update::open(&up.url);
+            }
         }
 
         // Sidebar navigation, grouped like a 2000s control panel.
@@ -562,6 +576,15 @@ const SCREEN_KEYS: [egui::Key; 10] =
     [egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4, egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8, egui::Key::Num9, egui::Key::Num0];
 
 impl App {
+    /// Runs the update check in the background (only if the user turned it on).
+    fn start_update_check(&self, force: bool) {
+        if !self.settings.check_updates {
+            return;
+        }
+        let tx = self.notifier();
+        std::thread::spawn(move || tx.send(Msg::UpdateChecked(update::check(force))));
+    }
+
     /// Our glossy widgets draw themselves, so draw the keyboard focus on top.
     /// Only shown while the keyboard is in use, not after mouse clicks.
     fn focus_ring(&mut self, ctx: &egui::Context) {

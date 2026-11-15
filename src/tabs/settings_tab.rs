@@ -58,6 +58,7 @@ impl App {
         }
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
+        let mut toggle_updates = false;
         let mut set_lang: Option<&'static str> = None;
         let home = crate::platform::home().to_string_lossy().into_owned();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
@@ -267,6 +268,20 @@ impl App {
                     ui.painter().text(pos2(keep_r.max.x + 14.0, keep_r.center().y), Align2::LEFT_CENTER, crate::i18n::tr(&self.settings_msg), regular(13.0), th.soft);
                 }
 
+                // ----- Updates -----
+                Self::section(ui, "UPDATES", th);
+                toggle_updates = toggle_row(
+                    ui,
+                    row_w,
+                    0.0,
+                    self.settings.check_updates,
+                    "🔔",
+                    "Tell me when a new version is out",
+                    "Once a day, asks GitHub for the latest version number. Nothing about you or your computer is sent.",
+                    th,
+                )
+                .clicked();
+
                 // ----- History -----
                 Self::section(ui, "CLEANING HISTORY", th);
                 let total: u64 = self.history.iter().map(|h| h.freed).sum();
@@ -322,6 +337,15 @@ impl App {
                 self.settings_msg = e;
             }
             self.auto.checked = None;
+        }
+        if toggle_updates {
+            self.settings.check_updates = !self.settings.check_updates;
+            self.settings.save();
+            if self.settings.check_updates {
+                self.start_update_check(true);
+            } else {
+                self.update = None;
+            }
         }
         if toggle_trash {
             self.settings.auto_trash = !self.settings.auto_trash;

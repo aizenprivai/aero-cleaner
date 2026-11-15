@@ -571,6 +571,15 @@ const FR: &[(&str, &str)] = &[
     // ----- Command line -----
     ("Dry run: nothing is deleted.", "Simulation : rien n'est supprimé."),
     ("Ticked items would free about {}.", "Les éléments cochés libéreraient environ {}."),
+    // ----- Updates -----
+    ("UPDATES", "MISES À JOUR"),
+    ("Tell me when a new version is out", "Me prévenir quand une nouvelle version sort"),
+    (
+        "Once a day, asks GitHub for the latest version number. Nothing about you or your computer is sent.",
+        "Une fois par jour, demande à GitHub le numéro de la dernière version. Rien sur vous ni sur votre ordinateur n'est envoyé.",
+    ),
+    ("✨ Version {} is out", "✨ La version {} est sortie"),
+    ("Open the download page", "Ouvrir la page de téléchargement"),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

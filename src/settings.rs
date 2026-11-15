@@ -23,11 +23,23 @@ pub struct Settings {
     pub selected: Option<Vec<String>>,
     /// "auto", "en" or "fr".
     pub language: String,
+    /// Opt-in daily check for a newer version on GitHub.
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { reduce_motion: false, exclusions: vec![], auto_trash: false, low_disk_percent: 10, journal_days: 3, big_min_mb: 100, selected: None, language: "auto".into() }
+        Settings {
+            reduce_motion: false,
+            exclusions: vec![],
+            auto_trash: false,
+            low_disk_percent: 10,
+            journal_days: 3,
+            big_min_mb: 100,
+            selected: None,
+            language: "auto".into(),
+            check_updates: false,
+        }
     }
 }
 
@@ -39,6 +51,7 @@ impl Settings {
             match line.split_once('=') {
                 Some(("reduce_motion", v)) => s.reduce_motion = v.trim() == "true",
                 Some(("auto_trash", v)) => s.auto_trash = v.trim() == "true",
+                Some(("check_updates", v)) => s.check_updates = v.trim() == "true",
                 Some(("low_disk_percent", v)) => s.low_disk_percent = v.trim().parse().unwrap_or(10).clamp(1, 50),
                 Some(("journal_days", v)) => s.journal_days = v.trim().parse().unwrap_or(3).clamp(1, 365),
                 Some(("big_min_mb", v)) => s.big_min_mb = v.trim().parse().unwrap_or(100).clamp(1, 100_000),
@@ -53,8 +66,8 @@ impl Settings {
 
     pub fn save(&self) {
         let mut text = format!(
-            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\n",
-            self.reduce_motion, self.auto_trash, self.low_disk_percent, self.journal_days, self.big_min_mb, self.language
+            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\n",
+            self.reduce_motion, self.auto_trash, self.low_disk_percent, self.journal_days, self.big_min_mb, self.language, self.check_updates
         );
         if let Some(sel) = &self.selected {
             text.push_str(&format!("selected={}\n", sel.join(",")));

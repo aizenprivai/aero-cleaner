@@ -3,6 +3,7 @@ name = "aero-cleaner"
 version = "1.2.0"
 edition = "2024"
 license = "MIT"
+repository = "https://github.com/aizenprivai/aero-cleaner"
 description = "Frutiger Aero style system cleaner for Linux, Windows and macOS"
 
 [dependencies]
