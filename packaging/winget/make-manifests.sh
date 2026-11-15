@@ -14,7 +14,7 @@ id=AeroClean.AeroClean
 sha=$(sha256sum "$setup" | cut -d' ' -f1 | tr a-f A-F)
 dir="$out/manifests/a/AeroClean/AeroClean/$version"
 mkdir -p "$dir"
-schema=1.10.0
+schema=1.28.0
 
 cat > "$dir/$id.yaml" <<YAML
 # yaml-language-server: \$schema=https://aka.ms/winget-manifest.version.$schema.schema.json
