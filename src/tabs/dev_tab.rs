@@ -21,10 +21,12 @@ impl App {
     pub(crate) fn start_dev_scan(&mut self) {
         self.dev.scanning = Some(0);
         let tx = self.notifier();
-        let home = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default());
+        let home = crate::platform::home();
         std::thread::spawn(move || {
             let ptx = tx.clone();
-            let items = devclean::scan(&home, &move |n| ptx.send(Msg::DevProgress(n)));
+            let mut items = devclean::scan(&home, &move |n| ptx.send(Msg::DevProgress(n)));
+            items.extend(devclean::containers());
+            items.sort_by_key(|i| std::cmp::Reverse(i.size));
             tx.send(Msg::DevDone(items, devclean::waydroid_images()));
         });
     }
@@ -57,7 +59,7 @@ impl App {
             ui,
             area,
             "Developer cleanup",
-            "Build folders and packages inside your projects. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.",
+            "Build folders and packages inside your projects, and unused Docker or Podman images. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.",
             Some((&label, !busy && sel_size > 0)),
         );
         if clicked {
@@ -80,7 +82,7 @@ impl App {
             return;
         }
 
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = crate::platform::home().to_string_lossy().into_owned();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
         let mut toggle = None;
         let mut rescan = false;
@@ -111,7 +113,11 @@ impl App {
                     let cy = rect.center().y;
                     aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, on, resp.hovered(), th.go, th.accent);
                     aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, item.kind.icon());
-                    let project = item.path.parent().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                    let project = match devclean::container_tool(item) {
+                        Some("docker") => "Docker".to_string(),
+                        Some(_) => "Podman".to_string(),
+                        None => item.path.parent().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+                    };
                     let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 110.0, rect.max.y)));
                     let name_r = clip.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(&project), bold(15.0), th.text);
                     clip.text(pos2(name_r.max.x + 8.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(item.kind.label()), regular(12.0), th.soft);

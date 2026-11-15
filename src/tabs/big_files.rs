@@ -53,7 +53,7 @@ impl App {
             return;
         }
 
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = crate::platform::home().to_string_lossy().into_owned();
         let mut remove = None;
         let mut status = None;
         ui.scope_builder(egui::UiBuilder::new().max_rect(list.shrink(6.0)), |ui| {

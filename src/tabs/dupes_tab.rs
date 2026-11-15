@@ -19,7 +19,7 @@ impl App {
         self.dupes.msg.clear();
         let tx = self.notifier();
         let hidden = self.dupes.include_hidden;
-        let home = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default());
+        let home = crate::platform::home();
         std::thread::spawn(move || {
             let ptx = tx.clone();
             let groups = dupes::find_duplicates(&home, 1_000_000, hidden, &move |s| ptx.send(Msg::DupeProgress(s)));
@@ -49,7 +49,7 @@ impl App {
             return;
         }
 
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = crate::platform::home().to_string_lossy().into_owned();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
         let mut toggle_hidden = false;
         let mut trash_one: Option<(usize, usize)> = None;

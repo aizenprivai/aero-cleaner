@@ -59,7 +59,7 @@ impl App {
         let (mut toggle_clean, mut toggle_trash, mut toggle_disk, mut cycle_pct, mut run_now) = (false, false, false, false, false);
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
         let mut set_lang: Option<&'static str> = None;
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = crate::platform::home().to_string_lossy().into_owned();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
         let th = &self.themes[self.theme];
         let mut rescan = false;

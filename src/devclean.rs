@@ -1,5 +1,6 @@
 //! Finds rebuildable developer folders in your projects: Rust `target/`,
-//! `node_modules` and Python virtual environments.
+//! `node_modules` and Python virtual environments, plus what Docker or
+//! Podman could free (unused images, stopped containers, build cache).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,6 +11,8 @@ pub enum DevKind {
     Rust,
     Node,
     Python,
+    /// Docker or Podman. Volumes are never touched: they hold data.
+    Containers,
 }
 
 impl DevKind {
@@ -18,6 +21,7 @@ impl DevKind {
             DevKind::Rust => "Rust build (target)",
             DevKind::Node => "Node packages (node_modules)",
             DevKind::Python => "Python virtualenv",
+            DevKind::Containers => "unused images, stopped containers and build cache",
         }
     }
 
@@ -26,6 +30,7 @@ impl DevKind {
             DevKind::Rust => "🔩",
             DevKind::Node => "📦",
             DevKind::Python => "🐍",
+            DevKind::Containers => "🐳",
         }
     }
 
@@ -34,6 +39,7 @@ impl DevKind {
             DevKind::Rust => "rebuilt by cargo build",
             DevKind::Node => "reinstalled by npm install",
             DevKind::Python => "recreated by python -m venv",
+            DevKind::Containers => "downloaded again by the next pull or build. Volumes are kept",
         }
     }
 }
@@ -131,6 +137,42 @@ pub fn scan(root: &Path, progress: &dyn Fn(usize)) -> Vec<DevItem> {
     found
 }
 
+const CONTAINER_TOOLS: [&str; 2] = ["docker", "podman"];
+
+/// What Docker and Podman could free, one item per tool that is running.
+/// The item's path is the command shown to the user (and run on delete).
+pub fn containers() -> Vec<DevItem> {
+    CONTAINER_TOOLS
+        .iter()
+        .filter_map(|tool| {
+            let bin = crate::platform::find_tool(tool)?;
+            let out = crate::platform::command(bin).args(["system", "df", "--format", "{{.Type}}\t{{.Reclaimable}}"]).stderr(std::process::Stdio::null()).output().ok()?;
+            // Fails when the daemon isn't running or the user lacks access: skip quietly.
+            if !out.status.success() {
+                return None;
+            }
+            let size = reclaimable(&String::from_utf8_lossy(&out.stdout));
+            (size > 0).then(|| DevItem { kind: DevKind::Containers, path: PathBuf::from(format!("{tool} system prune -a")), size, project_touched: None })
+        })
+        .collect()
+}
+
+/// Sums the "Reclaimable" column of `system df`, except volumes.
+/// Lines look like "Images\t1.2GB (40%)" or "Build Cache\t0B".
+fn reclaimable(text: &str) -> u64 {
+    text.lines()
+        .filter_map(|l| l.split_once('\t'))
+        .filter(|(kind, _)| !kind.to_ascii_lowercase().contains("volume"))
+        .filter_map(|(_, size)| crate::cleaner::parse_size(size.split(" (").next()?))
+        .sum()
+}
+
+/// "Docker" or "Podman" for a containers item.
+pub fn container_tool(item: &DevItem) -> Option<&'static str> {
+    let first = item.path.to_str()?.split(' ').next()?;
+    CONTAINER_TOOLS.iter().find(|t| **t == first).copied()
+}
+
 /// Size of Waydroid's Android system images, if installed.
 pub fn waydroid_images() -> Option<u64> {
     let p = Path::new("/var/lib/waydroid/images");
@@ -138,6 +180,12 @@ pub fn waydroid_images() -> Option<u64> {
 }
 
 pub fn delete(item: &DevItem) -> Result<(), String> {
+    if item.kind == DevKind::Containers {
+        let tool = container_tool(item).ok_or("unknown tool")?;
+        let bin = crate::platform::find_tool(tool).ok_or_else(|| format!("{tool} not found"))?;
+        let out = crate::platform::command(bin).args(["system", "prune", "--all", "--force"]).output().map_err(|e| e.to_string())?;
+        return if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) };
+    }
     // Re-check right before deleting, in case the folder changed since the scan.
     if classify(&item.path) != Some(item.kind) {
         return Err("folder no longer looks like a build folder, skipped".into());
@@ -148,6 +196,15 @@ pub fn delete(item: &DevItem) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn container_space_skips_volumes() {
+        let text = "Images\t1.5GB (60%)\nContainers\t20.5MB (100%)\nLocal Volumes\t9GB (90%)\nBuild Cache\t300MB\n";
+        assert_eq!(reclaimable(text), 1_500_000_000 + 20_500_000 + 300_000_000);
+        assert_eq!(reclaimable("Images\t0B (0%)\n"), 0);
+        let item = DevItem { kind: DevKind::Containers, path: PathBuf::from("podman system prune -a"), size: 1, project_touched: None };
+        assert_eq!(container_tool(&item), Some("podman"));
+    }
 
     #[test]
     fn finds_build_folders_but_not_lookalikes() {

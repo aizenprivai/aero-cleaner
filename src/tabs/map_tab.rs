@@ -17,7 +17,7 @@ impl App {
         self.map.scanning = Some(0);
         self.map.path.clear();
         let tx = self.notifier();
-        let home = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default());
+        let home = crate::platform::home();
         std::thread::spawn(move || {
             let ptx = tx.clone();
             let root = diskmap::scan(&home, 20_000_000, &move |n| ptx.send(Msg::MapProgress(n)));

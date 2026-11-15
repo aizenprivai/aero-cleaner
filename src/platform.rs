@@ -144,3 +144,31 @@ pub fn exe() -> PathBuf {
     let installed = home().join(".local/bin/aero-cleaner");
     if installed.exists() { installed } else { current }
 }
+
+/// A command that doesn't flash a console window on Windows.
+pub fn command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[allow(unused_mut)]
+    let mut c = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    c
+}
+
+/// Finds a command-line tool. Apps started from the Dock or the Start Menu
+/// don't get the shell's PATH, so also look where installers put them.
+pub fn find_tool(name: &str) -> Option<PathBuf> {
+    let file = if IS_WINDOWS { format!("{name}.exe") } else { name.to_string() };
+    let mut dirs: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+    if IS_MACOS {
+        dirs.extend(["/opt/homebrew/bin", "/usr/local/bin"].map(PathBuf::from));
+        dirs.push(home().join(".docker/bin"));
+    } else if IS_WINDOWS {
+        let pf = env_dir("ProgramFiles").unwrap_or_else(|| PathBuf::from("C:\\Program Files"));
+        dirs.push(pf.join("Docker\\Docker\\resources\\bin"));
+        dirs.push(pf.join("RedHat\\Podman"));
+    }
+    dirs.into_iter().map(|d| d.join(&file)).find(|p| p.is_file())
+}

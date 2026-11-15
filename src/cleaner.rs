@@ -54,7 +54,7 @@ pub const CATEGORIES: &[Category] = &[
     Category {
         kind: Kind::DevCache,
         name: "Developer caches",
-        desc: "Cargo, npm and Gradle download caches (re-downloaded on demand)",
+        desc: "Cargo, npm, pnpm, Yarn, Go, Maven and Gradle downloads (re-downloaded on demand)",
         icon: "🔧",
         root: false,
         default_on: false,
@@ -87,7 +87,7 @@ pub const CATEGORIES: &[Category] = &[
     Category {
         kind: Kind::DevCache,
         name: "Developer caches",
-        desc: "Xcode DerivedData, simulator caches, Cargo, npm and Gradle downloads (rebuilt on demand)",
+        desc: "Xcode DerivedData, simulator caches, Cargo, npm, pnpm, Go, Maven and Gradle downloads (rebuilt on demand)",
         icon: "🔧",
         root: false,
         default_on: false,
@@ -113,7 +113,7 @@ pub const CATEGORIES: &[Category] = &[
     Category {
         kind: Kind::DevCache,
         name: "Developer caches",
-        desc: "Cargo, npm, pip and Gradle download caches (re-downloaded on demand)",
+        desc: "Cargo, npm, pip, pnpm, Yarn, Go, Maven and Gradle downloads (re-downloaded on demand)",
         icon: "🔧",
         root: false,
         default_on: false,
@@ -159,7 +159,11 @@ fn user_paths(kind: Kind) -> Vec<PathBuf> {
             }
             v
         }
-        Kind::DevCache => vec![h.join(".cargo/registry/cache"), h.join(".npm/_cacache"), h.join(".gradle/caches")],
+        Kind::DevCache => {
+            let mut v = dev_cache_paths(&h);
+            v.extend([h.join(".local/share/pnpm/store")]);
+            v
+        }
         Kind::RecentFiles => vec![h.join(".local/share/recently-used.xbel")],
         _ => vec![],
     }
@@ -173,13 +177,10 @@ fn user_paths(kind: Kind) -> Vec<PathBuf> {
         Kind::AppCache => vec![h.join("Library/Caches")],
         Kind::Thumbnails => crate::macos::user_cache_dir().map(|d| d.join("com.apple.QuickLook.thumbnailcache")).into_iter().collect(),
         Kind::CrashReports => vec![h.join("Library/Logs/DiagnosticReports")],
-        Kind::DevCache => vec![
-            h.join("Library/Developer/Xcode/DerivedData"),
-            h.join("Library/Developer/CoreSimulator/Caches"),
-            h.join(".cargo/registry/cache"),
-            h.join(".npm/_cacache"),
-            h.join(".gradle/caches"),
-        ],
+        Kind::DevCache => vec![h.join("Library/Developer/Xcode/DerivedData"), h.join("Library/Developer/CoreSimulator/Caches"), h.join("Library/pnpm/store")]
+            .into_iter()
+            .chain(dev_cache_paths(&h))
+            .collect(),
         Kind::AptCache => vec![crate::macos::brew_cache()],
         // Only the "Recent" lists: the same folder also holds Finder's sidebar favorites.
         Kind::RecentFiles => fs::read_dir(h.join("Library/Application Support/com.apple.sharedfilelist"))
@@ -217,7 +218,11 @@ fn user_paths(kind: Kind) -> Vec<PathBuf> {
             })
             .unwrap_or_default(),
         Kind::CrashReports => vec![local.join("CrashDumps"), local.join("Microsoft\\Windows\\WER\\ReportArchive"), local.join("Microsoft\\Windows\\WER\\ReportQueue")],
-        Kind::DevCache => vec![h.join(".cargo\\registry\\cache"), local.join("npm-cache\\_cacache"), local.join("pip\\cache"), h.join(".gradle\\caches")],
+        Kind::DevCache => {
+            let mut v = dev_cache_paths(&h);
+            v.extend([local.join("npm-cache\\_cacache"), local.join("pip\\cache"), local.join("pnpm\\store"), local.join("Yarn\\Cache"), local.join("go-build")]);
+            v
+        }
         Kind::RecentFiles => vec![roaming_app_data().join("Microsoft\\Windows\\Recent")],
         _ => vec![],
     }
@@ -243,6 +248,50 @@ fn system_paths(kind: Kind) -> (Vec<PathBuf>, fn(&Path, &fs::Metadata) -> bool) 
         ),
         Kind::OldLogs => (vec![w.join("Logs")], older_than_30_days),
         _ => (vec![], all),
+    }
+}
+
+/// Download caches every package manager re-fills on demand, at the same
+/// place on every system (relative to home).
+fn dev_cache_paths(h: &Path) -> Vec<PathBuf> {
+    let mut v: Vec<PathBuf> =
+        [".cargo/registry/cache", ".cargo/registry/src", ".cargo/git", ".gradle/caches", ".m2/repository", ".yarn/berry/cache"].iter().map(|p| h.join(p)).collect();
+    if !crate::platform::IS_WINDOWS {
+        v.push(h.join(".npm/_cacache"));
+    }
+    v.push(go_mod_cache(h));
+    v
+}
+
+/// Go's module cache ($GOMODCACHE, or $GOPATH/pkg/mod, or ~/go/pkg/mod).
+fn go_mod_cache(h: &Path) -> PathBuf {
+    let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    env("GOMODCACHE").unwrap_or_else(|| env("GOPATH").unwrap_or_else(|| h.join("go")).join("pkg/mod"))
+}
+
+/// Go makes its module cache read-only, so give write permission back to
+/// the owner before deleting it (never follows symlinks).
+fn make_writable(p: &Path) {
+    let Ok(md) = fs::symlink_metadata(p) else { return };
+    if md.file_type().is_symlink() {
+        return;
+    }
+    let mut perms = md.permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        perms.set_mode(perms.mode() | 0o200);
+    }
+    #[cfg(not(unix))]
+    {
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+    }
+    let _ = fs::set_permissions(p, perms);
+    if md.is_dir()
+        && let Ok(rd) = fs::read_dir(p)
+    {
+        rd.flatten().for_each(|e| make_writable(&e.path()));
     }
 }
 
@@ -416,7 +465,7 @@ fn run_c(cmd: &str, args: &[&str]) -> String {
 }
 
 /// Parses sizes like "1.2G", "512.0M", "123 kB", "1,234 MB".
-fn parse_size(s: &str) -> Option<u64> {
+pub fn parse_size(s: &str) -> Option<u64> {
     let s = s.trim().replace(',', "");
     let split = s.find(|c: char| !(c.is_ascii_digit() || c == '.')).unwrap_or(s.len());
     let num: f64 = s[..split].parse().ok()?;
@@ -668,6 +717,9 @@ pub fn clean(kinds: &[Kind], exclusions: &[PathBuf], journal_days: u32, log: &dy
             continue;
         }
         let skips = skips_for(kind, exclusions);
+        if kind == Kind::DevCache {
+            make_writable(&go_mod_cache(&home()));
+        }
         let failed: usize = user_paths(kind).iter().map(|p| clear(p, &skips)).sum();
         if failed > 0 {
             log(format!("   {failed} item(s) in use, skipped"));
@@ -772,6 +824,24 @@ mod tests {
         assert!(!dir.join("a.bin").exists() && !dir.join("sub").exists() && !dir.join("link").exists());
         assert!(dir.join("skipme/c").exists(), "skipped path untouched");
         assert!(target.join("keep.txt").exists(), "symlink target untouched");
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn read_only_go_module_cache_can_be_cleared() {
+        let base = std::env::temp_dir().join(format!("aero-gomod-{}", std::process::id()));
+        let pkg = base.join("github.com/x/y@v1.0.0");
+        fs::create_dir_all(&pkg).unwrap();
+        fs::write(pkg.join("go.mod"), "module y").unwrap();
+        // Go marks files and folders read-only.
+        for p in [pkg.join("go.mod"), pkg.clone()] {
+            let mut perms = fs::metadata(&p).unwrap().permissions();
+            perms.set_readonly(true);
+            fs::set_permissions(&p, perms).unwrap();
+        }
+        make_writable(&base);
+        assert_eq!(clear(&base, &[]), 0);
+        assert!(base.exists() && fs::read_dir(&base).unwrap().next().is_none());
         fs::remove_dir_all(&base).unwrap();
     }
 
