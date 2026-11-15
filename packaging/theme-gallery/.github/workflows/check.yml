@@ -19,7 +19,17 @@ jobs:
         run: |
           gh release download -R aizenprivai/aero-cleaner -p '*-x86_64.AppImage' -O aeroclean.AppImage
           chmod +x aeroclean.AppImage
+      - name: Does this AeroClean know themes?
+        id: support
+        run: |
+          if ./aeroclean.AppImage --appimage-extract-and-run theme list >/dev/null 2>&1; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The latest AeroClean release has no theme support yet (it arrives in 2.1); themes weren't checked."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Check every theme
+        if: steps.support.outputs.ok == 'true'
         run: |
           status=0
           for f in themes/*.aerotheme; do
@@ -27,9 +37,10 @@ jobs:
           done
           exit $status
       - name: Build the index
+        if: steps.support.outputs.ok == 'true'
         run: ./aeroclean.AppImage --appimage-extract-and-run theme index themes > index.json
       - name: Publish the index
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.support.outputs.ok == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git config user.name "AeroClean gallery"
           git config user.email "noreply@github.com"
