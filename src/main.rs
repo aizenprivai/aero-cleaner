@@ -17,6 +17,7 @@ mod tabs;
 mod theme;
 mod tools;
 mod update;
+mod walk;
 #[cfg(windows)]
 mod windows;
 // Also built for tests on other systems: its text parsing is tested everywhere.

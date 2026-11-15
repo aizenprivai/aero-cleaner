@@ -1,13 +1,16 @@
-//! Duplicate file finder: groups files by size, then by a hash of their
-//! first 64 KB, then by a hash of their full content.
+//! Duplicate file finder: groups files by size, then by a BLAKE3 hash of
+//! their first 64 KB, then by a BLAKE3 hash of their full content. Folders
+//! are walked and files hashed in parallel.
 
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
-use std::fs::{self, File};
-use std::hash::Hasher;
+use std::fs::File;
 use std::io::Read;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
 pub struct DupeFile {
@@ -32,94 +35,96 @@ fn is_hidden(p: &Path) -> bool {
     p.file_name().is_some_and(|n| crate::platform::is_app_data(Path::new(n)))
 }
 
-/// Hash of the first `limit` bytes (or the whole file when `limit` is None).
-fn hash_file(path: &Path, limit: Option<u64>) -> Option<u64> {
+/// BLAKE3 of the first `limit` bytes (or the whole file when `limit` is None).
+fn hash_file(path: &Path, limit: Option<u64>) -> Option<[u8; 32]> {
     let mut f = File::open(path).ok()?;
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    let mut buf = vec![0u8; 64 * 1024];
+    let mut hasher = blake3::Hasher::new();
+    let mut buf = vec![0u8; 256 * 1024];
     let mut left = limit.unwrap_or(u64::MAX);
     while left > 0 {
-        let want = buf.len().min(left as usize);
+        let want = buf.len().min(usize::try_from(left).unwrap_or(usize::MAX));
         let n = f.read(&mut buf[..want]).ok()?;
         if n == 0 {
             break;
         }
-        hasher.write(&buf[..n]);
+        hasher.update(&buf[..n]);
         left -= n as u64;
     }
-    Some(hasher.finish())
+    Some(*hasher.finalize().as_bytes())
 }
 
 /// Splits `paths` into groups that share the same key, dropping singletons.
-fn regroup(paths: Vec<PathBuf>, key: impl Fn(&Path) -> Option<u64>) -> Vec<Vec<PathBuf>> {
-    let mut map: HashMap<u64, Vec<PathBuf>> = HashMap::new();
-    for p in paths {
-        if let Some(k) = key(&p) {
-            map.entry(k).or_default().push(p);
-        }
+/// Keys are computed in parallel.
+fn regroup(paths: Vec<PathBuf>, key: impl Fn(&Path) -> Option<[u8; 32]> + Sync) -> Vec<Vec<PathBuf>> {
+    let keyed: Vec<([u8; 32], PathBuf)> = paths.into_par_iter().filter_map(|p| Some((key(&p)?, p))).collect();
+    let mut map: HashMap<[u8; 32], Vec<PathBuf>> = HashMap::new();
+    for (k, p) in keyed {
+        map.entry(k).or_default().push(p);
     }
     map.into_values().filter(|g| g.len() > 1).collect()
 }
 
-pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progress: &dyn Fn(String)) -> Vec<DupeGroup> {
+pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progress: &(dyn Fn(String) + Sync)) -> Vec<DupeGroup> {
     let skip = root.join(".local/share/Trash");
+    let mac_trash = root.join(".Trash");
+    // (size, device, inode, path)
+    let files: Mutex<Vec<(u64, u64, u64, PathBuf)>> = Mutex::new(Vec::new());
+    let count = AtomicUsize::new(0);
+    crate::walk::par_walk(root, &|dir| dir != skip && dir != mac_trash && (include_hidden || !is_hidden(dir)), &|path, md| {
+        if !include_hidden && is_hidden(path) {
+            return;
+        }
+        let n = count.fetch_add(1, Ordering::Relaxed) + 1;
+        if n.is_multiple_of(1000) {
+            progress(format!("Looked at {n} files..."));
+        }
+        if md.len() >= min_size.max(1) {
+            #[cfg(unix)]
+            let (dev, ino) = (md.dev(), md.ino());
+            #[cfg(not(unix))]
+            let (dev, ino) = (0, 0);
+            files.lock().unwrap().push((md.len(), dev, ino, path.to_path_buf()));
+        }
+    });
+
     let mut by_size: HashMap<u64, Vec<PathBuf>> = HashMap::new();
     let mut seen_inodes = HashSet::new();
-    let mut stack = vec![root.to_path_buf()];
-    let mut count = 0u64;
-
-    while let Some(dir) = stack.pop() {
-        let Ok(rd) = fs::read_dir(&dir) else { continue };
-        for e in rd.flatten() {
-            let path = e.path();
-            if !include_hidden && is_hidden(&path) {
-                continue;
-            }
-            let Ok(md) = path.symlink_metadata() else { continue };
-            if md.is_dir() {
-                if path != skip {
-                    stack.push(path);
-                }
-            } else if md.is_file() && md.len() >= min_size.max(1) {
-                // Hard links share storage, so they aren't wasted space.
-                #[cfg(unix)]
-                let key = (md.dev(), md.ino());
-                // Windows: hard links are rare in user folders; treat each path as unique.
-                #[cfg(not(unix))]
-                let key = (0u64, seen_inodes.len() as u64);
-                if seen_inodes.insert(key) {
-                    by_size.entry(md.len()).or_default().push(path);
-                }
-                count += 1;
-                if count.is_multiple_of(1000) {
-                    progress(format!("Looked at {count} files..."));
-                }
-            }
+    for (size, dev, ino, path) in files.into_inner().unwrap() {
+        // Hard links share storage, so they aren't wasted space. (Windows:
+        // hard links are rare in user folders; every path counts.)
+        if (dev, ino) == (0, 0) || seen_inodes.insert((dev, ino)) {
+            by_size.entry(size).or_default().push(path);
         }
     }
 
     let candidates: Vec<(u64, Vec<PathBuf>)> = by_size.into_iter().filter(|(_, v)| v.len() > 1).collect();
     let total = candidates.len();
-    let mut groups = Vec::new();
-    for (i, (size, paths)) in candidates.into_iter().enumerate() {
-        if i % 20 == 0 {
-            progress(format!("Comparing contents... {}%", i * 100 / total.max(1)));
-        }
-        for quick in regroup(paths, |p| hash_file(p, Some(64 * 1024))) {
-            let full: Vec<Vec<PathBuf>> = if size <= 64 * 1024 { vec![quick] } else { regroup(quick, |p| hash_file(p, None)) };
-            for g in full {
-                let mut files: Vec<DupeFile> = g
-                    .into_iter()
-                    .map(|path| {
-                        let modified = path.metadata().and_then(|m| m.modified()).ok();
-                        DupeFile { path, modified }
-                    })
-                    .collect();
-                files.sort_by_key(|f| f.modified);
-                groups.push(DupeGroup { size, files });
+    let done = AtomicUsize::new(0);
+    let mut groups: Vec<DupeGroup> = candidates
+        .into_par_iter()
+        .flat_map_iter(|(size, paths)| {
+            let i = done.fetch_add(1, Ordering::Relaxed);
+            if i.is_multiple_of(20) {
+                progress(format!("Comparing contents... {}%", i * 100 / total.max(1)));
             }
-        }
-    }
+            let mut out = Vec::new();
+            for quick in regroup(paths, |p| hash_file(p, Some(64 * 1024))) {
+                let full: Vec<Vec<PathBuf>> = if size <= 64 * 1024 { vec![quick] } else { regroup(quick, |p| hash_file(p, None)) };
+                for g in full {
+                    let mut files: Vec<DupeFile> = g
+                        .into_iter()
+                        .map(|path| {
+                            let modified = path.metadata().and_then(|m| m.modified()).ok();
+                            DupeFile { path, modified }
+                        })
+                        .collect();
+                    files.sort_by_key(|f| f.modified);
+                    out.push(DupeGroup { size, files });
+                }
+            }
+            out
+        })
+        .collect();
     groups.sort_by_key(|g| std::cmp::Reverse(g.wasted()));
     groups.truncate(300);
     groups
@@ -128,6 +133,7 @@ pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progres
 #[cfg(all(test, unix))] // the test relies on Unix hard-link semantics
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn finds_true_duplicates_only() {

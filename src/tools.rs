@@ -24,34 +24,26 @@ pub struct BigFile {
     pub modified: Option<SystemTime>,
 }
 
-/// Walks the home folder (without following symlinks) and returns the
-/// largest files of at least `min` bytes, biggest first.
-pub fn find_big_files(min: u64, limit: usize, progress: &dyn Fn(u64)) -> Vec<BigFile> {
+/// Walks the home folder in parallel (without following symlinks) and
+/// returns the largest files of at least `min` bytes, biggest first.
+pub fn find_big_files(min: u64, limit: usize, progress: &(dyn Fn(u64) + Sync)) -> Vec<BigFile> {
+    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicU64, Ordering};
     let home = home();
     let skip = [home.join(".local/share/Trash"), home.join(".Trash")];
-    let mut stack = vec![home];
-    let mut found = Vec::new();
-    let mut scanned = 0u64;
-    while let Some(dir) = stack.pop() {
-        let Ok(rd) = fs::read_dir(&dir) else { continue };
-        for e in rd.flatten() {
-            let Ok(md) = e.path().symlink_metadata() else { continue };
-            if md.is_dir() {
-                if !skip.contains(&e.path()) {
-                    stack.push(e.path());
-                }
-            } else if md.is_file() {
-                scanned += 1;
-                if scanned.is_multiple_of(2000) {
-                    progress(scanned);
-                }
-                if md.len() >= min {
-                    found.push(BigFile { path: e.path(), size: md.len(), modified: md.modified().ok() });
-                }
-            }
+    let found = Mutex::new(Vec::new());
+    let scanned = AtomicU64::new(0);
+    crate::walk::par_walk(&home, &|dir| !skip.iter().any(|s| s == dir), &|path, md| {
+        let n = scanned.fetch_add(1, Ordering::Relaxed) + 1;
+        if n.is_multiple_of(2000) {
+            progress(n);
         }
-    }
-    progress(scanned);
+        if md.len() >= min {
+            found.lock().unwrap().push(BigFile { path: path.to_path_buf(), size: md.len(), modified: md.modified().ok() });
+        }
+    });
+    progress(scanned.load(Ordering::Relaxed));
+    let mut found = found.into_inner().unwrap();
     found.sort_by_key(|f| std::cmp::Reverse(f.size));
     found.truncate(limit);
     found
@@ -262,6 +254,35 @@ mod tests {
         let main = out2.split("[Other]").next().unwrap();
         assert!(main.contains("Hidden=false"), "key must land in the main section: {out2}");
         assert_eq!(parse_desktop(&out2).get("Name").map(String::as_str), Some("Foo"));
+    }
+
+    /// Timing of the three big scans on the real home folder (read-only).
+    /// `cargo test --release bench_scans -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn bench_scans() {
+        let home = home();
+        for round in 1..=2 {
+            let t = std::time::Instant::now();
+            let big = find_big_files(100_000_000, 100, &|_| {});
+            let t_big = t.elapsed();
+            let t = std::time::Instant::now();
+            let groups = crate::dupes::find_duplicates(&home, 1_000_000, false, &|_| {});
+            let t_dupes = t.elapsed();
+            let t = std::time::Instant::now();
+            let hidden = crate::dupes::find_duplicates(&home, 1_000_000, true, &|_| {});
+            let t_hidden = t.elapsed();
+            let t = std::time::Instant::now();
+            let tree = crate::diskmap::scan(&home, 1_000_000, &|_| {});
+            let t_map = t.elapsed();
+            println!(
+                "round {round}: big files {t_big:.2?} ({} found), duplicates {t_dupes:.2?} ({} groups), with hidden {t_hidden:.2?} ({} groups), disk map {t_map:.2?} ({} bytes)",
+                big.len(),
+                groups.len(),
+                hidden.len(),
+                tree.size
+            );
+        }
     }
 
     #[test]

@@ -13,6 +13,9 @@ egui = { version = "0.37.0", features = ["monochrome_emoji_fonts"] }
 # Firefox history lives in the same SQLite file as bookmarks. Bundled, so no
 # system library is needed on any OS.
 rusqlite = { version = "0.42", features = ["bundled"] }
+# Parallel folder walking and hashing for Big files, Duplicates and Disk map.
+rayon = "1"
+blake3 = "1"
 
 [profile.dist]
 # Used for packaging (`cargo build --profile dist`): stripped, whole-program

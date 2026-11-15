@@ -1,8 +1,10 @@
 //! Folder size tree for the disk map, plus the "squarified" treemap layout.
 
 use eframe::egui::{Rect, pos2};
+use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub struct Node {
     pub name: String,
@@ -13,31 +15,40 @@ pub struct Node {
     pub children: Vec<Node>,
 }
 
-/// Builds the tree. Items smaller than `min_show` bytes are merged per folder.
-pub fn scan(path: &Path, min_show: u64, progress: &dyn Fn(u64)) -> Node {
-    let mut counter = 0u64;
-    build(path, min_show, progress, &mut counter)
+/// Builds the tree, reading folders in parallel. Items smaller than
+/// `min_show` bytes are merged per folder.
+pub fn scan(path: &Path, min_show: u64, progress: &(dyn Fn(u64) + Sync)) -> Node {
+    let counter = AtomicU64::new(0);
+    build(path, min_show, progress, &counter)
 }
 
-fn build(path: &Path, min_show: u64, progress: &dyn Fn(u64), counter: &mut u64) -> Node {
+fn build(path: &Path, min_show: u64, progress: &(dyn Fn(u64) + Sync), counter: &AtomicU64) -> Node {
     let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.display().to_string());
     let mut node = Node { name, path: path.to_path_buf(), size: 0, is_dir: true, children: vec![] };
     let Ok(rd) = fs::read_dir(path) else { return node };
+    let entries: Vec<fs::DirEntry> = rd.flatten().collect();
+    let children: Vec<Node> = entries
+        .into_par_iter()
+        .filter_map(|e| {
+            // DirEntry::file_type and ::metadata don't follow symlinks.
+            let ft = e.file_type().ok()?;
+            let n = counter.fetch_add(1, Ordering::Relaxed) + 1;
+            if n.is_multiple_of(5000) {
+                progress(n);
+            }
+            let p = e.path();
+            if ft.is_dir() {
+                Some(build(&p, min_show, progress, counter))
+            } else if ft.is_file() {
+                let size = e.metadata().ok()?.len();
+                Some(Node { name: e.file_name().to_string_lossy().to_string(), path: p, size, is_dir: false, children: vec![] })
+            } else {
+                None
+            }
+        })
+        .collect();
     let (mut small_size, mut small_count) = (0u64, 0usize);
-    for e in rd.flatten() {
-        let p = e.path();
-        let Ok(md) = p.symlink_metadata() else { continue };
-        *counter += 1;
-        if (*counter).is_multiple_of(5000) {
-            progress(*counter);
-        }
-        let child = if md.is_dir() {
-            build(&p, min_show, progress, counter)
-        } else if md.is_file() {
-            Node { name: e.file_name().to_string_lossy().to_string(), path: p, size: md.len(), is_dir: false, children: vec![] }
-        } else {
-            continue;
-        };
+    for child in children {
         node.size += child.size;
         if child.size < min_show {
             small_size += child.size;
