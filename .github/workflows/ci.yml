@@ -223,6 +223,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Packages from one artifact can sit in subfolders (deb/, rpm/...): bring them up.
+          find assets -mindepth 2 -type f -exec mv -t assets {} +
+          find assets -mindepth 1 -type d -empty -delete
           # AUR recipe for this release, with the source archive's checksum.
           tag="${{ github.ref_name }}"
           curl -fsSL -o src.tar.gz "https://github.com/${{ github.repository }}/archive/refs/tags/$tag.tar.gz"
