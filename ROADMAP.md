@@ -83,6 +83,14 @@
 - Similar photos in Duplicates: perceptual hash (dHash), cached, biggest copy marked to keep
 - A screenshot test renders every screen to PNG for review
 
+**v1.5 – Safety net & custom rules**
+- **Undo:** cleaned user files (Cleaner and Browsers) are moved to a holding folder instead of deleted, kept 24 h (3 days, a week or off), deleted for real afterwards or as soon as the disk runs low; never held when the disk is almost full, and emptying the Trash is never held. Firefox history is copied before it's changed, so it can be undone too
+- **My rules:** pattern + folder + age rules with an editor in the Cleaner, previewed in the review sheet, cleaned into the same undo batch; files only, inside home only, no symlinks, Folders to keep respected; shareable text file with import/export
+- **BleachBit import:** CleanerML delete actions that fit the rule model (file, glob, folder walks) for installed apps, skipping what the Cleaner already covers
+- **Leftovers** screen: profile folders no installed app matches, untouched 3+ months; Trash or "Not leftover"
+- **Cleaning reports:** CSV or Markdown from Settings, `aero-cleaner report [--md]`
+- Text that ran out of its space in French or small windows now shrinks, then ends with "…"; shared file/folder pickers work on Windows
+
 ---
 
 # 🗺 Road to 2.0
@@ -98,22 +106,17 @@
 
 | Version | Theme | Size | Main risk |
 |---|---|---|---|
-| v1.4.x | Leftovers | S | – |
-| v1.5 | Safety net & custom rules | M | Undo storage on nearly full disks |
+| v1.5.x | Leftovers | S | – |
 | **v2.0** | **Trusted & everywhere** | **L** | **Privileged helper security, distro differences** |
 
-## 🔜 v1.4.x – Leftovers
+## 🔜 v1.5.x – Leftovers
+- **Rules in the automatic clean:** let chosen rules run with the weekly clean.
+- **BleachBit at scale:** test the importer against BleachBit's full cleaner set and report what was skipped and why.
 - **Windows signing:** the pipeline is ready; it needs a code signing certificate (or Azure Trusted Signing) added as secrets.
 - **Image snapshot tests:** the UI tests check every screen draws and responds to the keyboard, but don't compare pictures yet. That needs a demo-data mode (fixed sizes, no real scan, frozen animation) so images are identical on every machine.
 - **Boot time on macOS:** macOS has no per-stage boot breakdown without root and slow `log` queries; find a cheap, honest source first.
 - **Release polish:** a Duplicates screenshot and Mac screenshots in the README.
 - **Similar photos at scale:** compare in buckets instead of every pair once libraries reach tens of thousands of photos, and read the small embedded JPEG thumbnail instead of decoding the full photo.
-
-## 🛟 v1.5 – Safety net & custom rules
-- **Undo window:** cleaned user files first go to a hidden holding folder for 24 h (adjustable). A **Restore last clean** button brings them back, and the folder empties itself afterwards. If the disk is nearly full, it's skipped, with a warning.
-- **Custom rules:** "files matching *pattern* in *folder* older than *N days*", e.g. `~/Downloads/*.iso` older than 30 days. Built with a rule editor and stored as a file you can share.
-- **BleachBit rule packs:** import CleanerML files to support hundreds of extra apps.
-- **Cleaning reports:** export what was cleaned, when, and how much (Markdown or CSV).
 
 ## 🚀 v2.0 – Trusted & everywhere
 - **Privileged helper (security):** replace `pkexec sh -c "<script>"` with a small D-Bus system service.

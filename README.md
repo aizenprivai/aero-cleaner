@@ -12,7 +12,10 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 **Clean**
 - **Cleaner:** trash, thumbnails, app and browser caches, developer caches, recent files list, unused Flatpak runtimes, APT cache, unused packages and old kernels, system journal, rotated logs, crash reports and old temp files. System items ask for your password **once** (pkexec).
 - **Review before cleaning:** see exactly what will be removed. AeroClean warns you if a browser is open.
+- **Undo:** cleaned files are kept for 24 hours (3 days, a week or off in Settings). **↩ Undo** in the Cleaner puts the last clean back; Settings lists every kept clean. Nothing is kept when the disk is almost full.
+- **My rules:** your own cleaning rules, like "`*.iso` in `~/Downloads` older than 30 days", with an editor. Share them as a plain text file, or import **BleachBit**'s cleaners for the apps you have installed.
 - **Browsers:** cache, cookies and history, chosen separately, for Brave, Chrome, Chromium, Vivaldi, Edge and Firefox. Firefox history is removed page by page from its database, so your bookmarks stay.
+- **Leftovers:** folders left behind by apps you uninstalled, untouched for 3 months, moved to the Trash with one click (and wrong guesses can be hidden).
 - **Developer:** Rust `target/` folders, `node_modules` and Python virtualenvs, with "last changed" dates (stale projects are pre-selected), plus unused Docker or Podman images, stopped containers and build cache (never volumes). The Cleaner's developer caches cover Cargo, npm, pnpm, Yarn, Go, Maven and Gradle.
 
 **Find space**
@@ -60,6 +63,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Disk h
 - Deletion never follows symbolic links, and files in use are skipped, never forced.
 - Risky items (unused packages, cookies, history, developer folders) are off by default or need a second click.
 - Big files and duplicates go to the **Trash**, so they can be restored.
+- Cleaned files are kept for 24 hours so a clean can be undone. Custom rules only ever delete files, only inside your home folder.
 - System files are never edited: startup changes are per-user overrides.
 - Every cleaning step is covered by automated tests that run on throwaway folders.
 
@@ -94,11 +98,12 @@ Packages are written to `target/deb/`, `target/windows/` and `target/macos/`.
 
 ```text
 aero-cleaner                 open the app
-aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, big, dupes, map, boot, startup, themes, settings)
+aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, leftovers, big, dupes, map, history, boot, startup, themes, settings)
 aero-cleaner clean --auto    run the automatic clean and show a notification
 aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
                [--auto]      only what the automatic clean would remove
                [--json]      as JSON, sizes in bytes (for scripts)
+aero-cleaner report [--md]   print the cleaning history as CSV (or Markdown)
 aero-cleaner check-disk      notify if free space is below the alert threshold
 ```
 
