@@ -113,7 +113,9 @@ pub fn unpack(text: &str, lib: &Library) -> Result<Unpacked, String> {
     let mut check = t.clone();
     for layer in picture_layers(&mut check) {
         let file = layer.get("file").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        if Path::new(&file).is_absolute() || file.starts_with("~/") {
+        // A path outside the file, written for any system ("/etc/x.png", "C:\\x.png", "~/x.png").
+        let outside = Path::new(&file).is_absolute() || file.starts_with(['/', '\\', '~']) || file.as_bytes().get(1) == Some(&b':');
+        if outside {
             return Err(format!("picture {file}: shared themes can only use pictures inside the file"));
         }
         if !pictures.iter().any(|(n, _)| *n == file.replace(' ', "-")) {
@@ -325,6 +327,8 @@ mod tests {
             (format!("{head}file = \"a.png\"\n[files]\n\"a.png\" = \"{}\"\n", b(b"#!/bin/sh\nrm -rf ~")), "not a picture"),
             (format!("{head}file = \"a.jpg\"\n[files]\n\"a.jpg\" = \"{}\"\n", b(&png())), "isn't what its name says"),
             (format!("{head}file = \"/etc/hosts.png\"\n"), "only use pictures inside the file"),
+            (format!("{head}file = 'C:\\Windows\\x.png'\n"), "only use pictures inside the file"),
+            (format!("{head}file = \"~/x.png\"\n"), "only use pictures inside the file"),
             (format!("{head}file = \"missing.png\"\n"), "isn't included"),
             (format!("{head}file = \"a.png\"\n[files]\n\"a.png\" = \"%%%\"\n"), "damaged"),
         ];
