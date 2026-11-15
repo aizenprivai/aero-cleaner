@@ -5,6 +5,7 @@ use super::prelude::*;
 impl App {
     pub(crate) fn themes_tab(&mut self, ui: &mut egui::Ui, area: Rect, t: f32, spin: f32) {
         let area = self.themes_top_bar(ui, area);
+        let area = if self.daynight_open && !self.gallery.open { self.daynight_panel(ui, area) } else { area };
         if self.gallery.open {
             self.gallery_view(ui, area, t, spin);
             return;
@@ -97,9 +98,8 @@ impl App {
             return;
         }
         if let Some(i) = picked {
-            self.theme = i;
+            self.switch_theme(i, ui.ctx());
             theme::save(&self.themes[i]);
-            self.apply_visuals(ui.ctx());
         }
     }
 }

@@ -29,6 +29,13 @@ pub struct Settings {
     pub undo_hours: u32,
     /// Size of text and controls, in percent (100 to 200).
     pub ui_scale: u32,
+    /// Switching between a day theme and a night theme.
+    pub auto_theme: crate::daynight::Mode,
+    pub day_theme: String,
+    pub night_theme: String,
+    /// When day and night start on a schedule, in minutes since midnight.
+    pub day_at: u32,
+    pub night_at: u32,
 }
 
 impl Default for Settings {
@@ -45,6 +52,11 @@ impl Default for Settings {
             check_updates: false,
             undo_hours: 24,
             ui_scale: 100,
+            auto_theme: crate::daynight::Mode::Off,
+            day_theme: "Frutiger Aero".into(),
+            night_theme: "Aurora Night".into(),
+            day_at: 7 * 60,
+            night_at: 20 * 60,
         }
     }
 }
@@ -65,6 +77,11 @@ impl Settings {
                 Some(("big_min_mb", v)) => s.big_min_mb = v.trim().parse().unwrap_or(100).clamp(1, 100_000),
                 Some(("selected", v)) => s.selected = Some(v.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()),
                 Some(("language", v)) if v.trim() == "auto" || crate::i18n::Lang::from_code(v).is_some_and(|l| l.code() == v.trim()) => s.language = v.trim().to_string(),
+                Some(("auto_theme", v)) => s.auto_theme = crate::daynight::Mode::from_code(v).unwrap_or(crate::daynight::Mode::Off),
+                Some(("day_theme", v)) if !v.trim().is_empty() => s.day_theme = v.trim().to_string(),
+                Some(("night_theme", v)) if !v.trim().is_empty() => s.night_theme = v.trim().to_string(),
+                Some(("day_at", v)) => s.day_at = v.trim().parse().unwrap_or(7 * 60).min(1439),
+                Some(("night_at", v)) => s.night_at = v.trim().parse().unwrap_or(20 * 60).min(1439),
                 Some(("exclude", v)) if !v.trim().is_empty() => s.exclusions.push(PathBuf::from(v.trim())),
                 _ => {}
             }
@@ -73,9 +90,26 @@ impl Settings {
     }
 
     pub fn save(&self) {
+        // Tests never touch the real settings.
+        if cfg!(test) {
+            return;
+        }
         let mut text = format!(
-            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\n",
-            self.reduce_motion, self.auto_trash, self.low_disk_percent, self.journal_days, self.big_min_mb, self.language, self.check_updates, self.undo_hours, self.ui_scale
+            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\nauto_theme={}\nday_theme={}\nnight_theme={}\nday_at={}\nnight_at={}\n",
+            self.reduce_motion,
+            self.auto_trash,
+            self.low_disk_percent,
+            self.journal_days,
+            self.big_min_mb,
+            self.language,
+            self.check_updates,
+            self.undo_hours,
+            self.ui_scale,
+            self.auto_theme.code(),
+            self.day_theme.replace('\n', " "),
+            self.night_theme.replace('\n', " "),
+            self.day_at,
+            self.night_at
         );
         if let Some(sel) = &self.selected {
             text.push_str(&format!("selected={}\n", sel.join(",")));

@@ -141,6 +141,13 @@ impl App {
         let (glabel, gtip) =
             if self.gallery.open { ("⬅ Your themes", "Back to your themes") } else { ("🌐 Gallery", "Themes shared by the community (downloads only when you open it)") };
         let toggle = aero::aqua_button(ui, gallery_r, glabel, th.accent, !editing).on_hover_text(crate::i18n::tr(gtip)).clicked();
+        let daynight_r = Rect::from_min_size(pos2(gallery_r.min.x - 166.0, bar.min.y + 4.0), vec2(158.0, 32.0));
+        let mut daynight = false;
+        if !self.gallery.open {
+            // Lit up while its settings are showing.
+            let color = if self.daynight_open { th.go } else { th.accent };
+            daynight = aero::aqua_button(ui, daynight_r, "🌗 Day & night", color, true).on_hover_text(crate::i18n::tr("Use one theme by day and another at night")).clicked();
+        }
         let import = aero::aqua_button(ui, import_r, "📥 Import", th.accent, !editing)
             .on_hover_text(crate::i18n::tr("Add a theme file someone shared (or drag it onto the window)"))
             .clicked();
@@ -150,7 +157,7 @@ impl App {
             crate::i18n::tr(&self.gallery.msg)
         };
         let title_w = p.layout_no_wrap(crate::i18n::tr(title), bold(17.0), th.text).size().x;
-        let room = gallery_r.min.x - bar.min.x - title_w - 30.0;
+        let room = if self.gallery.open { gallery_r.min.x } else { daynight_r.min.x } - bar.min.x - title_w - 30.0;
         if !msg.is_empty() && room > 40.0 {
             aero::fit_text(&p, pos2(bar.min.x + title_w + 22.0, bar.center().y), Align2::LEFT_CENTER, &msg, regular(12.5), th.soft, room);
         }
@@ -162,6 +169,9 @@ impl App {
             } else if self.gallery.entries.is_empty() && !self.gallery.loading {
                 self.load_gallery();
             }
+        }
+        if daynight {
+            self.daynight_open = !self.daynight_open;
         }
         if import {
             let tx = self.notifier();

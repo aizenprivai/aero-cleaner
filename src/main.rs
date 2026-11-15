@@ -7,6 +7,7 @@ mod bleachbit;
 mod boot;
 mod browsers;
 mod cleaner;
+mod daynight;
 mod devclean;
 mod diskhistory;
 mod diskmap;
@@ -194,6 +195,14 @@ struct App {
     /// When the shown screen last changed, for page transitions.
     tab_changed_at: f64,
     shown_tab: Tab,
+    /// A crossfade from this theme to the current one, started at this time.
+    fade: Option<(Theme, f64)>,
+    /// Counts theme reloads, so a crossfade knows the list didn't change under it.
+    themes_gen: u64,
+    /// Day and night: whether it was night at the last check (None: not checked yet).
+    auto_night: Option<bool>,
+    auto_check_at: f64,
+    daynight_open: bool,
     review: Option<Review>,
     excl_input: String,
     settings_msg: String,
@@ -246,6 +255,11 @@ impl App {
             theme_check_at: 0.0,
             tab_changed_at: -10.0,
             shown_tab: Tab::Overview,
+            fade: None,
+            themes_gen: 0,
+            auto_night: None,
+            auto_check_at: -100.0,
+            daynight_open: false,
             review: None,
             excl_input: String::new(),
             settings_msg: String::new(),
@@ -621,6 +635,31 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let time = ui.input(|i| i.time);
         self.poll(time);
+        self.auto_theme_tick(ui.ctx(), time);
+        // During a crossfade, the current theme is drawn as a blend of the
+        // old and the new one for this frame, then put back.
+        let fading = self.fade.as_ref().map(|(_, start)| daynight::fade_progress(time - start)).filter(|k| *k < 1.0);
+        if fading.is_none() {
+            self.fade = None;
+        }
+        let Some(k) = fading else { return self.frame_ui(ui, time) };
+        let (idx, generation) = (self.theme, self.themes_gen);
+        let blended = daynight::blend(&self.fade.as_ref().unwrap().0, &self.themes[idx], k);
+        let real = std::mem::replace(&mut self.themes[idx], blended);
+        self.apply_visuals(ui.ctx());
+        self.frame_ui(ui, time);
+        if self.themes_gen == generation {
+            self.themes[idx] = real;
+        }
+        if self.theme == idx {
+            self.apply_visuals(ui.ctx());
+        }
+        ui.ctx().request_repaint();
+    }
+}
+
+impl App {
+    fn frame_ui(&mut self, ui: &mut egui::Ui, time: f64) {
         // A theme file dropped on the window: import it.
         let dropped: Vec<std::path::PathBuf> = ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).collect());
         if let Some(path) = dropped.into_iter().find(|p| p.extension().is_some_and(|e| e == "aerotheme")) {
@@ -1428,59 +1467,22 @@ mod ui_tests {
     #[test]
     fn every_symbol_in_the_code_has_a_glyph() {
         let h = harness();
-        let sources = [
-            include_str!("aero.rs"),
-            include_str!("automation.rs"),
-            include_str!("bleachbit.rs"),
-            include_str!("boot.rs"),
-            include_str!("browsers.rs"),
-            include_str!("cleaner.rs"),
-            include_str!("devclean.rs"),
-            include_str!("diskhistory.rs"),
-            include_str!("diskmap.rs"),
-            include_str!("distro.rs"),
-            include_str!("dupes.rs"),
-            include_str!("health.rs"),
-            include_str!("helper.rs"),
-            include_str!("holding.rs"),
-            include_str!("i18n.rs"),
-            include_str!("leftovers.rs"),
-            include_str!("macos.rs"),
-            include_str!("main.rs"),
-            include_str!("overview.rs"),
-            include_str!("platform.rs"),
-            include_str!("report.rs"),
-            include_str!("rules.rs"),
-            include_str!("settings.rs"),
-            include_str!("similar.rs"),
-            include_str!("tabs/big_files.rs"),
-            include_str!("tabs/boot_tab.rs"),
-            include_str!("tabs/browsers_tab.rs"),
-            include_str!("tabs/cleaner_tab.rs"),
-            include_str!("tabs/dev_tab.rs"),
-            include_str!("tabs/dupes_tab.rs"),
-            include_str!("tabs/history_tab.rs"),
-            include_str!("tabs/leftovers_tab.rs"),
-            include_str!("tabs/map_tab.rs"),
-            include_str!("tabs/mod.rs"),
-            include_str!("tabs/overview_tab.rs"),
-            include_str!("tabs/prelude.rs"),
-            include_str!("tabs/review.rs"),
-            include_str!("tabs/rules_ui.rs"),
-            include_str!("tabs/settings_tab.rs"),
-            include_str!("tabs/startup.rs"),
-            include_str!("tabs/studio.rs"),
-            include_str!("tabs/themes_tab.rs"),
-            include_str!("tabs/updater_ui.rs"),
-            include_str!("theme.rs"),
-            include_str!("theme_edit.rs"),
-            include_str!("tools.rs"),
-            include_str!("update.rs"),
-            include_str!("walk.rs"),
-            include_str!("windows.rs"),
-        ];
+        // Every source file, so new ones are never missed.
+        fn walk(dir: &std::path::Path, out: &mut Vec<String>) {
+            for e in std::fs::read_dir(dir).unwrap().flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    walk(&p, out);
+                } else if p.extension().is_some_and(|x| x == "rs") {
+                    out.push(std::fs::read_to_string(&p).unwrap());
+                }
+            }
+        }
+        let mut sources = vec![];
+        walk(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut sources);
+        assert!(sources.len() > 50);
         let mut missing = std::collections::BTreeSet::new();
-        for src in sources {
+        for src in &sources {
             // Characters inside string literals only (not comments).
             let mut in_str = false;
             let mut prev = ' ';
@@ -1494,6 +1496,58 @@ mod ui_tests {
             }
         }
         assert!(missing.is_empty(), "no glyph for: {missing:?}");
+    }
+
+    /// Day and night: the night theme comes in with a crossfade, a theme
+    /// picked by hand stays, and the panel explains what's going on.
+    #[test]
+    fn night_theme_switches_with_a_crossfade() {
+        use egui_kittest::kittest::Queryable;
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let mut h = harness();
+        h.state_mut().tab = Tab::Themes;
+        h.state_mut().settings.reduce_motion = false;
+        h.run_steps(2);
+        // A schedule where it's night right now.
+        let now = daynight::now().minutes;
+        {
+            let st = h.state_mut();
+            st.theme = 0;
+            st.settings.auto_theme = daynight::Mode::Schedule;
+            st.settings.day_theme = "Frutiger Aero".into();
+            st.settings.night_theme = "Aurora Night".into();
+            st.settings.night_at = (now + 1440 - 60) % 1440;
+            st.settings.day_at = (now + 60) % 1440;
+            st.auto_night = None;
+        }
+        h.step();
+        let night = h.state().themes.iter().position(|t| t.name == "Aurora Night").unwrap();
+        assert_eq!(h.state().theme, night, "switched to the night theme");
+        assert!(h.state().fade.is_some(), "with a crossfade");
+        let own = theme::all().into_iter().find(|t| t.name == "Aurora Night").unwrap();
+        assert_eq!(h.state().themes[night].scene.len(), own.scene.len(), "the blend is only for drawing");
+        for _ in 0..40 {
+            h.step();
+        }
+        assert!(h.state().fade.is_none(), "the crossfade ends");
+        // A theme picked by hand stays until day comes.
+        h.state_mut().theme = 0;
+        h.state_mut().auto_check_at = -100.0;
+        h.run_steps(2);
+        assert_eq!(h.state().theme, 0);
+        // The panel.
+        h.get_by_label("Day & night").click();
+        h.run_steps(2);
+        h.get_by_label("On a schedule");
+        assert!(h.query_by_label_contains("It's night now: Aurora Night.").is_some());
+        h.get_by_label("At sunrise and sunset").click();
+        h.run_steps(2);
+        assert_eq!(h.state().settings.auto_theme, daynight::Mode::Sun);
+        assert!(h.query_by_label_contains("Today: sunrise").is_some() || h.query_by_label_contains("The sun doesn't").is_some());
+        h.get_by_label("Off").click();
+        h.run_steps(2);
+        assert_eq!(h.state().settings.auto_theme, daynight::Mode::Off);
     }
 
     /// The Theme Studio, used like a person would: open, randomize, undo, close.
@@ -1581,6 +1635,29 @@ mod ui_tests {
             }
             h.render().unwrap().save(dir_out(&dir_shots(), "gallery.png")).unwrap();
             h.state_mut().gallery.open = false;
+        }
+        // Day and night: the panel, and halfway through a crossfade.
+        {
+            let st = h.state_mut();
+            st.daynight_open = true;
+            st.settings.auto_theme = std::env::var("AERO_SHOT_DAYNIGHT").ok().and_then(|m| daynight::Mode::from_code(&m)).unwrap_or(daynight::Mode::Sun);
+            st.theme = 0;
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("daynight.png")).unwrap();
+            let st = h.state_mut();
+            st.settings.auto_theme = daynight::Mode::Off;
+            st.daynight_open = false;
+            st.tab = Tab::Cleaner;
+            let night = st.themes.iter().position(|t| t.name == "Aurora Night").unwrap();
+            st.theme = night;
+            let time = h.ctx.input(|i| i.time);
+            let st = h.state_mut();
+            st.fade = Some((st.themes[0].clone(), time + 0.016 - daynight::FADE_SECONDS / 2.0));
+            h.run_steps(1);
+            h.render().unwrap().save(dir.join("crossfade.png")).unwrap();
+            h.state_mut().fade = None;
         }
         let i = h.state().themes.iter().position(|t| t.name == "Koi Pond").unwrap();
         let st = h.state_mut();

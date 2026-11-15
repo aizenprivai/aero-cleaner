@@ -767,6 +767,9 @@ pub fn save(theme: &Theme) {
 }
 
 pub fn save_name(name: &str) {
+    if cfg!(test) {
+        return;
+    }
     if let Some(f) = config_file() {
         if let Some(dir) = f.parent() {
             let _ = std::fs::create_dir_all(dir);

@@ -26,6 +26,9 @@ base64 = "0.22"
 # Reading GitHub release information and checking downloads in the updater.
 serde_json = "1"
 sha2 = "0.10"
+# Local time and time zone, for switching themes at night.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+iana-time-zone = "0.1"
 
 [profile.dist]
 # Used for packaging (`cargo build --profile dist`): stripped, whole-program

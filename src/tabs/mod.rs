@@ -4,6 +4,7 @@ mod big_files;
 mod boot_tab;
 mod browsers_tab;
 mod cleaner_tab;
+mod daynight_ui;
 mod dev_tab;
 mod dupes_tab;
 mod gallery;

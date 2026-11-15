@@ -153,6 +153,16 @@ speed = 0.7
 - **Themes → 📥 Import**, dragging the file onto AeroClean's window, or `aero-cleaner theme apply file.aerotheme` adds a shared theme. Pictures are unpacked next to it in your themes folder. Files are checked first: only plain picture files, nothing that runs, nothing written outside the themes folder.
 - **Themes → 🌐 Gallery** lists themes shared by the community. To share yours there, see the gallery's README: export your theme and open a pull request.
 
+## Day and night
+
+**Themes → 🌗 Day & night** picks a day theme and a night theme, any of the built-in ones or yours. AeroClean switches between them:
+
+- **With your system's dark mode**, when your system tells apps about it (GNOME, KDE and others on Linux, Windows, macOS).
+- **On a schedule**, at the times you choose.
+- **At sunrise and sunset**, worked out from your time zone's main city. No location and no internet are needed; it's usually within a few minutes for that city.
+
+The switch is a crossfade: colors blend and the new scene fades in over the old one. A theme you pick by hand stays until the next sunrise or sunset (or schedule change). **Reduce motion** switches instantly.
+
 ## Command line
 
 ```bash

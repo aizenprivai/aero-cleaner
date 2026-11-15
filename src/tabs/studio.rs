@@ -166,6 +166,7 @@ impl App {
     /// Reloads the theme library (after saving, or when a file changed on
     /// disk), keeping the chosen theme and an open Studio's preview.
     pub(crate) fn reload_themes(&mut self, select: Option<&str>) {
+        self.themes_gen += 1;
         let keep = select.map(str::to_string).unwrap_or_else(|| {
             let idx = self.studio.as_ref().map(|s| s.return_index).unwrap_or(self.theme);
             self.themes.get(idx).map(|t| t.name.clone()).unwrap_or_default()

@@ -168,7 +168,7 @@
 - Contributions arrive as pull requests; that repository's CI runs `aero-cleaner theme check` on every submission.
 - A **theme-making guide** (`docs/THEMES.md`) with every setting explained and examples.
 
-### Milestone 5 – Day/night auto-switch
+### ✅ Milestone 5 – Day/night auto-switch
 - Pick a day theme and a night theme, then switch by: your **system's dark mode**, a **schedule**, or **sunrise and sunset** (worked out from your time zone, no location or internet needed).
 - A smooth **crossfade**: colors blend and layers fade between the two themes over a couple of seconds.
 

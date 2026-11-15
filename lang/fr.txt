@@ -1422,3 +1422,43 @@ Save one file to share, with any pictures inside
 = Enregistrer un seul fichier à partager, images comprises
 Saved {} (ready to share)
 = Enregistré : {} (prêt à partager)
+
+# ----- Day and night -----
+🌗 Day & night
+= 🌗 Jour et nuit
+Use one theme by day and another at night
+= Un thème le jour, un autre la nuit
+Switch themes
+= Changer de thème
+With my system's dark mode
+= Avec le mode sombre du système
+On a schedule
+= Selon un horaire
+At sunrise and sunset
+= Au lever et au coucher du soleil
+☀ Day theme
+= ☀ Thème de jour
+🌙 Night theme
+= 🌙 Thème de nuit
+Day from
+= Jour à partir de
+night from
+= nuit à partir de
+It's night now: {}.
+= Il fait nuit : {}.
+It's day now: {}.
+= Il fait jour : {}.
+AeroClean keeps the theme you pick.
+= AeroClean garde le thème que vous choisissez.
+Your system doesn't say whether it's in dark mode.
+= Votre système n'indique pas s'il est en mode sombre.
+your time zone
+= votre fuseau horaire
+Today: sunrise {}, sunset {} (estimated for {}).
+= Aujourd'hui : lever du soleil à {}, coucher à {} (estimé pour {}).
+The sun doesn't set today.
+= Le soleil ne se couche pas aujourd'hui.
+The sun doesn't rise today.
+= Le soleil ne se lève pas aujourd'hui.
+⚠ There's no theme called {} any more: pick another.
+= ⚠ Il n'y a plus de thème appelé {} : choisissez-en un autre.
