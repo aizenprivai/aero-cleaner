@@ -1,0 +1,25 @@
+Package: aero-cleaner
+Architecture: amd64
+Version: 2.2.0
+Priority: optional
+Section: utils
+Maintainer: AeroClean <noreply@github.com>
+Installed-Size: 21748
+Depends: libc6 (>= 2.35), dbus, polkitd | policykit-1, libgcc-s1, libgl1, libegl1, libxkbcommon0, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libxcursor1, libxi6, libxrandr2
+Recommends: pkexec, libnotify-bin, zenity, libglib2.0-bin, xdg-utils
+Filename: pool/main/a/aero-cleaner/aero-cleaner_2.2.0_amd64.deb
+Size: 7903540
+MD5sum: de513c029e379f3578055d00dd8486ca
+SHA1: 074a46f8178b3b1fa94f66c20ddfcb6594e65a78
+SHA256: 77ccb1de2ec2464448270231b33ee2b67d1e1010b39b2ae495321c1d266eb981
+SHA512: ddaaa87b92d25de30b518fc03f03262ee694c0d8e79fa8fb777a151fe521d415c7685275604692f73dfdee2afb526a930cd239a3a9ce459b3a4071a33de62161
+Description: Frutiger Aero style system cleaner
+ AeroClean frees disk space: caches, trash, old logs, unused packages,
+ browser data, developer build folders, duplicates, similar photos,
+ leftovers of removed apps and big files, with undo, custom rules,
+ a disk map, disk history and health, boot time analysis, a startup
+ apps manager and weekly automatic cleaning.
+ .
+ Glossy 2000s "Frutiger Aero" interface with 6 themes, in English,
+ French, Spanish, German and Portuguese.
+

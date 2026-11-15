@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>AeroClean APT repository</title>
+<h1>AeroClean APT repository</h1>
+<p>Add it once, then <code>sudo apt upgrade</code> keeps AeroClean up to date:</p>
+<pre>
+sudo curl -fsSLo /usr/share/keyrings/aeroclean.gpg https://aizenprivai.github.io/aero-cleaner/apt/aeroclean.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/aeroclean.sources https://aizenprivai.github.io/aero-cleaner/apt/aeroclean.sources
+sudo apt update &amp;&amp; sudo apt install aero-cleaner
+</pre>

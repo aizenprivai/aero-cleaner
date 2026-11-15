@@ -1,0 +1,20 @@
+Architectures: amd64
+Codename: stable
+Components: main
+Date: Sun, 15 Nov 2026 16:58:54 +0000
+Description: AeroClean, a Frutiger Aero style system cleaner
+Label: AeroClean
+Origin: AeroClean
+Suite: stable
+MD5Sum:
+ 910d16c4524aebcdba85e072a6c642dd             1277 main/binary-amd64/Packages
+ 12c5094fadfe4d7b48fc973fc5de09a2              815 main/binary-amd64/Packages.gz
+SHA1:
+ e76c63cb12c71b5f66c5eb930d6d4944063b7419             1277 main/binary-amd64/Packages
+ d8d88aa8f1d37d3a7d911909cce47dcc0d930a34              815 main/binary-amd64/Packages.gz
+SHA256:
+ 94f2b19a9a1e644814aad000d1fc9fd7865da8d09775f498e0b5fe4d7545bb90             1277 main/binary-amd64/Packages
+ 3dc5b487293fff6f6828deb930af105f3e0bed37bd725e8afa2b679fc845961a              815 main/binary-amd64/Packages.gz
+SHA512:
+ 527ac448e3c6a75a9836ba3629ad9222f7327522edd7be4b73182da266b37abedabe42b0d76a1569fbf3f678b9adb087e6be35b70e063dc685898c805e14ff02             1277 main/binary-amd64/Packages
+ d62574dfd7530827ea40e0d6b3a297ba669781eb1e5ebcd516656953ac6224445bd396cd154f20e63847f39af9c2f2e679ee3283f9dbfce1bbebc067e2cc2d06              815 main/binary-amd64/Packages.gz
