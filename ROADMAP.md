@@ -95,7 +95,7 @@
 
 # 🗺 Road to 2.0
 
-**Goal:** move from a Mint-only cleaner to a Linux care app people can trust. That means a safer architecture, every major distro, and an understanding of how your disk changes over time.
+**Goal:** a care app for Linux, Windows and macOS that people can trust: a safer architecture, every major Linux distro, easy updates and installs, and a friendlier first screen.
 
 **Principles that don't change:**
 - Nothing is deleted without being shown first.
@@ -115,7 +115,7 @@
 - **Windows signing:** the pipeline is ready; it needs a code signing certificate (or Azure Trusted Signing) added as secrets.
 - **Image snapshot tests:** the UI tests check every screen draws and responds to the keyboard, but don't compare pictures yet. That needs a demo-data mode (fixed sizes, no real scan, frozen animation) so images are identical on every machine.
 - **Boot time on macOS:** macOS has no per-stage boot breakdown without root and slow `log` queries; find a cheap, honest source first.
-- **Release polish:** a Duplicates screenshot and Mac screenshots in the README.
+- **Release polish:** Mac and Windows screenshots in the README.
 - **Similar photos at scale:** compare in buckets instead of every pair once libraries reach tens of thousands of photos, and read the small embedded JPEG thumbnail instead of decoding the full photo.
 
 ## 🚀 v2.0 – Trusted & everywhere
