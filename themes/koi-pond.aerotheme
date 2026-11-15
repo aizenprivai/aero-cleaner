@@ -1,0 +1,46 @@
+# Koi Pond: a built-in AeroClean theme, built on Aqua Abyss.
+# It only lists what's different; everything else comes from its base.
+format = 1
+
+[meta]
+name = "Koi Pond"
+description = "Koi gliding under rippling light"
+author = "AeroClean"
+base = "Aqua Abyss"
+
+[colors]
+accent = "#1f9e8a"
+go = "#f07a2a"
+user_orb = "#22a39a"
+root_orb = "#f07a2a"
+logo = "#f07a2a"
+bubble = "#d8fff6"
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#7fd6c8"], [0.35, "#2a9f94"], [0.75, "#0f6b6a"], [1.0, "#08484d"]]
+
+[[scene.layers]]
+type = "rays"
+x = 0.35
+y = -0.25
+strength = 40
+
+[[scene.layers]]
+type = "fish"
+color = "#f4f1ea"
+count = 4
+y = 0.42
+speed = 0.6
+opacity = 0.75
+
+[[scene.layers]]
+type = "fish"
+color = "#ff8a2b"
+count = 9
+y = 0.62
+
+[[scene.layers]]
+type = "bubbles"
+count = 12
+opacity = 0.8

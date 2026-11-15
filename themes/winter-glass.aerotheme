@@ -1,0 +1,44 @@
+# Winter Glass: a built-in AeroClean theme, built on Frutiger Aero.
+format = 1
+
+[meta]
+name = "Winter Glass"
+description = "Snowfall over frosted hills"
+author = "AeroClean"
+base = "Frutiger Aero"
+
+[colors]
+text = "#123a5e"
+soft = "#3d6386"
+glass = "#e6f4ff"
+accent = "#3a8fd6"
+go = "#2fa8a0"
+user_orb = "#4a9ae0"
+root_orb = "#7a6ad8"
+logo = "#5ab0e8"
+bubble = "#f2f9ff"
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#6f9fcc"], [0.4, "#a9cbe8"], [0.75, "#dbeaf6"], [1.0, "#f2f8fc"]]
+
+[[scene.layers]]
+type = "sun"
+x = 0.78
+y = 0.2
+color = "#fdfcf6"
+
+[[scene.layers]]
+type = "clouds"
+count = 5
+y = 0.17
+opacity = 0.85
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#ffffff"], [0.12, "#e8f1f8"], [0.3, "#cfdeeb"], [1.0, "#b4c8da"]]
+front = [[0.0, "#ffffff"], [0.1, "#f1f6fb"], [0.3, "#dce8f2"], [1.0, "#c3d5e4"]]
+
+[[scene.layers]]
+type = "snow"
+count = 110

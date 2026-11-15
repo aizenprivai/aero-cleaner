@@ -1144,3 +1144,11 @@ Runs: paccache -rk2 (or pacman -Sc without paccache)
 = >> Quitando paquetes huérfanos
 >> Removing old snap revisions
 = >> Quitando revisiones antiguas de Snap
+
+# ----- Themes (v2.1) -----
+Koi gliding under rippling light
+= Carpas koi bajo una luz ondulante
+A summer night full of fireflies
+= Una noche de verano llena de luciérnagas
+Snowfall over frosted hills
+= Nieve sobre colinas heladas

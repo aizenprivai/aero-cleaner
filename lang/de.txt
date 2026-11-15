@@ -1144,3 +1144,11 @@ Runs: paccache -rk2 (or pacman -Sc without paccache)
 = >> Verwaiste Pakete werden entfernt
 >> Removing old snap revisions
 = >> Alte Snap-Revisionen werden entfernt
+
+# ----- Themes (v2.1) -----
+Koi gliding under rippling light
+= Kois unter schimmerndem Licht
+A summer night full of fireflies
+= Eine Sommernacht voller Glühwürmchen
+Snowfall over frosted hills
+= Schneefall über frostigen Hügeln

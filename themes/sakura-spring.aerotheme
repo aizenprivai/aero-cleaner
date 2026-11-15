@@ -45,7 +45,7 @@ stops = [[0.0, "#96aaf0"], [0.4, "#d2bef5"], [0.75, "#ffd7eb"], [1.0, "#fff0f6"]
 type = "rays"
 x = 0.14
 y = 0.12
-opacity = 35
+strength = 35
 
 [[scene.layers]]
 type = "sun"

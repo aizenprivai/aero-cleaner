@@ -1,0 +1,40 @@
+# Firefly Meadow: a built-in AeroClean theme, built on Aurora Night.
+format = 1
+
+[meta]
+name = "Firefly Meadow"
+description = "A summer night full of fireflies"
+author = "AeroClean"
+base = "Aurora Night"
+
+[colors]
+accent = "#3d8f5a"
+go = "#d4a62a"
+user_orb = "#4a9e66"
+root_orb = "#d4a62a"
+logo = "#e8c547"
+bubble = "#fff1a8"
+
+[[scene.layers]]
+type = "sky"
+stops = [[0.0, "#0a0b26"], [0.45, "#1d1d4a"], [0.8, "#3d2f5c"], [1.0, "#6b4a5e"]]
+
+[[scene.layers]]
+type = "stars"
+count = 70
+opacity = 0.8
+
+[[scene.layers]]
+type = "moon"
+x = 0.82
+y = 0.13
+color = "#fff3d6"
+
+[[scene.layers]]
+type = "hills"
+back = [[0.0, "#2f5a3a"], [0.12, "#1f4229"], [0.3, "#132c1b"], [1.0, "#0a1a10"]]
+front = [[0.0, "#264d2f"], [0.1, "#18361f"], [0.3, "#0e2214"], [1.0, "#06130a"]]
+
+[[scene.layers]]
+type = "fireflies"
+count = 55

@@ -228,3 +228,74 @@ fn dialog_output(cmd: &mut Command) -> Option<String> {
     let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
     (!path.is_empty()).then_some(path)
 }
+
+/// Running on battery (not plugged in)? Checked at most once a minute.
+pub fn on_battery() -> bool {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static CACHE: Mutex<Option<(Instant, bool)>> = Mutex::new(None);
+    let mut c = CACHE.lock().unwrap();
+    if let Some((when, v)) = *c
+        && when.elapsed() < Duration::from_secs(60)
+    {
+        return v;
+    }
+    let v = battery_now();
+    *c = Some((Instant::now(), v));
+    v
+}
+
+#[cfg(windows)]
+fn battery_now() -> bool {
+    use windows_sys::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+    let mut st: SYSTEM_POWER_STATUS = unsafe { std::mem::zeroed() };
+    // ACLineStatus: 0 = on battery, 1 = plugged in, 255 = unknown.
+    unsafe { GetSystemPowerStatus(&mut st) != 0 && st.ACLineStatus == 0 }
+}
+
+#[cfg(target_os = "macos")]
+fn battery_now() -> bool {
+    Command::new("pmset").args(["-g", "batt"]).output().map(|o| String::from_utf8_lossy(&o.stdout).contains("'Battery Power'")).unwrap_or(false)
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+fn battery_now() -> bool {
+    battery_from_sysfs(Path::new("/sys/class/power_supply"))
+}
+
+/// Linux: on battery when there's a battery and no mains supply is online.
+#[cfg_attr(any(windows, target_os = "macos"), allow(dead_code))]
+fn battery_from_sysfs(dir: &Path) -> bool {
+    let Ok(rd) = std::fs::read_dir(dir) else { return false };
+    let (mut battery, mut mains_online) = (false, false);
+    for e in rd.flatten() {
+        let read = |f: &str| std::fs::read_to_string(e.path().join(f)).unwrap_or_default().trim().to_string();
+        match read("type").as_str() {
+            "Battery" => battery = true,
+            "Mains" | "USB" if read("online") == "1" => mains_online = true,
+            _ => {}
+        }
+    }
+    battery && !mains_online
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn battery_from_sysfs_reads_power_supplies() {
+        let base = std::env::temp_dir().join(format!("aero-power-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let supply = |name: &str, ty: &str, online: &str| {
+            std::fs::create_dir_all(base.join(name)).unwrap();
+            std::fs::write(base.join(name).join("type"), ty).unwrap();
+            std::fs::write(base.join(name).join("online"), online).unwrap();
+        };
+        supply("BAT0", "Battery\n", "");
+        supply("AC", "Mains\n", "0\n");
+        assert!(super::battery_from_sysfs(&base), "unplugged");
+        supply("AC", "Mains\n", "1\n");
+        assert!(!super::battery_from_sysfs(&base), "plugged in");
+        std::fs::remove_dir_all(&base).unwrap();
+        assert!(!super::battery_from_sysfs(&base), "desktop without power info");
+    }
+}

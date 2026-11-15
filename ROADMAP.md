@@ -150,7 +150,7 @@
 - **Built-ins as files:** the 6 current themes are rewritten as theme files and must render pixel-identical to today (a screenshot comparison test guards this).
 - **Validation with friendly errors** ("line 12: `gloss` must be between 0 and 1"), plus `aero-cleaner theme check|list|apply|export` on the command line.
 
-### Milestone 2 – Scene layers as modules
+### ✅ Milestone 2 – Scene layers as modules
 - Each background element is a **layer module** with its own settings, drawn in order: sky gradient, sun or moon, light rays, hills, stars, aurora, bubbles, and new ones: **clouds**, **fish**, **fireflies**, **falling petals**, **snow**, **falling leaves**, and **picture** (your own image, optionally frosted).
 - Every layer has opacity, speed, color and on/off; some have more (cloud count, fish school size, hill heights, parallax).
 - **Performance budget:** each layer reports its cost; the editor shows a live "scene weight" meter, and heavy scenes are simplified on battery.

@@ -578,6 +578,8 @@ impl eframe::App for App {
         let spin = time as f32;
         let th = &self.themes[self.theme];
         aero::set_material(th.material);
+        // Busy scenes draw fewer particles on battery.
+        aero::set_lite(theme::scene_weight(&th.scene) > LITE_WEIGHT && platform::on_battery());
 
         aero::background(ui.painter(), screen, t, th);
 
@@ -779,6 +781,9 @@ fn setup_fonts_with(ctx: &egui::Context, builtin: bool) {
     fonts.families.insert(FontFamily::Name("bold".into()), bold_family);
     ctx.set_fonts(fonts);
 }
+
+/// Scenes heavier than this draw lighter on battery (the built-in themes are well under).
+const LITE_WEIGHT: u32 = 250;
 
 const SCREEN_KEYS: [egui::Key; 10] =
     [egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4, egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8, egui::Key::Num9, egui::Key::Num0];
@@ -1295,6 +1300,25 @@ mod ui_tests {
         img.save(dir.join("cleaner-material-variant.png")).unwrap();
         let classic = image::open(dir.join("cleaner-Frutiger-Aero.png")).unwrap().to_rgba8();
         assert_ne!(img.as_raw(), classic.as_raw(), "material settings change the look");
+
+        // The layers no built-in theme uses yet, on the Themes screen.
+        let picture = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/aero-cleaner.png");
+        let gallery = format!(
+            "format = 1\n[meta]\nname = \"Layer gallery\"\n\
+             [[scene.layers]]\ntype = \"picture\"\nfile = \"{}\"\nopacity = 0.5\n\
+             [[scene.layers]]\ntype = \"petals\"\ncount = 60\n\
+             [[scene.layers]]\ntype = \"leaves\"\ncount = 40\n\
+             [[scene.layers]]\ntype = \"clouds\"\nenabled = false\n",
+            picture.display().to_string().replace('\\', "/")
+        );
+        let g = theme::parse(&gallery, &lib.resolved, None, false).unwrap().theme;
+        assert_eq!(theme::scene_weight(&g.scene), 2 + 120 + 80, "disabled layers weigh nothing");
+        let st = h.state_mut();
+        st.themes.push(g);
+        st.theme = st.themes.len() - 1;
+        st.tab = Tab::Overview;
+        h.run_steps(3);
+        h.render().unwrap().save(dir.join("layer-gallery.png")).unwrap();
     }
 
     #[test]

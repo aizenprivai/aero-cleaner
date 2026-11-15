@@ -2,7 +2,7 @@
 //! buttons, bubbles and a sunny sky. Everything is drawn with meshes since
 //! egui has no built-in gradients.
 
-use crate::theme::{ButtonStyle, Layer, Material, Theme};
+use crate::theme::{ButtonStyle, Layer, Material, SceneLayer, Theme};
 use eframe::egui::{Align2, Color32, FontFamily, FontId, Mesh, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2, pos2};
 use std::cell::Cell;
 use std::f32::consts::TAU;
@@ -30,6 +30,15 @@ pub fn darken(c: Color32, t: f32) -> Color32 {
 thread_local! {
     /// The current theme's material, set once per frame before drawing.
     static MATERIAL: Cell<Material> = const { Cell::new(Material::CLASSIC) };
+}
+
+thread_local! {
+    /// Draw lighter scenes (fewer particles), e.g. on battery.
+    static LITE: Cell<bool> = const { Cell::new(false) };
+}
+
+pub fn set_lite(lite: bool) {
+    LITE.with(|c| c.set(lite));
 }
 
 pub fn set_material(m: Material) {
@@ -359,9 +368,73 @@ pub fn hash(i: u32, salt: u32) -> f32 {
 /// Sky, sun (or moon and aurora), rolling hills and rising bubbles.
 /// Scales with `rect`, so it also draws the small previews in the theme tab.
 pub fn background(painter: &Painter, rect: Rect, time: f32, theme: &Theme) {
-    for layer in &theme.scene {
-        draw_layer(painter, rect, time, layer);
+    let lite = LITE.with(|c| c.get());
+    for layer in theme.scene.iter().filter(|l| l.enabled) {
+        draw_scene_layer(painter, rect, time, layer, lite);
     }
+}
+
+/// A layer with its shared settings: opacity, speed, and lighter drawing.
+pub fn draw_scene_layer(painter: &Painter, rect: Rect, time: f32, layer: &SceneLayer, lite: bool) {
+    let t = time * layer.speed;
+    let light;
+    let kind = if lite {
+        light = layer.kind.lighter(0.5);
+        &light
+    } else {
+        &layer.kind
+    };
+    if layer.opacity < 1.0 {
+        let mut p = painter.clone();
+        p.multiply_opacity(layer.opacity);
+        draw_layer(&p, rect, t, kind);
+    } else {
+        draw_layer(painter, rect, t, kind);
+    }
+}
+
+/// A filled ellipse, turned by `angle` radians.
+fn ellipse(painter: &Painter, c: Pos2, rx: f32, ry: f32, angle: f32, color: Color32) {
+    let (s, co) = angle.sin_cos();
+    let pts: Vec<Pos2> = (0..20)
+        .map(|k| {
+            let a = k as f32 / 20.0 * TAU;
+            let (x, y) = (a.cos() * rx, a.sin() * ry);
+            c + Vec2::new(x * co - y * s, x * s + y * co)
+        })
+        .collect();
+    painter.add(Shape::convex_polygon(pts, color, Stroke::NONE));
+}
+
+/// A position that wraps around: `start` (0..1 of `span`) moving at `speed`.
+fn wrap(start: f32, time: f32, speed: f32, span: f32) -> f32 {
+    (start * span + time * speed).rem_euclid(span)
+}
+
+/// Picture layers' textures, loaded once per file.
+type PictureCache = std::collections::HashMap<std::path::PathBuf, Option<(eframe::egui::TextureHandle, Vec2)>>;
+thread_local! {
+    static PICTURES: std::cell::RefCell<PictureCache> = Default::default();
+}
+
+fn picture(ctx: &eframe::egui::Context, path: &std::path::Path) -> Option<(eframe::egui::TextureId, Vec2)> {
+    PICTURES.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let entry = cache.entry(path.to_path_buf()).or_insert_with(|| {
+            // At most 25 MB, scaled down to at most 2560 px.
+            if std::fs::metadata(path).ok()?.len() > 25_000_000 {
+                return None;
+            }
+            let img = image::ImageReader::open(path).ok()?.with_guessed_format().ok()?.decode().ok()?;
+            let img = if img.width().max(img.height()) > 2560 { img.resize(2560, 2560, image::imageops::FilterType::Triangle) } else { img };
+            let rgba = img.to_rgba8();
+            let size = [rgba.width() as usize, rgba.height() as usize];
+            let color = eframe::egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw());
+            let tex = ctx.load_texture(path.to_string_lossy(), color, eframe::egui::TextureOptions::LINEAR);
+            Some((tex, Vec2::new(size[0] as f32, size[1] as f32)))
+        });
+        entry.as_ref().map(|(t, s)| (t.id(), *s))
+    })
 }
 
 /// One scene layer. Positions are fractions of the area.
@@ -444,6 +517,117 @@ pub fn draw_layer(painter: &Painter, rect: Rect, time: f32, layer: &Layer) {
                 let y = rect.max.y + r - ((time * speed + hash(i, 3) * span) % span);
                 let x = rect.min.x + hash(i, 4) * w + (time * 0.6 + i as f32).sin() * 14.0 * scale;
                 bubble(painter, pos2(x, y), r, 0.55 + hash(i, 5) * 0.45, *color);
+            }
+        }
+        Layer::Clouds { color, count, y, size } => {
+            // Puffy clouds: soft overlapping blobs, drifting right.
+            for i in 0..*count {
+                let s = (55.0 + hash(i, 31) * 70.0) * scale * size;
+                let span = w + 5.0 * s;
+                let x = rect.min.x - 2.5 * s + wrap(hash(i, 32), time, (5.0 + hash(i, 33) * 9.0) * scale, span);
+                let cy = rect.min.y + h * (y + (hash(i, 34) - 0.5) * 0.14);
+                radial(painter, pos2(x, cy + s * 0.35), s * 1.5, with_alpha(darken(*color, 0.25), 45), with_alpha(*color, 0));
+                for (dx, dy, r) in [(-0.9, 0.15, 0.7), (-0.3, -0.25, 0.85), (0.35, -0.1, 0.8), (0.95, 0.2, 0.6), (0.0, 0.25, 0.9)] {
+                    radial(painter, pos2(x + dx * s, cy + dy * s), r * s, with_alpha(*color, 235), with_alpha(*color, 0));
+                }
+                radial(painter, pos2(x - 0.2 * s, cy - 0.35 * s), 0.5 * s, rgba(255, 255, 255, shine(140)), rgba(255, 255, 255, 0));
+            }
+        }
+        Layer::Fish { color, count, y } => {
+            // A loose school of glossy fish; odd ones swim the other way.
+            for i in 0..*count {
+                let sz = (0.7 + hash(i, 41) * 0.8) * scale.max(0.5);
+                let dir = if hash(i, 42) > 0.5 { 1.0 } else { -1.0 };
+                let span = w + 80.0 * sz;
+                let x = rect.min.x - 40.0 * sz + wrap(hash(i, 43), time * dir, (18.0 + hash(i, 44) * 24.0) * scale, span);
+                let cy = rect.min.y + h * (y + (hash(i, 45) - 0.5) * 0.3) + (time * 1.3 + i as f32 * 1.7).sin() * 7.0 * scale;
+                let c = lerp(*color, darken(*color, 0.35), hash(i, 46) * 0.6);
+                let wag = (time * 6.0 + i as f32).sin() * 0.25;
+                let tail = pos2(x - dir * 13.0 * sz, cy);
+                let tip = |a: f32| tail + Vec2::angled(if dir > 0.0 { std::f32::consts::PI + a + wag } else { a - wag }) * 9.0 * sz;
+                painter.add(Shape::convex_polygon(vec![tail + Vec2::new(dir * 3.0 * sz, 0.0), tip(0.55), tip(-0.55)], darken(c, 0.15), Stroke::NONE));
+                ellipse(painter, pos2(x, cy), 14.0 * sz, 6.0 * sz, 0.0, c);
+                ellipse(painter, pos2(x + dir * 1.0 * sz, cy - 2.2 * sz), 9.0 * sz, 2.2 * sz, 0.0, rgba(255, 255, 255, shine(150)));
+                painter.circle_filled(pos2(x + dir * 8.5 * sz, cy - 1.0 * sz), 1.3 * sz, rgba(20, 20, 30, 220));
+            }
+        }
+        Layer::Fireflies { color, count } => {
+            // Glowing dots wandering slowly and blinking.
+            for i in 0..*count {
+                let base = rect.min + Vec2::new(hash(i, 51) * w, h * (0.3 + hash(i, 52) * 0.62));
+                let wander =
+                    Vec2::new((time * (0.3 + hash(i, 53) * 0.4) + i as f32).sin() * 40.0, (time * (0.25 + hash(i, 54) * 0.35) + i as f32 * 2.0).cos() * 26.0) * scale.max(0.5);
+                let glow = ((time * (1.2 + hash(i, 55)) + i as f32 * 1.7).sin() * 0.5 + 0.5).powf(1.5);
+                let p = base + wander;
+                radial(painter, p, 12.0 * scale.max(0.5), with_alpha(*color, (150.0 * glow) as u8), with_alpha(*color, 0));
+                painter.circle_filled(p, 1.8 * scale.max(0.5), with_alpha(lighten(*color, 0.6), (80.0 + 175.0 * glow) as u8));
+            }
+        }
+        Layer::Petals { color, count } => {
+            // Cherry petals tumbling down and sideways.
+            for i in 0..*count {
+                let sz = (0.7 + hash(i, 61) * 0.7) * scale.max(0.5);
+                let span = h + 30.0;
+                let y = rect.min.y - 15.0 + wrap(hash(i, 62), time, (22.0 + hash(i, 63) * 26.0) * scale, span);
+                let x = rect.min.x + (hash(i, 64) * w + time * 12.0 * scale + (time * 0.9 + i as f32).sin() * 30.0 * scale).rem_euclid(w);
+                let spin = time * (0.6 + hash(i, 65)) + i as f32;
+                let c = lerp(*color, Color32::WHITE, hash(i, 66) * 0.5);
+                ellipse(painter, pos2(x, y), 5.5 * sz, 3.2 * sz * (0.35 + 0.65 * spin.cos().abs()), spin, c);
+            }
+        }
+        Layer::Snow { color, count } => {
+            // Snowflakes: near ones bigger, softer and faster.
+            for i in 0..*count {
+                let near = hash(i, 71);
+                let r = (1.0 + near * 2.8) * scale.max(0.5);
+                let span = h + 10.0;
+                let y = rect.min.y - 5.0 + wrap(hash(i, 72), time, (14.0 + near * 34.0) * scale, span);
+                let x = rect.min.x + (hash(i, 73) * w + (time * (0.5 + hash(i, 74)) + i as f32).sin() * 16.0 * scale).rem_euclid(w);
+                if near > 0.7 {
+                    radial(painter, pos2(x, y), r * 2.2, with_alpha(*color, 120), with_alpha(*color, 0));
+                }
+                painter.circle_filled(pos2(x, y), r, with_alpha(*color, (150.0 + near * 100.0) as u8));
+            }
+        }
+        Layer::Leaves { color, count } => {
+            // Autumn leaves: pointed shapes with a center vein, swaying down.
+            for i in 0..*count {
+                let sz = (0.8 + hash(i, 81) * 0.8) * scale.max(0.5);
+                let span = h + 40.0;
+                let y = rect.min.y - 20.0 + wrap(hash(i, 82), time, (16.0 + hash(i, 83) * 20.0) * scale, span);
+                let x = rect.min.x + (hash(i, 84) * w + (time * 0.7 + i as f32).sin() * 45.0 * scale).rem_euclid(w);
+                let angle = (time * 0.8 + i as f32).sin() * 1.2 + i as f32;
+                let c = lerp(*color, rgba(190, 50, 25, 255), hash(i, 85) * 0.7);
+                let (s, co) = angle.sin_cos();
+                let rot = |px: f32, py: f32| pos2(x + (px * co - py * s) * sz, y + (px * s + py * co) * sz);
+                let mut pts = Vec::new();
+                for k in 0..=10 {
+                    let t = k as f32 / 10.0;
+                    pts.push(rot(-9.0 + 18.0 * t, -(t * std::f32::consts::PI).sin() * 4.5));
+                }
+                for k in (1..10).rev() {
+                    let t = k as f32 / 10.0;
+                    pts.push(rot(-9.0 + 18.0 * t, (t * std::f32::consts::PI).sin() * 4.5));
+                }
+                painter.add(Shape::convex_polygon(pts, c, Stroke::NONE));
+                painter.line_segment([rot(-9.0, 0.0), rot(9.0, 0.0)], Stroke::new(0.8, darken(c, 0.3)));
+            }
+        }
+        Layer::Picture { path, frosted } => {
+            // Fill the area, keeping the picture's shape (crop the overflow).
+            if let Some((tex, size)) = picture(painter.ctx(), path) {
+                let (ar, rr) = (size.x / size.y, w / h);
+                let uv = if ar > rr {
+                    let f = rr / ar;
+                    Rect::from_min_max(pos2((1.0 - f) / 2.0, 0.0), pos2((1.0 + f) / 2.0, 1.0))
+                } else {
+                    let f = ar / rr;
+                    Rect::from_min_max(pos2(0.0, (1.0 - f) / 2.0), pos2(1.0, (1.0 + f) / 2.0))
+                };
+                painter.image(tex, rect, uv, Color32::WHITE);
+                if *frosted {
+                    painter.rect_filled(rect, 0.0, rgba(255, 255, 255, 70));
+                }
             }
         }
     }
