@@ -708,6 +708,7 @@ Usage:
   aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
                  [--auto]      only what the automatic clean would remove
                  [--json]      as JSON, sizes in bytes (for scripts)
+  aero-cleaner report [--md]   print the cleaning history as CSV (or Markdown)
   aero-cleaner check-disk      notify if free disk space is below the alert threshold";
 
 fn main() -> eframe::Result {
@@ -739,6 +740,11 @@ fn main() -> eframe::Result {
         Some("--elevated-clean") if args.len() == 3 => {
             let kinds: Vec<cleaner::Kind> = args[2].split(',').filter_map(cleaner::kind_from_name).collect();
             cleaner::elevated_clean(&kinds, std::path::Path::new(&args[1]));
+            return Ok(());
+        }
+        Some("report") => {
+            let history = settings::history();
+            println!("{}", if flag("--md") || flag("--markdown") { report::history_markdown(&history) } else { report::history_csv(&history) });
             return Ok(());
         }
         Some("check-disk") => {

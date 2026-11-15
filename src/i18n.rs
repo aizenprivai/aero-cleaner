@@ -695,6 +695,10 @@ const FR: &[(&str, &str)] = &[
     ("🗑 Delete now ({})", "🗑 Supprimer maintenant ({})"),
     ("Frees the space now; these cleans can't be undone anymore", "Libère l'espace maintenant ; ces nettoyages ne pourront plus être annulés"),
     ("Freed {} kept for undo.", "{} gardés pour l'annulation ont été libérés."),
+    // ----- Reports -----
+    ("Save the cleaning history as a file in your Documents folder", "Enregistrer l'historique des nettoyages dans un fichier de votre dossier Documents"),
+    ("Saved {}", "Enregistré : {}"),
+    ("Could not save the report: {}", "Impossible d'enregistrer le rapport : {}"),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

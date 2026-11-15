@@ -59,6 +59,7 @@ impl App {
         let (mut cycle_journal, mut cycle_big, mut reset_sel) = (false, false, false);
         let mut toggle_updates = false;
         let (mut cycle_undo, mut empty_undo) = (false, false);
+        let mut export: Option<bool> = None;
         let mut restore: Option<crate::holding::Held> = None;
         if self.undo_list.is_none() {
             self.load_undo_list();
@@ -375,6 +376,17 @@ impl App {
                     regular(12.0),
                     th.soft,
                 );
+                if n > 0 {
+                    let md_r = Rect::from_min_size(pos2(rect.max.x - 132.0, rect.center().y - 15.0), vec2(120.0, 30.0));
+                    let csv_r = Rect::from_min_size(pos2(md_r.min.x - 88.0, md_r.min.y), vec2(80.0, 30.0));
+                    let tip = crate::i18n::tr("Save the cleaning history as a file in your Documents folder");
+                    if aero::aqua_button(ui, csv_r, "📄 CSV", th.accent, true).on_hover_text(&tip).clicked() {
+                        export = Some(false);
+                    }
+                    if aero::aqua_button(ui, md_r, "📝 Markdown", th.accent, true).on_hover_text(&tip).clicked() {
+                        export = Some(true);
+                    }
+                }
                 for h in self.history.iter().take(20) {
                     let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 40.0), Sense::hover());
                     let rect = rect.translate(vec2(4.0, 0.0));
@@ -406,6 +418,15 @@ impl App {
                 self.settings_msg = e;
             }
             self.auto.checked = None;
+        }
+        if let Some(markdown) = export {
+            self.settings_msg = match crate::report::export(&self.history, markdown) {
+                Ok(path) => {
+                    tools::open_folder(&path);
+                    format!("Saved {}", path.display())
+                }
+                Err(e) => format!("Could not save the report: {e}"),
+            };
         }
         if cycle_undo {
             self.settings.undo_hours = match self.settings.undo_hours {
