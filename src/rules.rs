@@ -296,12 +296,16 @@ mod tests {
 
     #[test]
     fn refuses_unsafe_folders() {
-        let home = Path::new("/home/me");
+        // An absolute home on every system (on Windows "/home/me" isn't absolute).
+        let base = std::env::temp_dir();
+        let home = base.join("me");
+        let home = home.as_path();
+        let outside = base.join("other");
         let rule = |folder: &str| Rule { name: "x".into(), folder: folder.into(), ..Default::default() };
         assert!(check(&rule("~/Downloads"), home).is_ok());
         assert!(check(&rule("~"), home).is_err(), "whole home");
         assert!(check(&rule("~/../other"), home).is_err(), "escapes home");
-        assert!(check(&rule("/etc"), home).is_err(), "outside home");
+        assert!(check(&rule(&outside.to_string_lossy()), home).is_err(), "outside home");
         assert!(check(&rule("Downloads"), home).is_err(), "relative");
         assert!(check(&Rule { pattern: "a/*.iso".into(), ..rule("~/x") }, home).is_err());
     }
