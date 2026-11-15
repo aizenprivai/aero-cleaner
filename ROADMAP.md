@@ -74,6 +74,15 @@
 - Headless UI tests (every screen × 5 themes × 2 languages, keyboard); `cargo fmt` and `clippy -D warnings` in CI; CI tests a debug build
 - Fixes: Developer, Disk map and Duplicates scanned nothing on Windows (`$HOME` isn't set there); an 8-bit overflow in the glass drawing code
 
+**v1.4 – Your disk over time**
+- New **Disk history** screen: free space chart (hourly for 30 days, daily up to 400 days), with the low-disk alert level
+- Forecast from the 30-day trend ("full in about 3 weeks, you lose about 480 MB a day"), also in the low-disk alert
+- Growth finder: daily folder snapshots (from Disk map scans or the hourly job) show which folders grew the most over about a week
+- Disk health without a password: udisks2 on Linux (SMART, NVMe warnings, wear %, temperature, hours, data written), Storage Spaces on Windows, diskutil on macOS
+- Faster scans: parallel folder walking (rayon) and BLAKE3; on a 4-core laptop Big files went from 1.67 s to 0.59 s and Disk map from 1.73 s to 0.72 s
+- Similar photos in Duplicates: perceptual hash (dHash), cached, biggest copy marked to keep
+- A screenshot test renders every screen to PNG for review
+
 ---
 
 # 🗺 Road to 2.0
@@ -89,23 +98,16 @@
 
 | Version | Theme | Size | Main risk |
 |---|---|---|---|
-| v1.3.x | Leftovers from v1.3 | S | – |
-| v1.4 | Your disk over time | M | Keeping history small |
+| v1.4.x | Leftovers | S | – |
 | v1.5 | Safety net & custom rules | M | Undo storage on nearly full disks |
 | **v2.0** | **Trusted & everywhere** | **L** | **Privileged helper security, distro differences** |
 
-## 🔜 v1.3.x – Leftovers
-- **Signing for real:** the pipeline is ready; it needs an Apple Developer account and a Windows code signing certificate (or Azure Trusted Signing) added as secrets.
+## 🔜 v1.4.x – Leftovers
+- **Windows signing:** the pipeline is ready; it needs a code signing certificate (or Azure Trusted Signing) added as secrets.
 - **Image snapshot tests:** the UI tests check every screen draws and responds to the keyboard, but don't compare pictures yet. That needs a demo-data mode (fixed sizes, no real scan, frozen animation) so images are identical on every machine.
 - **Boot time on macOS:** macOS has no per-stage boot breakdown without root and slow `log` queries; find a cheap, honest source first.
 - **Release polish:** a Duplicates screenshot and Mac screenshots in the README.
-
-## 📈 v1.4 – Your disk over time
-- **Disk history:** the hourly check already runs, so it also records free space. A glossy line chart shows the last 90 days.
-- **Forecast:** "At this rate your disk is full in about 4 months", shown in the low-disk alert too.
-- **Growth finder:** which folders grew the most this week, from compact disk-map snapshots.
-- **Disk health:** SMART status and SSD wear % through udisks2 (no password needed).
-- **Faster scans:** parallel directory walking (`rayon`) and BLAKE3 hashing for duplicates. The goal is 2–4× faster Big files, Duplicates and Disk map.
+- **Similar photos at scale:** compare in buckets instead of every pair once libraries reach tens of thousands of photos, and read the small embedded JPEG thumbnail instead of decoding the full photo.
 
 ## 🛟 v1.5 – Safety net & custom rules
 - **Undo window:** cleaned user files first go to a hidden holding folder for 24 h (adjustable). A **Restore last clean** button brings them back, and the folder empties itself afterwards. If the disk is nearly full, it's skipped, with a warning.
@@ -143,4 +145,5 @@
 - **"RAM booster", "registry cleaner", "driver updater":** these don't help on Linux.
 - **Silent deletion without a review:** this breaks the core safety principle.
 - **Telemetry or accounts:** never.
+- **Notarized Mac app:** it needs a paid Apple Developer account, which this project doesn't have. The Mac app stays unsigned ("Open Anyway" once per version).
 - **Tray icon on Cinnamon Wayland:** only once the desktop runs a tray host (the code path is known: StatusNotifierItem via `ksni`).

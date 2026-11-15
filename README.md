@@ -17,8 +17,10 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 
 **Find space**
 - **Big files**, with warnings for duplicates and files that belong to apps.
-- **Duplicates**, compared by content. The oldest copy is kept as the original.
+- **Duplicates**, compared by content (BLAKE3). The oldest copy is kept as the original. Optionally also **similar photos**: resized, re-saved or slightly edited copies of the same picture.
 - **Disk map:** a treemap of your home folder that you can click into.
+- **Disk history:** a chart of your free space over time, a forecast ("at this rate your disk is full in about 3 weeks"), the folders that grew the most this week, and the health of your drives (SMART status, SSD wear, temperature), all without a password.
+- Scans read folders on every CPU core: Big files and Disk map are 2–3× faster than in 1.3.
 
 **System**
 - **Boot time:** last boot by stage (firmware, boot menu, kernel, services), boot history, and the slowest services, with on/off toggles on Linux (system-critical services are locked). On Windows it shows what Windows itself reports as slowing down your boots.
@@ -41,7 +43,7 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 
 ## Linux, Windows and macOS
 
-All versions share the same app, themes, languages, Duplicates, Disk map, Big files, Developer cleanup and Browsers screens. The rest is native to each system:
+All versions share the same app, themes, languages, Duplicates, Disk map, Disk history, Big files, Developer cleanup and Browsers screens. The rest is native to each system:
 
 | | Linux | Windows | macOS |
 |---|---|---|---|
@@ -51,6 +53,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Big fi
 | Startup apps | `.desktop` autostart overrides | Registry and Startup folder, toggled like Task Manager | Launch agents, turned off per user with `launchctl disable` (plist files untouched) |
 | Automation | systemd user timers, notifications | Task Scheduler, toast notifications | launchd agents, notifications |
 | Boot time | ✅ | ✅ (read-only, from the event log) | not yet |
+| Disk health | udisks2 (SMART, NVMe wear) | Storage Spaces (status; wear for admins) | diskutil (SMART status) |
 
 ## Safety
 
@@ -64,7 +67,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Big fi
 
 **Windows:** download `AeroClean-<version>-windows-setup.exe` from the Releases page and run it. It installs for your account only (no administrator rights) and adds an uninstaller. Prefer no installation? Use `AeroClean-<version>-windows-x64-portable.zip`: unzip it and run `AeroClean.exe`. Until releases are code-signed, SmartScreen may warn about an unknown publisher: click **More info**, then **Run anyway**.
 
-**macOS:** download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. Until releases are notarized, macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security.
+**macOS:** download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. The app isn't notarized by Apple, so macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security. You only do this once per version.
 
 **Linux, from a release:** download `aero-cleaner_<version>_amd64.deb` from the Releases page, then:
 
@@ -103,7 +106,7 @@ Right-click AeroClean in the menu for **Quick clean** and **Disk map**.
 
 ## Signing releases
 
-Releases build unsigned until these GitHub secrets exist (Settings → Secrets and variables → Actions). Each set is optional and independent.
+Releases are unsigned. The CI can sign them if these GitHub secrets exist (Settings → Secrets and variables → Actions); each set is optional and independent. There's no Apple Developer account for this project, so the Mac app ships unsigned and the macOS secrets are only there for forks that have one.
 
 | Secret | What it is |
 |---|---|
@@ -113,13 +116,14 @@ Releases build unsigned until these GitHub secrets exist (Settings → Secrets a
 | `WINDOWS_CERTIFICATE` | A code signing certificate as `.pfx`, base64-encoded. |
 | `WINDOWS_CERTIFICATE_PASSWORD` | The `.pfx` password. |
 
-With them, the Mac app is signed with the hardened runtime and notarized (no Gatekeeper warning), and the Windows `.exe` and installer are signed. To try the packages without publishing anything, open **Actions → CI → Run workflow**.
+With the Windows secrets, the `.exe` and installer are signed; with the macOS ones, the app is signed with the hardened runtime and notarized. To try the packages without publishing anything, open **Actions → CI → Run workflow**.
 
 ## Development
 
 ```sh
 cargo test                        # runs in CI on Linux, Windows and macOS, including headless UI tests
 cargo clippy --all-targets -- -D warnings && cargo fmt --check   # also checked in CI
+cargo test screenshots -- --ignored   # renders every screen to target/screenshots/*.png (needs a GPU)
 AERO_I18N_MISSING=1 cargo run     # with language=fr, prints untranslated strings
 ```
 
