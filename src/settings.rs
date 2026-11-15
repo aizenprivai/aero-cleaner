@@ -64,7 +64,7 @@ impl Settings {
                 Some(("journal_days", v)) => s.journal_days = v.trim().parse().unwrap_or(3).clamp(1, 365),
                 Some(("big_min_mb", v)) => s.big_min_mb = v.trim().parse().unwrap_or(100).clamp(1, 100_000),
                 Some(("selected", v)) => s.selected = Some(v.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()),
-                Some(("language", v)) if ["auto", "en", "fr"].contains(&v.trim()) => s.language = v.trim().to_string(),
+                Some(("language", v)) if v.trim() == "auto" || crate::i18n::Lang::from_code(v).is_some_and(|l| l.code() == v.trim()) => s.language = v.trim().to_string(),
                 Some(("exclude", v)) if !v.trim().is_empty() => s.exclusions.push(PathBuf::from(v.trim())),
                 _ => {}
             }

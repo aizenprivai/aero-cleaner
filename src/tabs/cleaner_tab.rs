@@ -64,7 +64,7 @@ impl App {
                     embossed(p, right - vec2(0.0, if sub.is_empty() { 0.0 } else { 9.0 }), Align2::RIGHT_CENTER, &main, bold(17.0), th.text);
                 }
                 if !sub.is_empty() {
-                    p.text(right + vec2(0.0, if main.is_empty() { 0.0 } else { 11.0 }), Align2::RIGHT_CENTER, crate::i18n::tr(&sub), regular(12.0), th.soft);
+                    aero::fit_text(p, right + vec2(0.0, if main.is_empty() { 0.0 } else { 11.0 }), Align2::RIGHT_CENTER, &crate::i18n::tr(&sub), regular(12.0), th.soft, 210.0);
                 }
             }
         }

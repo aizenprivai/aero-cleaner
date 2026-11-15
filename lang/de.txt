@@ -1,0 +1,1104 @@
+# AeroClean: German translation (Deutsch).
+#
+# Each entry is the English text, then "= " and the translation.
+# {} marks a value (a size, a name...); {0}, {1} reorder values.
+# Leave a line out and the English text is shown instead.
+
+
+# ----- Header & navigation -----
+Give your PC that fresh, sparkling feeling
+= Gib deinem PC dieses frische, funkelnde Gefühl zurück
+Ready to free
+= Bereit zum Freigeben
+{} free of {}
+= {} frei von {}
+💽 {} free of {}
+= 💽 {} frei von {}
+CLEAN
+= AUFRÄUMEN
+FIND SPACE
+= PLATZ FINDEN
+SYSTEM
+= SYSTEM
+Cleaner
+= Reinigung
+Browsers
+= Browser
+Developer
+= Entwickler
+Big files
+= Große Dateien
+Duplicates
+= Duplikate
+Disk map
+= Datenträgerkarte
+Boot time
+= Startzeit
+Startup
+= Autostart
+Themes
+= Designs
+Settings
+= Einstellungen
+
+# ----- Cleaner -----
+YOUR FILES
+= DEINE DATEIEN
+SYSTEM  (asks for your password once)
+= SYSTEM  (fragt einmal nach deinem Passwort)
+🔒 admin
+= 🔒 Admin
+🔍 Scan
+= 🔍 Prüfen
+✨ Clean now
+= ✨ Jetzt aufräumen
+Scanning your system...
+= Dein System wird geprüft...
+Scan complete. Choose what to clean.
+= Prüfung fertig. Wähle aus, was aufgeräumt werden soll.
+Pick at least one thing to clean.
+= Wähle mindestens eine Sache zum Aufräumen.
+Cleaning...
+= Wird aufgeräumt...
+✨ Sparkling clean! Freed {}
+= ✨ Blitzblank! {} freigegeben
+up to {}
+= bis zu {}
+size unknown until removed
+= Größe erst nach dem Entfernen bekannt
+Flatpak not installed
+= Flatpak ist nicht installiert
+1 package
+= 1 Paket
+{} packages
+= {} Pakete
+Trash
+= Papierkorb
+Files you already moved to the trash
+= Dateien, die du schon in den Papierkorb verschoben hast
+Thumbnail cache
+= Vorschaubilder-Cache
+Image previews, rebuilt automatically when needed
+= Bildvorschauen, werden bei Bedarf automatisch neu erstellt
+App & browser cache
+= App- und Browser-Cache
+~/.cache and Flatpak app caches (close your browser first)
+= ~/.cache und Flatpak-App-Caches (schließe zuerst deinen Browser)
+Developer caches
+= Entwickler-Caches
+Cargo, npm, pnpm, Yarn, Go, Maven and Gradle downloads (re-downloaded on demand)
+= Downloads von Cargo, npm, pnpm, Yarn, Go, Maven und Gradle (werden bei Bedarf neu geladen)
+Recent files history
+= Verlauf zuletzt geöffneter Dateien
+The "recently opened" list (privacy)
+= Die Liste "Zuletzt geöffnet" (Privatsphäre)
+Unused Flatpak runtimes
+= Unbenutzte Flatpak-Laufzeiten
+Runtimes no installed app needs anymore
+= Laufzeiten, die keine installierte App mehr braucht
+APT package cache
+= APT-Paket-Cache
+Downloaded .deb installers that are already installed
+= Heruntergeladene .deb-Installer, die schon installiert sind
+Unused packages & old kernels
+= Unbenutzte Pakete und alte Kernel
+Packages nothing depends on anymore (apt autoremove)
+= Pakete, von denen nichts mehr abhängt (apt autoremove)
+System journal
+= Systemprotokoll
+Old system logs, keeps the last {} days
+= Alte Systemprotokolle, behält die letzten {} Tage
+Rotated log files
+= Rotierte Protokolldateien
+Old compressed logs in /var/log (*.gz, *.1, *.old)
+= Alte komprimierte Protokolle in /var/log (*.gz, *.1, *.old)
+Crash reports
+= Absturzberichte
+Crash dumps in /var/crash
+= Absturzabbilder in /var/crash
+Old temporary files
+= Alte temporäre Dateien
+Files in /var/tmp untouched for 7+ days
+= Dateien in /var/tmp, seit 7+ Tagen unverändert
+>> Cleaning APT cache
+= >> APT-Cache wird geleert
+>> Removing unused packages
+= >> Unbenutzte Pakete werden entfernt
+>> Shrinking system journal
+= >> Systemprotokoll wird verkleinert
+>> Deleting rotated logs
+= >> Rotierte Protokolle werden gelöscht
+>> Deleting crash reports
+= >> Absturzberichte werden gelöscht
+>> Deleting old temp files
+= >> Alte temporäre Dateien werden gelöscht
+>> {}
+= >> {}
+{} files removed
+= {} Dateien entfernt
+{} item(s) in use, skipped
+= {} Element(e) in Benutzung, übersprungen
+Asking for administrator password...
+= Administratorpasswort wird abgefragt...
+Password prompt was cancelled, system items were skipped.
+= Passwortabfrage abgebrochen, Systemelemente wurden übersprungen.
+System cleanup finished with errors (code {})
+= Systembereinigung mit Fehlern beendet (Code {})
+System cleanup failed: {}
+= Systembereinigung fehlgeschlagen: {}
+Could not run pkexec: {}
+= pkexec konnte nicht gestartet werden: {}
+
+# ----- Review sheet -----
+Ready to clean?
+= Bereit zum Aufräumen?
+{} items selected · about {} will be freed
+= {} Elemente ausgewählt · etwa {} werden frei
+⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.
+= ⚠ {} ist geöffnet. Schließe es zuerst für eine vollständige Reinigung: Dateien, die es benutzt, werden übersprungen, und Seiten müssen eventuell neu geladen werden.
+Preparing the list...
+= Liste wird vorbereitet...
+Cancel
+= Abbrechen
+kept: {}
+= behalten: {}
+…and {} more
+= …und {} weitere
+Removes: {}
+= Entfernt: {}
+No packages to remove
+= Keine Pakete zu entfernen
+Runs: flatpak uninstall --unused
+= Führt aus: flatpak uninstall --unused
+Deletes downloaded .deb files in /var/cache/apt/archives
+= Löscht heruntergeladene .deb-Dateien in /var/cache/apt/archives
+Deletes system log entries older than {} days
+= Löscht Protokolleinträge, die älter als {} Tage sind
+Deletes *.gz, *.old and *.1-style files in /var/log
+= Löscht *.gz-, *.old- und *.1-Dateien in /var/log
+Deletes everything in /var/crash
+= Löscht alles in /var/crash
+Deletes files in /var/tmp untouched for 7+ days
+= Löscht Dateien in /var/tmp, die seit 7+ Tagen unverändert sind
+
+# ----- Big files -----
+The 100 largest files over {} in your home folder. "Trash" moves a file to the Trash, so you can still restore it.
+= Die 100 größten Dateien über {} in deinem persönlichen Ordner. "Papierkorb" verschiebt eine Datei in den Papierkorb, du kannst sie also wiederherstellen.
+🔍 Find big files
+= 🔍 Große Dateien suchen
+🔍 Search again
+= 🔍 Erneut suchen
+Looked at {} files...
+= {} Dateien angesehen...
+Press "Find big files" to see what takes up your space.
+= Drücke "Große Dateien suchen", um zu sehen, was deinen Platz belegt.
+No files over {} in your home folder. Nice!
+= Keine Dateien über {} in deinem persönlichen Ordner. Prima!
+{} FILES  ·  {} IN TOTAL
+= {} DATEIEN  ·  {} INSGESAMT
+duplicate
+= Duplikat
+⚠ app file
+= ⚠ App-Datei
+📂 Open
+= 📂 Öffnen
+🗑 Trash
+= 🗑 Papierkorb
+Open the folder that contains this file
+= Den Ordner mit dieser Datei öffnen
+Move to Trash (recoverable)
+= In den Papierkorb verschieben (wiederherstellbar)
+This file is inside an app's hidden folder. Trashing it may break that app.
+= Diese Datei liegt im versteckten Ordner einer App. Sie zu löschen könnte die App beschädigen.
+Moved {} to the Trash. Empty the Trash in the Cleaner tab to free {}.
+= {} wurde in den Papierkorb verschoben. Leere den Papierkorb in der Reinigung, um {} freizugeben.
+Could not move {} to the Trash: {}
+= {} konnte nicht in den Papierkorb verschoben werden: {}
+
+# ----- Duplicates -----
+Duplicate files
+= Doppelte Dateien
+Files with exactly the same content, 1 MB or bigger. The oldest copy is marked as the original.
+= Dateien mit genau demselben Inhalt, ab 1 MB. Die älteste Kopie wird als Original markiert.
+🔍 Find duplicates
+= 🔍 Duplikate suchen
+Starting...
+= Wird gestartet...
+Comparing contents... {}%
+= Inhalte werden verglichen... {}%
+Include hidden app folders
+= Versteckte App-Ordner einbeziehen
+Off by default: copies inside an app's own folders are usually needed by that app.
+= Standardmäßig aus: Kopien in den Ordnern einer App werden meist von dieser App gebraucht.
+PRESS "FIND DUPLICATES" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)
+= DRÜCKE "DUPLIKATE SUCHEN" ZUM STARTEN (LIEST DATEIEN, KANN EINE MINUTE DAUERN)
+{} GROUPS  ·  {} WASTED
+= {} GRUPPEN  ·  {} VERSCHWENDET
+NO DUPLICATES FOUND. NICE AND TIDY!
+= KEINE DUPLIKATE GEFUNDEN. SCHÖN ORDENTLICH!
+{} copies × {}  ·  wastes {}
+= {} Kopien × {}  ·  verschwendet {}
+Keep original, trash rest
+= Original behalten, Rest löschen
+Moves every copy except the oldest to the Trash
+= Verschiebt alle Kopien außer der ältesten in den Papierkorb
+original
+= Original
+Move this copy to the Trash (recoverable)
+= Diese Kopie in den Papierkorb verschieben (wiederherstellbar)
+Moved {} file(s) to the Trash ({}). Empty the Trash to free the space.
+= {} Datei(en) in den Papierkorb verschoben ({}). Leere den Papierkorb, um den Platz freizugeben.
+Moved {} file(s); {} failed: {}
+= {} Datei(en) verschoben; {} fehlgeschlagen: {}
+
+# ----- Developer -----
+Developer cleanup
+= Entwickler-Aufräumen
+Build folders and packages inside your projects, and unused Docker or Podman images. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.
+= Build-Ordner und Pakete in deinen Projekten sowie unbenutzte Docker- oder Podman-Images. Dein Code wird nie angefasst, und alles kommt beim nächsten Build wieder. Projekte, die seit 30+ Tagen unverändert sind, sind vorausgewählt.
+🗑 Delete {}
+= 🗑 {} löschen
+Click again to delete
+= Zum Löschen erneut klicken
+Deleting...
+= Wird gelöscht...
+Looked at {} folders...
+= {} Ordner angesehen...
+{} FOLDERS  ·  {} IN TOTAL
+= {} ORDNER  ·  {} INSGESAMT
+🔄 Rescan
+= 🔄 Neu prüfen
+NO BUILD FOLDERS FOUND IN YOUR PROJECTS.
+= KEINE BUILD-ORDNER IN DEINEN PROJEKTEN GEFUNDEN.
+Rust build (target)
+= Rust-Build (target)
+Node packages (node_modules)
+= Node-Pakete (node_modules)
+Python virtualenv
+= Python-Virtualenv
+unused images, stopped containers and build cache
+= unbenutzte Images, gestoppte Container und Build-Cache
+downloaded again by the next pull or build. Volumes are kept
+= wird beim nächsten Pull oder Build neu geladen. Volumes bleiben erhalten
+rebuilt by cargo build
+= wird mit cargo build neu erstellt
+reinstalled by npm install
+= wird mit npm install neu installiert
+recreated by python -m venv
+= wird mit python -m venv neu erstellt
+{}  ·  project changed {}
+= {}  ·  Projekt geändert {}
+Deleting this is safe: it's {}.
+= Das Löschen ist sicher: {}.
+NOT CLEANED HERE
+= WIRD HIER NICHT AUFGERÄUMT
+Waydroid Android image
+= Waydroid-Android-Image
+Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid
+= Nötig für Android-Apps. Wenn du sie nicht nutzt: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid
+Freed {}
+= {} freigegeben
+Freed {}, {} failed: {}
+= {} freigegeben, {} fehlgeschlagen: {}
+
+# ----- Disk map -----
+What fills your home folder: the bigger the tile, the more space. Click a folder to look inside, right-click to go back.
+= Was deinen persönlichen Ordner füllt: Je größer die Kachel, desto mehr Platz. Klicke auf einen Ordner, um hineinzuschauen, Rechtsklick geht zurück.
+⬆ Up
+= ⬆ Nach oben
+Measured {} items...
+= {} Elemente gemessen...
+{} small items
+= {} kleine Elemente
+Click to look inside
+= Klicken, um hineinzuschauen
+
+# ----- Browsers -----
+Clean each browser on its own terms: cache, cookies or history. The browser has to be closed while cleaning.
+= Räume jeden Browser so auf, wie du willst: Cache, Cookies oder Verlauf. Der Browser muss beim Aufräumen geschlossen sein.
+🔄 Refresh
+= 🔄 Aktualisieren
+Looking for browsers...
+= Browser werden gesucht...
+No supported browser found (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox).
+= Kein unterstützter Browser gefunden (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox).
+1 profile
+= 1 Profil
+{} profiles
+= {} Profile
+{}  ·  {}  ·  ⚠ OPEN, CLOSE IT TO CLEAN
+= {}  ·  {}  ·  ⚠ GEÖFFNET, ZUM AUFRÄUMEN SCHLIESSEN
+Cache
+= Cache
+Cookies & site data
+= Cookies und Website-Daten
+Browsing history
+= Browserverlauf
+Saved copies of web pages. Safe: pages just load a bit slower once.
+= Gespeicherte Kopien von Webseiten. Sicher: Seiten laden nur einmal etwas langsamer.
+Signs you out of websites and resets site preferences.
+= Meldet dich bei Websites ab und setzt Website-Einstellungen zurück.
+Visited pages, top sites and address bar suggestions. Bookmarks are kept.
+= Besuchte Seiten, häufige Seiten und Adressleisten-Vorschläge. Lesezeichen bleiben erhalten.
+Not supported for this browser.
+= Für diesen Browser nicht unterstützt.
+✨ Clean {}
+= ✨ {} aufräumen
+Click again: signs you out
+= Erneut klicken: meldet dich ab
+Click again: erases history
+= Erneut klicken: löscht den Verlauf
+{} cleaned: {}
+= {} aufgeräumt: {}
+{} cleaned, {} item(s) skipped
+= {} aufgeräumt, {} Element(e) übersprungen
+Close {} first.
+= Schließe zuerst {}.
+
+# ----- Boot -----
+How long your PC takes to start, and which services slow it down. Changes apply at the next boot.
+= Wie lange dein PC zum Starten braucht und welche Dienste ihn bremsen. Änderungen gelten ab dem nächsten Start.
+Reading boot data...
+= Startdaten werden gelesen...
+Boot data isn't available yet (the system may still be starting up).
+= Startdaten sind noch nicht verfügbar (das System startet vielleicht noch).
+last boot, from power button to desktop
+= letzter Start, vom Einschaltknopf bis zum Desktop
+Firmware
+= Firmware
+Boot menu
+= Startmenü
+Kernel
+= Kernel
+Services
+= Dienste
+Your PC's BIOS/UEFI. Change it in the firmware setup (F2/Del at power-on).
+= Das BIOS/UEFI deines PCs. Änderbar im Firmware-Setup (F2/Entf beim Einschalten).
+GRUB's menu wait plus loading Linux.
+= Die Wartezeit im GRUB-Menü plus das Laden von Linux.
+Linux starting up and finding your hardware.
+= Linux startet und erkennt deine Hardware.
+Everything systemd starts until the desktop is ready.
+= Alles, was systemd startet, bis der Desktop bereit ist.
+BOOT HISTORY
+= STARTVERLAUF
+Your boot history builds up each time you restart. Come back after your next reboot!
+= Dein Startverlauf wächst mit jedem Neustart. Schau nach dem nächsten Neustart wieder vorbei!
+older
+= älter
+latest
+= neuester
+SLOWEST SERVICES AT LAST BOOT
+= LANGSAMSTE DIENSTE BEIM LETZTEN START
+Turn off
+= Ausschalten
+Turn on
+= Einschalten
+Waiting...
+= Warte...
+Start this service at boot again
+= Diesen Dienst wieder beim Start ausführen
+Stop starting this service at boot (asks for your password)
+= Diesen Dienst nicht mehr beim Start ausführen (fragt nach deinem Passwort)
+needed
+= nötig
+on demand
+= bei Bedarf
+Part of the system. Turning it off could break booting or the desktop.
+= Teil des Systems. Ausschalten könnte den Start oder den Desktop kaputt machen.
+Started by a timer, socket or another service, not directly at boot.
+= Wird von einem Timer, Socket oder anderen Dienst gestartet, nicht direkt beim Start.
+{} will start at boot
+= {} startet beim Hochfahren
+{} will no longer start at boot
+= {} startet nicht mehr beim Hochfahren
+Password prompt was cancelled
+= Passwortabfrage abgebrochen
+
+# ----- Startup apps -----
+Startup apps
+= Autostart-Apps
+Apps that start when you log in. Turning off the ones you don't need makes login faster. Changes apply at your next login.
+= Apps, die beim Anmelden starten. Das Ausschalten unnötiger Apps beschleunigt die Anmeldung. Änderungen gelten ab der nächsten Anmeldung.
+{} OF {} APPS START AT LOGIN
+= {} VON {} APPS STARTEN BEI DER ANMELDUNG
+needed by desktop
+= vom Desktop benötigt
+starts at login
+= startet bei Anmeldung
+off
+= aus
+Part of the desktop. Turning it off could break things, so it's locked.
+= Teil des Desktops. Ausschalten könnte Dinge kaputt machen, daher gesperrt.
+{} will start at login
+= {} startet bei der Anmeldung
+{} will no longer start at login
+= {} startet nicht mehr bei der Anmeldung
+Could not change {}: {}
+= {} konnte nicht geändert werden: {}
+
+# ----- Themes -----
+Blue skies, green hills, bubbles
+= Blauer Himmel, grüne Hügel, Blasen
+Underwater light and sandy dunes
+= Unterwasserlicht und Sanddünen
+Warm sky over purple mountains
+= Warmer Himmel über violetten Bergen
+Smoked glass and northern lights
+= Rauchglas und Nordlichter
+Pastel skies and cherry blossoms
+= Pastellhimmel und Kirschblüten
+
+# ----- Settings -----
+Motion, automation, folders to keep, and your cleaning history.
+= Bewegung, Automatik, Ordner zum Behalten und dein Reinigungsverlauf.
+MOTION
+= BEWEGUNG
+Reduce motion
+= Bewegung reduzieren
+Freeze the animated background to save battery. It already pauses when the window isn't active.
+= Hält den animierten Hintergrund an, um Akku zu sparen. Er pausiert bereits, wenn das Fenster nicht aktiv ist.
+AUTOMATION
+= AUTOMATIK
+Weekly automatic clean
+= Wöchentliche automatische Reinigung
+Thumbnails and app caches, once a week. Never asks for a password.
+= Vorschaubilder und App-Caches, einmal pro Woche. Fragt nie nach einem Passwort.
+Browser caches are skipped if a browser is open at that moment. Folders to keep are respected.
+= Browser-Caches werden übersprungen, wenn gerade ein Browser offen ist. Ordner zum Behalten werden beachtet.
+next: {}
+= nächste: {}
+Also empty the Trash
+= Auch den Papierkorb leeren
+Files you deleted more than a week ago can't be restored after this.
+= Dateien, die vor über einer Woche gelöscht wurden, lassen sich danach nicht wiederherstellen.
+Low disk space alert
+= Warnung bei wenig Speicherplatz
+Checks every hour and notifies you when less than {}% of the disk is free (at most once a day).
+= Prüft stündlich und benachrichtigt dich, wenn weniger als {}% des Datenträgers frei sind (höchstens einmal am Tag).
+Change the threshold
+= Schwelle ändern
+▶ Run automatic clean now
+= ▶ Automatische Reinigung jetzt starten
+Tip: right-click AeroClean in the menu for Quick clean and Disk map.
+= Tipp: Rechtsklick auf AeroClean im Menü für Schnellreinigung und Datenträgerkarte.
+Could not change the timer: {}
+= Der Timer konnte nicht geändert werden: {}
+CLEANING
+= REINIGUNG
+System journal retention
+= Aufbewahrung des Systemprotokolls
+How many days of system logs to keep when cleaning the journal.
+= Wie viele Tage Systemprotokolle beim Aufräumen behalten werden.
+Big file size
+= Größe großer Dateien
+Files bigger than this are listed in Big files.
+= Dateien, die größer sind, erscheinen unter Große Dateien.
+Remember my selection
+= Meine Auswahl merken
+The items you tick in the Cleaner stay ticked next time.
+= Was du in der Reinigung ankreuzt, bleibt beim nächsten Mal angekreuzt.
+Reset
+= Zurücksetzen
+Back to the recommended selection
+= Zurück zur empfohlenen Auswahl
+{} days
+= {} Tage
+LANGUAGE
+= SPRACHE
+Automatic
+= Automatisch
+Follows your system language
+= Folgt der Sprache deines Systems
+FOLDERS TO KEEP  (the cleaner never touches these)
+= ORDNER ZUM BEHALTEN  (die Reinigung fasst sie nie an)
+Nothing excluded yet.
+= Noch nichts ausgeschlossen.
+{}   (folder not found)
+= {}   (Ordner nicht gefunden)
+Remove
+= Entfernen
+Add
+= Hinzufügen
+📁 Browse
+= 📁 Durchsuchen
+🌐 Keep browser caches
+= 🌐 Browser-Caches behalten
+Websites stay fast to load, but those caches won't be cleaned
+= Websites laden weiter schnell, aber diese Caches werden nicht aufgeräumt
+Keeping {}
+= {} wird behalten
+No browser caches found.
+= Keine Browser-Caches gefunden.
+Added {} browser cache folder(s).
+= {} Browser-Cache-Ordner hinzugefügt.
+Type or pick a folder first.
+= Gib zuerst einen Ordner ein oder wähle einen aus.
+Use a full path, like ~/.cache/mozilla
+= Nutze einen vollständigen Pfad, z. B. ~/.cache/mozilla
+Already excluded.
+= Bereits ausgeschlossen.
+CLEANING HISTORY
+= REINIGUNGSVERLAUF
+{} freed in total
+= {} insgesamt freigegeben
+over 1 clean
+= in 1 Reinigung
+over {} cleans
+= in {} Reinigungen
+Automatic: {}
+= Automatisch: {}
+
+# ----- Automation / notifications -----
+AeroClean cleaned up ✨
+= AeroClean hat aufgeräumt ✨
+Freed {} ({})
+= {} freigegeben ({})
+{}. Browser cache skipped because {} is open.
+= {}. Browser-Cache übersprungen, weil {} geöffnet ist.
+Your disk is almost full
+= Dein Datenträger ist fast voll
+Only {} free of {}. AeroClean can help you make room.
+= Nur noch {} frei von {}. AeroClean kann dir helfen, Platz zu schaffen.
+Open AeroClean
+= AeroClean öffnen
+
+# ----- Windows -----
+Recycle Bin
+= Papierkorb
+Files you already deleted to the Recycle Bin
+= Dateien, die du schon in den Papierkorb gelöscht hast
+Temporary files
+= Temporäre Dateien
+Your temp folder and graphics shader caches
+= Dein Temp-Ordner und Grafik-Shader-Caches
+Explorer image previews, rebuilt automatically when needed
+= Explorer-Bildvorschauen, werden bei Bedarf automatisch neu erstellt
+Crash dumps
+= Absturzabbilder
+App crash dumps and error reports in your profile
+= App-Absturzabbilder und Fehlerberichte in deinem Profil
+Cargo, npm, pip, pnpm, Yarn, Go, Maven and Gradle downloads (re-downloaded on demand)
+= Downloads von Cargo, npm, pip, pnpm, Yarn, Go, Maven und Gradle (werden bei Bedarf neu geladen)
+Recent items
+= Zuletzt verwendet
+The "Recent" list and jump lists (privacy)
+= Die Liste "Zuletzt verwendet" und Sprunglisten (Privatsphäre)
+Windows temporary files
+= Temporäre Windows-Dateien
+Files in Windows\Temp untouched for 7+ days
+= Dateien in Windows\Temp, seit 7+ Tagen unverändert
+Windows Update downloads
+= Windows Update-Downloads
+Update files Windows has already installed
+= Update-Dateien, die Windows bereits installiert hat
+Delivery Optimization cache
+= Cache der Übermittlungsoptimierung
+Update pieces shared with other PCs
+= Update-Teile, die mit anderen PCs geteilt werden
+System crash dumps
+= System-Absturzabbilder
+Blue screen dumps and system error reports
+= Bluescreen-Abbilder und Systemfehlerberichte
+Old Windows logs
+= Alte Windows-Protokolle
+Log files in Windows\Logs older than 30 days
+= Protokolldateien in Windows\Logs, älter als 30 Tage
+Superseded Windows components
+= Ersetzte Windows-Komponenten
+Old versions of updated system files (DISM, can take several minutes)
+= Alte Versionen aktualisierter Systemdateien (DISM, kann mehrere Minuten dauern)
+SYSTEM  (asks for administrator permission once)
+= SYSTEM  (fragt einmal nach Administratorrechten)
+Asking for administrator permission...
+= Administratorrechte werden angefragt...
+Permission was refused, system items were skipped.
+= Berechtigung verweigert, Systemelemente wurden übersprungen.
+Empties the Recycle Bin on all drives
+= Leert den Papierkorb auf allen Laufwerken
+Runs: DISM /Online /Cleanup-Image /StartComponentCleanup
+= Führt aus: DISM /Online /Cleanup-Image /StartComponentCleanup
+Deletes {}
+= Löscht {}
+Could not empty the Recycle Bin: {}
+= Der Papierkorb konnte nicht geleert werden: {}
+DISM reported an error
+= DISM hat einen Fehler gemeldet
+Moved {} to the Recycle Bin. Empty it in the Cleaner tab to free {}.
+= {} wurde in den Papierkorb verschoben. Leere ihn in der Reinigung, um {} freizugeben.
+Runs through Windows Task Scheduler, under the AeroClean folder.
+= Läuft über die Windows-Aufgabenplanung, im Ordner AeroClean.
+all users
+= alle Benutzer
+Installed for all users. Change it in Task Manager (needs admin).
+= Für alle Benutzer installiert. Änderbar im Task-Manager (Administratorrechte nötig).
+Entries for all users can be changed in Task Manager (needs admin).
+= Einträge für alle Benutzer lassen sich im Task-Manager ändern (Administratorrechte nötig).
+
+# ----- macOS -----
+Files you already moved to the Trash (emptied through Finder)
+= Dateien, die du schon in den Papierkorb gelegt hast (geleert über den Finder)
+~/Library/Caches (close your browser first)
+= ~/Library/Caches (schließe zuerst deinen Browser)
+Quick Look thumbnails
+= Übersicht-Vorschaubilder
+File previews, rebuilt automatically when needed
+= Dateivorschauen, werden bei Bedarf automatisch neu erstellt
+App crash reports in ~/Library/Logs/DiagnosticReports
+= App-Absturzberichte in ~/Library/Logs/DiagnosticReports
+Xcode DerivedData, simulator caches, Cargo, npm, pnpm, Go, Maven and Gradle downloads (rebuilt on demand)
+= Xcode-DerivedData, Simulator-Caches, Downloads von Cargo, npm, pnpm, Go, Maven und Gradle (werden bei Bedarf neu erstellt)
+Homebrew downloads
+= Homebrew-Downloads
+Installers Homebrew keeps after installing
+= Installer, die Homebrew nach der Installation aufbewahrt
+Unused Homebrew packages
+= Unbenutzte Homebrew-Pakete
+Dependencies nothing needs anymore (brew autoremove)
+= Abhängigkeiten, die nichts mehr braucht (brew autoremove)
+The "Recent Items" lists of the Apple menu and apps (privacy)
+= Die Listen "Benutzte Objekte" im Apple-Menü und in Apps (Privatsphäre)
+Old system logs
+= Alte Systemprotokolle
+Rotated logs in /private/var/log (*.gz, *.bz2, *.0...)
+= Rotierte Protokolle in /private/var/log (*.gz, *.bz2, *.0...)
+System crash reports
+= System-Absturzberichte
+Reports in /Library/Logs/DiagnosticReports
+= Berichte in /Library/Logs/DiagnosticReports
+Files in /private/var/tmp untouched for 7+ days
+= Dateien in /private/var/tmp, seit 7+ Tagen unverändert
+Deletes *.gz, *.bz2 and *.0-style files in /private/var/log
+= Löscht *.gz-, *.bz2- und *.0-Dateien in /private/var/log
+Deletes everything in /Library/Logs/DiagnosticReports
+= Löscht alles in /Library/Logs/DiagnosticReports
+Deletes files in /private/var/tmp untouched for 7+ days
+= Löscht Dateien in /private/var/tmp, die seit 7+ Tagen unverändert sind
+size hidden by macOS
+= Größe von macOS verborgen
+Homebrew not installed
+= Homebrew ist nicht installiert
+>> Deleting old system logs
+= >> Alte Systemprotokolle werden gelöscht
+>> Deleting system crash reports
+= >> System-Absturzberichte werden gelöscht
+Runs in the background through launchd. Keep AeroClean in Applications.
+= Läuft im Hintergrund über launchd. Lass AeroClean im Programme-Ordner.
+part of macOS
+= Teil von macOS
+Part of macOS. Turning it off could break things, so it's locked.
+= Teil von macOS. Ausschalten könnte Dinge kaputt machen, daher gesperrt.
+Choose a folder to keep
+= Wähle einen Ordner zum Behalten
+
+# ----- Command line -----
+Dry run: nothing is deleted.
+= Probelauf: nichts wird gelöscht.
+Ticked items would free about {}.
+= Die angekreuzten Elemente würden etwa {} freigeben.
+
+# ----- Updates -----
+UPDATES
+= UPDATES
+Tell me when a new version is out
+= Mich benachrichtigen, wenn eine neue Version erscheint
+Once a day, asks GitHub for the latest version number. Nothing about you or your computer is sent.
+= Fragt einmal am Tag bei GitHub die neueste Versionsnummer ab. Über dich oder deinen Computer wird nichts gesendet.
+✨ Version {} is out
+= ✨ Version {} ist da
+Open the download page
+= Downloadseite öffnen
+
+# ----- Boot time on Windows -----
+Windows hasn't recorded boot times yet. Restart once, then come back.
+= Windows hat noch keine Startzeiten aufgezeichnet. Starte einmal neu und komm dann wieder.
+Windows starting up, loading drivers and finding your hardware.
+= Windows startet, lädt Treiber und erkennt deine Hardware.
+Services, sign-in and startup apps until the desktop is ready.
+= Dienste, Anmeldung und Autostart-Apps, bis der Desktop bereit ist.
+WHAT SLOWED DOWN RECENT BOOTS
+= WAS DIE LETZTEN STARTS GEBREMST HAT
+WINDOWS DIDN'T REPORT ANYTHING SLOW. NICE!
+= WINDOWS HAT NICHTS LANGSAMES GEMELDET. PRIMA!
+slowed boot
+= hat gebremst
+Windows reported that this slowed down a recent boot. Turn it off in Task Manager (Startup apps or Services).
+= Windows hat gemeldet, dass dies einen der letzten Starts gebremst hat. Schalte es im Task-Manager aus (Autostart-Apps oder Dienste).
+
+# ----- Disk history -----
+Disk history
+= Datenträgerverlauf
+How your free space changes over time, when the disk may fill up, what grew lately, and how healthy your drives are.
+= Wie sich dein freier Platz verändert, wann der Datenträger voll sein könnte, was zuletzt gewachsen ist und wie gesund deine Laufwerke sind.
+At this rate your disk is full in {}.
+= In diesem Tempo ist dein Datenträger in {} voll.
+about a day
+= etwa einem Tag
+about {} days
+= etwa {} Tagen
+about {} weeks
+= etwa {} Wochen
+about {} months
+= etwa {} Monaten
+more than 2 years
+= mehr als 2 Jahren
+You lose about {} a day.
+= Du verlierst etwa {} pro Tag.
+Your free space is steady. 👍
+= Dein freier Platz bleibt stabil. 👍
+AeroClean needs a few days of history before it can predict anything.
+= AeroClean braucht ein paar Tage Verlauf, bevor es etwas vorhersagen kann.
+Record every hour, even when AeroClean is closed
+= Jede Stunde aufzeichnen, auch wenn AeroClean geschlossen ist
+Right now history is only saved while the app is open. This also turns on the low disk space alert.
+= Im Moment wird der Verlauf nur gespeichert, während die App offen ist. Das schaltet auch die Warnung bei wenig Speicherplatz ein.
+WHAT GREW LATELY
+= WAS ZULETZT GEWACHSEN IST
+WHAT GREW IN THE LAST {} DAYS
+= WAS IN DEN LETZTEN {} TAGEN GEWACHSEN IST
+AeroClean compares daily snapshots of your folders. Come back in a few days to see what grew.
+= AeroClean vergleicht täglich die Größe deiner Ordner. Schau in ein paar Tagen wieder vorbei, um zu sehen, was gewachsen ist.
+No folder grew by more than 50 MB. 👍
+= Kein Ordner ist um mehr als 50 MB gewachsen. 👍
+DISK HEALTH
+= ZUSTAND DER LAUFWERKE
+Checking your drives...
+= Deine Laufwerke werden geprüft...
+This computer doesn't share drive health information.
+= Dieser Computer gibt keine Informationen zum Zustand der Laufwerke heraus.
+Healthy
+= Gesund
+Healthy, but {}
+= Gesund, aber {}
+Problem: {}. Back up your files soon.
+= Problem: {}. Sichere bald deine Dateien.
+Health unknown
+= Zustand unbekannt
+{}% worn
+= {}% abgenutzt
+{} hours on
+= {} Betriebsstunden
+{} written
+= {} geschrieben
+Wear: how much of the SSD's rated writes are used. 100% means it reached its rating; drives usually keep working past it, but keep backups.
+= Abnutzung: wie viel der vorgesehenen Schreibmenge der SSD verbraucht ist. 100% heißt, sie hat ihre Nennleistung erreicht; Laufwerke arbeiten meist weiter, aber mach Backups.
+Your disk history starts today. The chart fills in as days go by.
+= Dein Datenträgerverlauf beginnt heute. Das Diagramm füllt sich mit den Tagen.
+alert level
+= Warnschwelle
+now
+= jetzt
+{}: {} free
+= {}: {} frei
+the drive reports it is failing
+= das Laufwerk meldet, dass es ausfällt
+{} bad sectors
+= {} defekte Sektoren
+media errors reported
+= Medienfehler gemeldet
+drive warning: {}
+= Laufwerkswarnung: {}
+Windows reports: {}
+= Windows meldet: {}
+
+# ----- Similar photos -----
+Files with exactly the same content, 1 MB or bigger, and optionally photos that look the same. The copy to keep is marked.
+= Dateien mit genau demselben Inhalt, ab 1 MB, und auf Wunsch Fotos, die gleich aussehen. Die zu behaltende Kopie ist markiert.
+Also find similar photos
+= Auch ähnliche Fotos suchen
+Resized, re-saved or slightly edited copies of the same picture. The first search takes longer; later ones are quick.
+= Verkleinerte, neu gespeicherte oder leicht bearbeitete Kopien desselben Bildes. Die erste Suche dauert länger, danach geht es schnell.
+SIMILAR PHOTOS
+= ÄHNLICHE FOTOS
+{} similar photos  ·  keeping only the biggest frees {}
+= {} ähnliche Fotos  ·  nur das größte behalten gibt {} frei
+Keep biggest, trash rest
+= Größtes behalten, Rest löschen
+Keeps the biggest file (usually the best quality) and moves the others to the Trash
+= Behält die größte Datei (meist die beste Qualität) und verschiebt die anderen in den Papierkorb
+biggest
+= größtes
+Looking at photos... {} of {}
+= Fotos werden angesehen... {} von {}
+Comparing photos...
+= Fotos werden verglichen...
+
+# ----- Undo -----
+Disk almost full or undo turned off: cleaned files are deleted right away.
+= Datenträger fast voll oder Rückgängig aus: Aufgeräumte Dateien werden sofort gelöscht.
+↩ Undo
+= ↩ Rückgängig
+Puts back what the last clean removed ({}). Kept until it's {} hours old.
+= Holt zurück, was die letzte Reinigung entfernt hat ({}). Aufbewahrt, bis es {} Stunden alt ist.
+Close {} first, then undo.
+= Schließe zuerst {} und mach es dann rückgängig.
+Restored {} item(s). Everything is back.
+= {} Element(e) wiederhergestellt. Alles ist wieder da.
+Restored {} item(s); {} skipped because a newer version exists.
+= {} Element(e) wiederhergestellt; {} übersprungen, weil es eine neuere Version gibt.
+UNDO
+= RÜCKGÄNGIG
+Keep cleaned files for
+= Aufgeräumte Dateien aufbewahren für
+So a clean can be undone. They're deleted for real afterwards, or right away if the disk is almost full.
+= Damit eine Reinigung rückgängig gemacht werden kann. Danach werden sie endgültig gelöscht, oder sofort, wenn der Datenträger fast voll ist.
+Off
+= Aus
+24 hours
+= 24 Stunden
+1 week
+= 1 Woche
+{} hours
+= {} Stunden
+Change how long
+= Dauer ändern
+↩ Restore
+= ↩ Wiederherstellen
+Put these files back where they were
+= Diese Dateien an ihren Platz zurücklegen
+🗑 Delete now ({})
+= 🗑 Jetzt löschen ({})
+Frees the space now; these cleans can't be undone anymore
+= Gibt den Platz jetzt frei; diese Reinigungen lassen sich dann nicht mehr rückgängig machen
+Freed {} kept for undo.
+= {} aus der Rückgängig-Ablage freigegeben.
+
+# ----- Reports -----
+Save the cleaning history as a file in your Documents folder
+= Den Reinigungsverlauf als Datei in deinem Dokumente-Ordner speichern
+Saved {}
+= Gespeichert: {}
+Could not save the report: {}
+= Der Bericht konnte nicht gespeichert werden: {}
+
+# ----- Rules -----
+MY RULES
+= MEINE REGELN
++ New rule
+= + Neue Regel
+📥 Import
+= 📥 Importieren
+📤 Export
+= 📤 Exportieren
+Add rules from a shared AeroClean rules file (they start unticked)
+= Regeln aus einer geteilten AeroClean-Regeldatei hinzufügen (sie kommen nicht angekreuzt)
+Save your rules as a file to share
+= Deine Regeln als Datei zum Teilen speichern
+Choose a rules file
+= Wähle eine Regeldatei
+Could not save the rules: {}
+= Die Regeln konnten nicht gespeichert werden: {}
+Clean files your way, like ISO images in Downloads older than 30 days.
+= Räume auf deine Art auf, z. B. ISO-Images in Downloads, die älter als 30 Tage sind.
+Old ISO files
+= Alte ISO-Images
+{} file(s)
+= {} Datei(en)
+Edit this rule
+= Diese Regel bearbeiten
+Edit rule
+= Regel bearbeiten
+New rule
+= Neue Regel
+Matching files are deleted when you clean (and kept for undo). Folders are never deleted.
+= Passende Dateien werden beim Aufräumen gelöscht (und für Rückgängig aufbewahrt). Ordner werden nie gelöscht.
+Name
+= Name
+Folder
+= Ordner
+Files
+= Dateien
+* means anything; separate several patterns with ;
+= * steht für alles; trenne mehrere Muster mit ;
+Older than
+= Älter als
+days (0 = any age)
+= Tage (0 = beliebiges Alter)
+Also look inside subfolders
+= Auch in Unterordnern suchen
+Deletes {}.
+= Löscht {}.
+✔ Save
+= ✔ Speichern
+🗑 Delete
+= 🗑 Löschen
+Choose the folder this rule cleans
+= Wähle den Ordner, den diese Regel aufräumt
+Imported {} rule(s). Tick the ones you want to use.
+= {} Regel(n) importiert. Kreuze die an, die du nutzen willst.
+Could not read the file: {}
+= Die Datei konnte nicht gelesen werden: {}
+Give the rule a name.
+= Gib der Regel einen Namen.
+Type a pattern, like *.iso
+= Gib ein Muster ein, z. B. *.iso
+The pattern is for file names only; put the folder in Folder.
+= Das Muster gilt nur für Dateinamen; trage den Ordner unter Ordner ein.
+The folder must start with ~ or /.
+= Der Ordner muss mit ~ oder / beginnen.
+Rules only work inside your home folder.
+= Regeln funktionieren nur in deinem persönlichen Ordner.
+Pick a folder inside your home folder, not the whole home folder.
+= Wähle einen Ordner in deinem persönlichen Ordner, nicht den ganzen persönlichen Ordner.
+Older than: type a number of days (0 for any age).
+= Älter als: Gib eine Anzahl von Tagen ein (0 für beliebiges Alter).
+in
+= in
+and its subfolders
+= und seinen Unterordnern
+older than 1 day
+= älter als 1 Tag
+older than {} days
+= älter als {} Tage
+No matching files right now
+= Im Moment passen keine Dateien
+Import BleachBit's cleaners for the apps installed here (they start unticked)
+= Die BleachBit-Reiniger für die hier installierten Apps importieren (sie kommen nicht angekreuzt)
+Choose BleachBit's cleaners folder (the .xml files)
+= Wähle den BleachBit-Reiniger-Ordner (die .xml-Dateien)
+No BleachBit cleaner files (.xml) found there.
+= Dort wurden keine BleachBit-Reinigerdateien (.xml) gefunden.
+Imported {} rule(s) from {} BleachBit cleaners, for apps installed here. Tick the ones you want.
+= {} Regel(n) aus {} BleachBit-Reinigern importiert, für hier installierte Apps. Kreuze die gewünschten an.
+
+# ----- Leftovers -----
+Leftovers
+= App-Reste
+Folders left behind by apps that don't seem installed anymore, untouched for 3 months or more. It's a guess: check each one. The Trash can bring it back.
+= Ordner, die von Apps übrig sind, die nicht mehr installiert scheinen, seit 3 Monaten oder länger unberührt. Es ist eine Schätzung: Prüfe jeden. Der Papierkorb kann sie zurückholen.
+🔄 Search again
+= 🔄 Erneut suchen
+Looking for leftovers...
+= App-Reste werden gesucht...
+NO LEFTOVERS FOUND. TIDY!
+= KEINE RESTE GEFUNDEN. ALLES ORDENTLICH!
+last used {}
+= zuletzt benutzt {}
+Not leftover
+= Wird noch benutzt
+Still in use: never show this folder again
+= Wird noch benutzt: diesen Ordner nie wieder anzeigen
+Move this folder to the Trash (recoverable)
+= Diesen Ordner in den Papierkorb verschieben (wiederherstellbar)
+{} won't be shown again
+= {} wird nicht mehr angezeigt
+
+# ----- Updater -----
+Checking GitHub...
+= GitHub wird gefragt...
+Downloading... {} of {}
+= Wird heruntergeladen... {} von {}
+Version {} is out
+= Version {} ist da
+You have the latest version. 👍
+= Du hast die neueste Version. 👍
+Press Check now to look for a new version.
+= Drücke Prüfen, um nach einer neuen Version zu suchen.
+Downloads the new version, checks it against the release's SHA256SUMS, then installs it
+= Lädt die neue Version herunter, prüft sie mit den SHA256SUMS des Releases und installiert sie dann
+⬇ Update now
+= ⬇ Jetzt aktualisieren
+This copy wasn't installed from a package, so it can't update itself
+= Diese Kopie wurde nicht aus einem Paket installiert und kann sich daher nicht selbst aktualisieren
+Open download page
+= Downloadseite öffnen
+🔍 Check now
+= 🔍 Prüfen
+What's new in {}
+= Neu in {}
+See what's new and update
+= Neuigkeiten ansehen und aktualisieren
+Updated. Restart AeroClean to use the new version.
+= Aktualisiert. Starte AeroClean neu, um die neue Version zu nutzen.
+The installer is running.
+= Der Installer läuft.
+Drag the new AeroClean into Applications to replace this one, then open it again.
+= Zieh das neue AeroClean in den Programme-Ordner, um dieses zu ersetzen, und öffne es dann erneut.
+download failed (are you online?)
+= Download fehlgeschlagen (bist du online?)
+curl or wget is needed to download updates
+= curl oder wget wird zum Herunterladen von Updates benötigt
+this release has no SHA256SUMS, so the download can't be checked
+= dieses Release hat keine SHA256SUMS, der Download kann also nicht geprüft werden
+the package isn't listed in SHA256SUMS
+= das Paket steht nicht in den SHA256SUMS
+the download doesn't match SHA256SUMS, so it was deleted
+= der Download passt nicht zu den SHA256SUMS und wurde gelöscht
+
+# ----- Overview -----
+Overview
+= Übersicht
+Your PC at a glance: how healthy it is, and what can be improved.
+= Dein PC auf einen Blick: wie gesund er ist und was sich verbessern lässt.
+out of 100
+= von 100
+Excellent
+= Ausgezeichnet
+Good
+= Gut
+Could be better
+= Könnte besser sein
+Needs attention
+= Braucht Aufmerksamkeit
+✨ Fix all safe items
+= ✨ Sicheres reparieren
+Cleans caches and thumbnails apps re-create, after showing you the list. Nothing that needs a password, nothing you can't undo.
+= Räumt Caches und Vorschaubilder auf, die Apps neu erstellen, nachdem dir die Liste gezeigt wurde. Nichts, was ein Passwort braucht, nichts Unumkehrbares.
+Scanning...
+= Wird geprüft...
+Frees about {}
+= Gibt etwa {} frei
+Nothing to fix right now
+= Im Moment nichts zu reparieren
+Free space
+= Freier Platz
+Junk to clean
+= Überflüssiges
+Drive health
+= Laufwerkszustand
+Up to date
+= Aktuell
+{} of caches and thumbnails ready to clean
+= {} an Caches und Vorschaubildern bereit zum Aufräumen
+A drive reports a problem. Back up your files soon.
+= Ein Laufwerk meldet ein Problem. Sichere bald deine Dateien.
+All drives healthy  ·  {}% worn
+= Alle Laufwerke gesund  ·  {}% abgenutzt
+All drives healthy
+= Alle Laufwerke gesund
+Last boot took {} s
+= Der letzte Start dauerte {} s
+Not measured on macOS yet
+= Unter macOS noch nicht gemessen
+Boot data isn't available yet
+= Startdaten sind noch nicht verfügbar
+AeroClean {} is the latest version
+= AeroClean {} ist die neueste Version
+AeroClean {}  ·  not checked yet
+= AeroClean {}  ·  noch nicht geprüft
+Open
+= Öffnen
+
+# ----- Accessibility -----
+Aero Basic
+= Aero Basic
+High contrast, plain and calm
+= Hoher Kontrast, schlicht und ruhig
+Text and controls size
+= Größe von Text und Bedienelementen
+Makes everything bigger. The window gets bigger too, so it may not fit small screens above 150%.
+= Macht alles größer. Das Fenster wird auch größer und passt über 150% eventuell nicht auf kleine Bildschirme.
+Change the size
+= Größe ändern
+
+# ----- Ages -----
+today
+= heute
+yesterday
+= gestern
+{} days ago
+= vor {} Tagen
+{} months ago
+= vor {} Monaten
+{} years ago
+= vor {} Jahren

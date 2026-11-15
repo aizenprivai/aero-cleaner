@@ -208,10 +208,14 @@ impl App {
 
                 // ----- Language -----
                 Self::section(ui, "LANGUAGE", th);
-                let (rect, _) = ui.allocate_exact_size(vec2(row_w, 46.0), Sense::hover());
+                let (rect, _) = ui.allocate_exact_size(vec2(row_w, 90.0), Sense::hover());
                 let rect = rect.translate(vec2(4.0, 0.0));
-                for (k, (code, label)) in [("auto", "Automatic"), ("en", "English"), ("fr", "Français")].into_iter().enumerate() {
-                    let r = Rect::from_min_size(pos2(rect.min.x + k as f32 * 150.0, rect.min.y + 4.0), vec2(140.0, 38.0));
+                let choices: Vec<(&'static str, &'static str)> =
+                    std::iter::once(("auto", "Automatic")).chain(crate::i18n::Lang::ALL.iter().map(|l| (l.code(), l.name()))).collect();
+                for (k, (code, label)) in choices.into_iter().enumerate() {
+                    // Three per row.
+                    let (row, col) = (k / 3, k % 3);
+                    let r = Rect::from_min_size(pos2(rect.min.x + col as f32 * 150.0, rect.min.y + 4.0 + row as f32 * 44.0), vec2(140.0, 38.0));
                     let active = self.settings.language == code;
                     let text = if active { format!("✔ {}", crate::i18n::tr(label)) } else { crate::i18n::tr(label) };
                     let resp = aero::aqua_button(ui, r, &text, if active { th.go } else { th.accent }, true);

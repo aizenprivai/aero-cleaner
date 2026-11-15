@@ -822,8 +822,9 @@ fn unix_root_clean(script: &str, log: &dyn Fn(String)) {
 }
 
 pub fn format_bytes(b: u64) -> String {
-    // French uses "octets" (o, Ko, Mo...) and a decimal comma.
+    // French uses "octets" (o, Ko, Mo...); every language but English writes 1,5.
     let fr = crate::i18n::is_french();
+    let comma = crate::i18n::decimal_comma();
     let units: [&str; 5] = if fr { ["o", "Ko", "Mo", "Go", "To"] } else { ["B", "KB", "MB", "GB", "TB"] };
     let mut v = b as f64;
     let mut i = 0;
@@ -832,7 +833,7 @@ pub fn format_bytes(b: u64) -> String {
         i += 1;
     }
     let text = if i == 0 { format!("{b} {}", units[0]) } else { format!("{v:.1} {}", units[i]) };
-    if fr { text.replace('.', ",") } else { text }
+    if comma { text.replace('.', ",") } else { text }
 }
 
 #[cfg(test)]

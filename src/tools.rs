@@ -150,8 +150,12 @@ fn is_critical(file: &str) -> bool {
 }
 
 fn localized(kv: &BTreeMap<String, String>, key: &str) -> Option<String> {
-    let fr = crate::i18n::is_french().then(|| kv.get(&format!("{key}[fr_FR]")).or_else(|| kv.get(&format!("{key}[fr]")))).flatten();
-    fr.or_else(|| kv.get(key)).cloned()
+    // Apps ship their own names per language: Name[de_DE], Name[de]...
+    let code = crate::i18n::lang().code();
+    let own = (code != "en")
+        .then(|| kv.iter().find(|(k, _)| k.starts_with(&format!("{key}[{code}_")) && k.ends_with(']')).map(|(_, v)| v).or_else(|| kv.get(&format!("{key}[{code}]"))))
+        .flatten();
+    own.or_else(|| kv.get(key)).cloned()
 }
 
 pub fn startup_entries() -> Vec<StartupEntry> {

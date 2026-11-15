@@ -1,0 +1,1104 @@
+# AeroClean: Portuguese translation (Português).
+#
+# Each entry is the English text, then "= " and the translation.
+# {} marks a value (a size, a name...); {0}, {1} reorder values.
+# Leave a line out and the English text is shown instead.
+
+
+# ----- Header & navigation -----
+Give your PC that fresh, sparkling feeling
+= Devolva ao seu PC aquela sensação de limpeza e frescor
+Ready to free
+= Pronto para liberar
+{} free of {}
+= {} livres de {}
+💽 {} free of {}
+= 💽 {} livres de {}
+CLEAN
+= LIMPAR
+FIND SPACE
+= ENCONTRAR ESPAÇO
+SYSTEM
+= SISTEMA
+Cleaner
+= Limpeza
+Browsers
+= Navegadores
+Developer
+= Desenvolvedor
+Big files
+= Arquivos grandes
+Duplicates
+= Duplicados
+Disk map
+= Mapa do disco
+Boot time
+= Inicialização
+Startup
+= Início automático
+Themes
+= Temas
+Settings
+= Configurações
+
+# ----- Cleaner -----
+YOUR FILES
+= SEUS ARQUIVOS
+SYSTEM  (asks for your password once)
+= SISTEMA  (pede sua senha uma vez)
+🔒 admin
+= 🔒 admin
+🔍 Scan
+= 🔍 Analisar
+✨ Clean now
+= ✨ Limpar agora
+Scanning your system...
+= Analisando seu sistema...
+Scan complete. Choose what to clean.
+= Análise concluída. Escolha o que limpar.
+Pick at least one thing to clean.
+= Escolha pelo menos uma coisa para limpar.
+Cleaning...
+= Limpando...
+✨ Sparkling clean! Freed {}
+= ✨ Brilhando! {} liberados
+up to {}
+= até {}
+size unknown until removed
+= tamanho conhecido só após remover
+Flatpak not installed
+= Flatpak não está instalado
+1 package
+= 1 pacote
+{} packages
+= {} pacotes
+Trash
+= Lixeira
+Files you already moved to the trash
+= Arquivos que você já moveu para a lixeira
+Thumbnail cache
+= Cache de miniaturas
+Image previews, rebuilt automatically when needed
+= Prévias de imagens, recriadas automaticamente quando necessário
+App & browser cache
+= Cache de apps e navegadores
+~/.cache and Flatpak app caches (close your browser first)
+= ~/.cache e caches de apps Flatpak (feche o navegador antes)
+Developer caches
+= Caches de desenvolvimento
+Cargo, npm, pnpm, Yarn, Go, Maven and Gradle downloads (re-downloaded on demand)
+= Downloads do Cargo, npm, pnpm, Yarn, Go, Maven e Gradle (baixados de novo quando necessário)
+Recent files history
+= Histórico de arquivos recentes
+The "recently opened" list (privacy)
+= A lista de "abertos recentemente" (privacidade)
+Unused Flatpak runtimes
+= Ambientes Flatpak sem uso
+Runtimes no installed app needs anymore
+= Ambientes que nenhum app instalado usa mais
+APT package cache
+= Cache de pacotes APT
+Downloaded .deb installers that are already installed
+= Instaladores .deb baixados que já estão instalados
+Unused packages & old kernels
+= Pacotes sem uso e kernels antigos
+Packages nothing depends on anymore (apt autoremove)
+= Pacotes dos quais nada mais depende (apt autoremove)
+System journal
+= Registro do sistema
+Old system logs, keeps the last {} days
+= Registros antigos do sistema, mantém os últimos {} dias
+Rotated log files
+= Registros rotacionados
+Old compressed logs in /var/log (*.gz, *.1, *.old)
+= Registros antigos compactados em /var/log (*.gz, *.1, *.old)
+Crash reports
+= Relatórios de falhas
+Crash dumps in /var/crash
+= Despejos de falhas em /var/crash
+Old temporary files
+= Arquivos temporários antigos
+Files in /var/tmp untouched for 7+ days
+= Arquivos em /var/tmp sem uso há 7 dias ou mais
+>> Cleaning APT cache
+= >> Limpando o cache do APT
+>> Removing unused packages
+= >> Removendo pacotes sem uso
+>> Shrinking system journal
+= >> Reduzindo o registro do sistema
+>> Deleting rotated logs
+= >> Apagando registros rotacionados
+>> Deleting crash reports
+= >> Apagando relatórios de falhas
+>> Deleting old temp files
+= >> Apagando arquivos temporários antigos
+>> {}
+= >> {}
+{} files removed
+= {} arquivos removidos
+{} item(s) in use, skipped
+= {} item(ns) em uso, ignorados
+Asking for administrator password...
+= Pedindo a senha de administrador...
+Password prompt was cancelled, system items were skipped.
+= A senha foi cancelada, os itens do sistema foram ignorados.
+System cleanup finished with errors (code {})
+= A limpeza do sistema terminou com erros (código {})
+System cleanup failed: {}
+= A limpeza do sistema falhou: {}
+Could not run pkexec: {}
+= Não foi possível executar o pkexec: {}
+
+# ----- Review sheet -----
+Ready to clean?
+= Pronto para limpar?
+{} items selected · about {} will be freed
+= {} itens selecionados · cerca de {} serão liberados
+⚠ {} is open. Close it first for a full clean: files it's using will be skipped, and it may need to reload pages.
+= ⚠ {} está aberto. Feche-o antes para uma limpeza completa: os arquivos em uso serão ignorados e talvez seja preciso recarregar páginas.
+Preparing the list...
+= Preparando a lista...
+Cancel
+= Cancelar
+kept: {}
+= mantido: {}
+…and {} more
+= …e mais {}
+Removes: {}
+= Remove: {}
+No packages to remove
+= Nenhum pacote para remover
+Runs: flatpak uninstall --unused
+= Executa: flatpak uninstall --unused
+Deletes downloaded .deb files in /var/cache/apt/archives
+= Apaga os arquivos .deb baixados em /var/cache/apt/archives
+Deletes system log entries older than {} days
+= Apaga entradas do registro com mais de {} dias
+Deletes *.gz, *.old and *.1-style files in /var/log
+= Apaga arquivos *.gz, *.old e *.1 em /var/log
+Deletes everything in /var/crash
+= Apaga tudo em /var/crash
+Deletes files in /var/tmp untouched for 7+ days
+= Apaga arquivos em /var/tmp sem uso há 7 dias ou mais
+
+# ----- Big files -----
+The 100 largest files over {} in your home folder. "Trash" moves a file to the Trash, so you can still restore it.
+= Os 100 maiores arquivos acima de {} na sua pasta pessoal. "Lixeira" move o arquivo para a lixeira, então você ainda pode recuperá-lo.
+🔍 Find big files
+= 🔍 Procurar arquivos grandes
+🔍 Search again
+= 🔍 Procurar de novo
+Looked at {} files...
+= {} arquivos verificados...
+Press "Find big files" to see what takes up your space.
+= Clique em "Procurar arquivos grandes" para ver o que ocupa seu espaço.
+No files over {} in your home folder. Nice!
+= Nenhum arquivo acima de {} na sua pasta pessoal. Ótimo!
+{} FILES  ·  {} IN TOTAL
+= {} ARQUIVOS  ·  {} NO TOTAL
+duplicate
+= duplicado
+⚠ app file
+= ⚠ arquivo de app
+📂 Open
+= 📂 Abrir
+🗑 Trash
+= 🗑 Lixeira
+Open the folder that contains this file
+= Abrir a pasta que contém este arquivo
+Move to Trash (recoverable)
+= Mover para a lixeira (recuperável)
+This file is inside an app's hidden folder. Trashing it may break that app.
+= Este arquivo está na pasta oculta de um app. Movê-lo para a lixeira pode quebrar esse app.
+Moved {} to the Trash. Empty the Trash in the Cleaner tab to free {}.
+= {} foi movido para a lixeira. Esvazie a lixeira em Limpeza para liberar {}.
+Could not move {} to the Trash: {}
+= Não foi possível mover {} para a lixeira: {}
+
+# ----- Duplicates -----
+Duplicate files
+= Arquivos duplicados
+Files with exactly the same content, 1 MB or bigger. The oldest copy is marked as the original.
+= Arquivos com exatamente o mesmo conteúdo, de 1 MB ou mais. A cópia mais antiga é marcada como original.
+🔍 Find duplicates
+= 🔍 Procurar duplicados
+Starting...
+= Começando...
+Comparing contents... {}%
+= Comparando conteúdos... {}%
+Include hidden app folders
+= Incluir pastas ocultas de apps
+Off by default: copies inside an app's own folders are usually needed by that app.
+= Desativado por padrão: cópias dentro das pastas de um app geralmente são necessárias para ele.
+PRESS "FIND DUPLICATES" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)
+= CLIQUE EM "PROCURAR DUPLICADOS" PARA COMEÇAR (LÊ OS ARQUIVOS, PODE LEVAR UM MINUTO)
+{} GROUPS  ·  {} WASTED
+= {} GRUPOS  ·  {} DESPERDIÇADOS
+NO DUPLICATES FOUND. NICE AND TIDY!
+= NENHUM DUPLICADO ENCONTRADO. TUDO EM ORDEM!
+{} copies × {}  ·  wastes {}
+= {} cópias × {}  ·  desperdiça {}
+Keep original, trash rest
+= Manter o original, jogar o resto fora
+Moves every copy except the oldest to the Trash
+= Move todas as cópias, exceto a mais antiga, para a lixeira
+original
+= original
+Move this copy to the Trash (recoverable)
+= Mover esta cópia para a lixeira (recuperável)
+Moved {} file(s) to the Trash ({}). Empty the Trash to free the space.
+= {} arquivo(s) movido(s) para a lixeira ({}). Esvazie a lixeira para liberar o espaço.
+Moved {} file(s); {} failed: {}
+= {} arquivo(s) movido(s); {} falharam: {}
+
+# ----- Developer -----
+Developer cleanup
+= Limpeza de desenvolvimento
+Build folders and packages inside your projects, and unused Docker or Podman images. Your code is never touched, and these come back on the next build. Projects untouched for 30+ days are pre-selected.
+= Pastas de compilação e pacotes dos seus projetos, e imagens Docker ou Podman sem uso. Seu código nunca é tocado, e tudo volta na próxima compilação. Projetos sem mudanças há 30 dias ou mais já vêm marcados.
+🗑 Delete {}
+= 🗑 Apagar {}
+Click again to delete
+= Clique de novo para apagar
+Deleting...
+= Apagando...
+Looked at {} folders...
+= {} pastas verificadas...
+{} FOLDERS  ·  {} IN TOTAL
+= {} PASTAS  ·  {} NO TOTAL
+🔄 Rescan
+= 🔄 Analisar de novo
+NO BUILD FOLDERS FOUND IN YOUR PROJECTS.
+= NENHUMA PASTA DE COMPILAÇÃO ENCONTRADA NOS SEUS PROJETOS.
+Rust build (target)
+= Compilação Rust (target)
+Node packages (node_modules)
+= Pacotes Node (node_modules)
+Python virtualenv
+= Ambiente virtual Python
+unused images, stopped containers and build cache
+= imagens sem uso, contêineres parados e cache de compilação
+downloaded again by the next pull or build. Volumes are kept
+= baixado de novo no próximo pull ou build. Os volumes são mantidos
+rebuilt by cargo build
+= recriado pelo cargo build
+reinstalled by npm install
+= reinstalado pelo npm install
+recreated by python -m venv
+= recriado pelo python -m venv
+{}  ·  project changed {}
+= {}  ·  projeto alterado {}
+Deleting this is safe: it's {}.
+= Apagar isso é seguro: {}.
+NOT CLEANED HERE
+= NÃO É LIMPO AQUI
+Waydroid Android image
+= Imagem Android do Waydroid
+Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid
+= Necessária para apps Android. Se você não os usa: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid
+Freed {}
+= {} liberados
+Freed {}, {} failed: {}
+= {} liberados, {} falharam: {}
+
+# ----- Disk map -----
+What fills your home folder: the bigger the tile, the more space. Click a folder to look inside, right-click to go back.
+= O que ocupa sua pasta pessoal: quanto maior o bloco, mais espaço. Clique numa pasta para entrar, clique direito para voltar.
+⬆ Up
+= ⬆ Subir
+Measured {} items...
+= {} itens medidos...
+{} small items
+= {} itens pequenos
+Click to look inside
+= Clique para ver o conteúdo
+
+# ----- Browsers -----
+Clean each browser on its own terms: cache, cookies or history. The browser has to be closed while cleaning.
+= Limpe cada navegador do seu jeito: cache, cookies ou histórico. O navegador precisa estar fechado durante a limpeza.
+🔄 Refresh
+= 🔄 Atualizar
+Looking for browsers...
+= Procurando navegadores...
+No supported browser found (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox).
+= Nenhum navegador compatível encontrado (Brave, Chrome, Chromium, Vivaldi, Edge, Firefox).
+1 profile
+= 1 perfil
+{} profiles
+= {} perfis
+{}  ·  {}  ·  ⚠ OPEN, CLOSE IT TO CLEAN
+= {}  ·  {}  ·  ⚠ ABERTO, FECHE PARA LIMPAR
+Cache
+= Cache
+Cookies & site data
+= Cookies e dados de sites
+Browsing history
+= Histórico de navegação
+Saved copies of web pages. Safe: pages just load a bit slower once.
+= Cópias salvas de páginas da web. Seguro: as páginas só carregam um pouco mais devagar uma vez.
+Signs you out of websites and resets site preferences.
+= Encerra suas sessões nos sites e redefine as preferências deles.
+Visited pages, top sites and address bar suggestions. Bookmarks are kept.
+= Páginas visitadas, sites mais acessados e sugestões da barra de endereços. Os favoritos são mantidos.
+Not supported for this browser.
+= Não compatível com este navegador.
+✨ Clean {}
+= ✨ Limpar {}
+Click again: signs you out
+= Clique de novo: encerra suas sessões
+Click again: erases history
+= Clique de novo: apaga o histórico
+{} cleaned: {}
+= {} limpo: {}
+{} cleaned, {} item(s) skipped
+= {} limpo, {} item(ns) ignorados
+Close {} first.
+= Feche {} primeiro.
+
+# ----- Boot -----
+How long your PC takes to start, and which services slow it down. Changes apply at the next boot.
+= Quanto tempo seu PC leva para iniciar e quais serviços o deixam lento. As mudanças valem na próxima inicialização.
+Reading boot data...
+= Lendo os dados de inicialização...
+Boot data isn't available yet (the system may still be starting up).
+= Os dados de inicialização ainda não estão disponíveis (o sistema pode estar iniciando).
+last boot, from power button to desktop
+= última inicialização, do botão de ligar até a área de trabalho
+Firmware
+= Firmware
+Boot menu
+= Menu de inicialização
+Kernel
+= Kernel
+Services
+= Serviços
+Your PC's BIOS/UEFI. Change it in the firmware setup (F2/Del at power-on).
+= A BIOS/UEFI do seu PC. Altere na configuração do firmware (F2/Del ao ligar).
+GRUB's menu wait plus loading Linux.
+= A espera do menu do GRUB mais o carregamento do Linux.
+Linux starting up and finding your hardware.
+= O Linux iniciando e detectando seu hardware.
+Everything systemd starts until the desktop is ready.
+= Tudo o que o systemd inicia até a área de trabalho ficar pronta.
+BOOT HISTORY
+= HISTÓRICO DE INICIALIZAÇÕES
+Your boot history builds up each time you restart. Come back after your next reboot!
+= Seu histórico cresce a cada reinício. Volte depois do próximo reinício!
+older
+= mais antigo
+latest
+= mais recente
+SLOWEST SERVICES AT LAST BOOT
+= SERVIÇOS MAIS LENTOS NA ÚLTIMA INICIALIZAÇÃO
+Turn off
+= Desativar
+Turn on
+= Ativar
+Waiting...
+= Aguardando...
+Start this service at boot again
+= Voltar a iniciar este serviço na inicialização
+Stop starting this service at boot (asks for your password)
+= Parar de iniciar este serviço na inicialização (pede sua senha)
+needed
+= necessário
+on demand
+= sob demanda
+Part of the system. Turning it off could break booting or the desktop.
+= Faz parte do sistema. Desativá-lo pode quebrar a inicialização ou a área de trabalho.
+Started by a timer, socket or another service, not directly at boot.
+= Iniciado por um temporizador, socket ou outro serviço, não diretamente na inicialização.
+{} will start at boot
+= {} será iniciado na inicialização
+{} will no longer start at boot
+= {} não será mais iniciado na inicialização
+Password prompt was cancelled
+= A senha foi cancelada
+
+# ----- Startup apps -----
+Startup apps
+= Apps de inicialização
+Apps that start when you log in. Turning off the ones you don't need makes login faster. Changes apply at your next login.
+= Apps que abrem quando você faz login. Desativar os que você não precisa deixa o login mais rápido. As mudanças valem no próximo login.
+{} OF {} APPS START AT LOGIN
+= {} DE {} APPS INICIAM NO LOGIN
+needed by desktop
+= necessário para a área de trabalho
+starts at login
+= inicia no login
+off
+= desativado
+Part of the desktop. Turning it off could break things, so it's locked.
+= Faz parte da área de trabalho. Desativá-lo pode quebrar coisas, por isso está bloqueado.
+{} will start at login
+= {} iniciará no login
+{} will no longer start at login
+= {} não iniciará mais no login
+Could not change {}: {}
+= Não foi possível alterar {}: {}
+
+# ----- Themes -----
+Blue skies, green hills, bubbles
+= Céu azul, colinas verdes, bolhas
+Underwater light and sandy dunes
+= Luz subaquática e dunas de areia
+Warm sky over purple mountains
+= Céu quente sobre montanhas roxas
+Smoked glass and northern lights
+= Vidro fumê e auroras boreais
+Pastel skies and cherry blossoms
+= Céu pastel e cerejeiras em flor
+
+# ----- Settings -----
+Motion, automation, folders to keep, and your cleaning history.
+= Movimento, automação, pastas a manter e seu histórico de limpeza.
+MOTION
+= MOVIMENTO
+Reduce motion
+= Reduzir movimento
+Freeze the animated background to save battery. It already pauses when the window isn't active.
+= Congela o fundo animado para poupar bateria. Ele já pausa quando a janela não está ativa.
+AUTOMATION
+= AUTOMAÇÃO
+Weekly automatic clean
+= Limpeza automática semanal
+Thumbnails and app caches, once a week. Never asks for a password.
+= Miniaturas e caches de apps, uma vez por semana. Nunca pede senha.
+Browser caches are skipped if a browser is open at that moment. Folders to keep are respected.
+= Os caches de navegadores são ignorados se houver um navegador aberto naquele momento. As pastas a manter são respeitadas.
+next: {}
+= próxima: {}
+Also empty the Trash
+= Esvaziar também a lixeira
+Files you deleted more than a week ago can't be restored after this.
+= Arquivos apagados há mais de uma semana não poderão ser recuperados depois.
+Low disk space alert
+= Alerta de pouco espaço em disco
+Checks every hour and notifies you when less than {}% of the disk is free (at most once a day).
+= Verifica a cada hora e avisa quando menos de {}% do disco estiver livre (no máximo uma vez por dia).
+Change the threshold
+= Mudar o limite
+▶ Run automatic clean now
+= ▶ Executar a limpeza automática agora
+Tip: right-click AeroClean in the menu for Quick clean and Disk map.
+= Dica: clique direito no AeroClean no menu para Limpeza rápida e Mapa do disco.
+Could not change the timer: {}
+= Não foi possível alterar o temporizador: {}
+CLEANING
+= LIMPEZA
+System journal retention
+= Retenção do registro do sistema
+How many days of system logs to keep when cleaning the journal.
+= Quantos dias de registros do sistema manter ao limpar o registro.
+Big file size
+= Tamanho de arquivo grande
+Files bigger than this are listed in Big files.
+= Arquivos maiores que isso aparecem em Arquivos grandes.
+Remember my selection
+= Lembrar minha seleção
+The items you tick in the Cleaner stay ticked next time.
+= O que você marcar em Limpeza continuará marcado na próxima vez.
+Reset
+= Redefinir
+Back to the recommended selection
+= Voltar à seleção recomendada
+{} days
+= {} dias
+LANGUAGE
+= IDIOMA
+Automatic
+= Automático
+Follows your system language
+= Segue o idioma do seu sistema
+FOLDERS TO KEEP  (the cleaner never touches these)
+= PASTAS A MANTER  (a limpeza nunca mexe nelas)
+Nothing excluded yet.
+= Nada excluído ainda.
+{}   (folder not found)
+= {}   (pasta não encontrada)
+Remove
+= Remover
+Add
+= Adicionar
+📁 Browse
+= 📁 Procurar
+🌐 Keep browser caches
+= 🌐 Manter caches da web
+Websites stay fast to load, but those caches won't be cleaned
+= Os sites continuam carregando rápido, mas esses caches não serão limpos
+Keeping {}
+= Mantendo {}
+No browser caches found.
+= Nenhum cache de navegador encontrado.
+Added {} browser cache folder(s).
+= {} pasta(s) de cache de navegador adicionada(s).
+Type or pick a folder first.
+= Digite ou escolha uma pasta primeiro.
+Use a full path, like ~/.cache/mozilla
+= Use um caminho completo, como ~/.cache/mozilla
+Already excluded.
+= Já está excluída.
+CLEANING HISTORY
+= HISTÓRICO DE LIMPEZA
+{} freed in total
+= {} liberados no total
+over 1 clean
+= em 1 limpeza
+over {} cleans
+= em {} limpezas
+Automatic: {}
+= Automática: {}
+
+# ----- Automation / notifications -----
+AeroClean cleaned up ✨
+= O AeroClean fez a limpeza ✨
+Freed {} ({})
+= {} liberados ({})
+{}. Browser cache skipped because {} is open.
+= {}. O cache do navegador foi ignorado porque {} está aberto.
+Your disk is almost full
+= Seu disco está quase cheio
+Only {} free of {}. AeroClean can help you make room.
+= Só restam {} livres de {}. O AeroClean pode ajudar a liberar espaço.
+Open AeroClean
+= Abrir o AeroClean
+
+# ----- Windows -----
+Recycle Bin
+= Lixeira
+Files you already deleted to the Recycle Bin
+= Arquivos que você já mandou para a lixeira
+Temporary files
+= Arquivos temporários
+Your temp folder and graphics shader caches
+= Sua pasta temporária e os caches de shaders gráficos
+Explorer image previews, rebuilt automatically when needed
+= Prévias de imagens do Explorador, recriadas automaticamente quando necessário
+Crash dumps
+= Despejos de falhas
+App crash dumps and error reports in your profile
+= Despejos de falhas de apps e relatórios de erros no seu perfil
+Cargo, npm, pip, pnpm, Yarn, Go, Maven and Gradle downloads (re-downloaded on demand)
+= Downloads do Cargo, npm, pip, pnpm, Yarn, Go, Maven e Gradle (baixados de novo quando necessário)
+Recent items
+= Itens recentes
+The "Recent" list and jump lists (privacy)
+= A lista "Recentes" e as listas de atalhos (privacidade)
+Windows temporary files
+= Arquivos temporários do Windows
+Files in Windows\Temp untouched for 7+ days
+= Arquivos em Windows\Temp sem uso há 7 dias ou mais
+Windows Update downloads
+= Downloads do Windows Update
+Update files Windows has already installed
+= Arquivos de atualização que o Windows já instalou
+Delivery Optimization cache
+= Cache da Otimização de Entrega
+Update pieces shared with other PCs
+= Partes de atualizações compartilhadas com outros PCs
+System crash dumps
+= Despejos de falhas do sistema
+Blue screen dumps and system error reports
+= Despejos de tela azul e relatórios de erros do sistema
+Old Windows logs
+= Registros antigos do Windows
+Log files in Windows\Logs older than 30 days
+= Arquivos de log em Windows\Logs com mais de 30 dias
+Superseded Windows components
+= Componentes do Windows substituídos
+Old versions of updated system files (DISM, can take several minutes)
+= Versões antigas de arquivos do sistema atualizados (DISM, pode levar vários minutos)
+SYSTEM  (asks for administrator permission once)
+= SISTEMA  (pede permissão de administrador uma vez)
+Asking for administrator permission...
+= Pedindo permissão de administrador...
+Permission was refused, system items were skipped.
+= A permissão foi recusada, os itens do sistema foram ignorados.
+Empties the Recycle Bin on all drives
+= Esvazia a lixeira em todas as unidades
+Runs: DISM /Online /Cleanup-Image /StartComponentCleanup
+= Executa: DISM /Online /Cleanup-Image /StartComponentCleanup
+Deletes {}
+= Apaga {}
+Could not empty the Recycle Bin: {}
+= Não foi possível esvaziar a lixeira: {}
+DISM reported an error
+= O DISM relatou um erro
+Moved {} to the Recycle Bin. Empty it in the Cleaner tab to free {}.
+= {} foi movido para a lixeira. Esvazie-a em Limpeza para liberar {}.
+Runs through Windows Task Scheduler, under the AeroClean folder.
+= Funciona pelo Agendador de Tarefas do Windows, na pasta AeroClean.
+all users
+= todos os usuários
+Installed for all users. Change it in Task Manager (needs admin).
+= Instalado para todos os usuários. Altere no Gerenciador de Tarefas (requer administrador).
+Entries for all users can be changed in Task Manager (needs admin).
+= As entradas para todos os usuários são alteradas no Gerenciador de Tarefas (requer administrador).
+
+# ----- macOS -----
+Files you already moved to the Trash (emptied through Finder)
+= Arquivos que você já moveu para a lixeira (esvaziada pelo Finder)
+~/Library/Caches (close your browser first)
+= ~/Library/Caches (feche o navegador antes)
+Quick Look thumbnails
+= Miniaturas do Visualização Rápida
+File previews, rebuilt automatically when needed
+= Prévias de arquivos, recriadas automaticamente quando necessário
+App crash reports in ~/Library/Logs/DiagnosticReports
+= Relatórios de falhas de apps em ~/Library/Logs/DiagnosticReports
+Xcode DerivedData, simulator caches, Cargo, npm, pnpm, Go, Maven and Gradle downloads (rebuilt on demand)
+= DerivedData do Xcode, caches do simulador, downloads do Cargo, npm, pnpm, Go, Maven e Gradle (recriados quando necessário)
+Homebrew downloads
+= Downloads do Homebrew
+Installers Homebrew keeps after installing
+= Instaladores que o Homebrew guarda após instalar
+Unused Homebrew packages
+= Pacotes do Homebrew sem uso
+Dependencies nothing needs anymore (brew autoremove)
+= Dependências que nada mais usa (brew autoremove)
+The "Recent Items" lists of the Apple menu and apps (privacy)
+= As listas de "Itens recentes" do menu Apple e dos apps (privacidade)
+Old system logs
+= Registros antigos do sistema
+Rotated logs in /private/var/log (*.gz, *.bz2, *.0...)
+= Registros rotacionados em /private/var/log (*.gz, *.bz2, *.0...)
+System crash reports
+= Relatórios de falhas do sistema
+Reports in /Library/Logs/DiagnosticReports
+= Relatórios em /Library/Logs/DiagnosticReports
+Files in /private/var/tmp untouched for 7+ days
+= Arquivos em /private/var/tmp sem uso há 7 dias ou mais
+Deletes *.gz, *.bz2 and *.0-style files in /private/var/log
+= Apaga arquivos *.gz, *.bz2 e *.0 em /private/var/log
+Deletes everything in /Library/Logs/DiagnosticReports
+= Apaga tudo em /Library/Logs/DiagnosticReports
+Deletes files in /private/var/tmp untouched for 7+ days
+= Apaga arquivos em /private/var/tmp sem uso há 7 dias ou mais
+size hidden by macOS
+= tamanho oculto pelo macOS
+Homebrew not installed
+= Homebrew não está instalado
+>> Deleting old system logs
+= >> Apagando registros antigos do sistema
+>> Deleting system crash reports
+= >> Apagando relatórios de falhas do sistema
+Runs in the background through launchd. Keep AeroClean in Applications.
+= Funciona em segundo plano pelo launchd. Mantenha o AeroClean em Aplicativos.
+part of macOS
+= parte do macOS
+Part of macOS. Turning it off could break things, so it's locked.
+= Faz parte do macOS. Desativá-lo pode quebrar coisas, por isso está bloqueado.
+Choose a folder to keep
+= Escolha uma pasta para manter
+
+# ----- Command line -----
+Dry run: nothing is deleted.
+= Simulação: nada é apagado.
+Ticked items would free about {}.
+= Os itens marcados liberariam cerca de {}.
+
+# ----- Updates -----
+UPDATES
+= ATUALIZAÇÕES
+Tell me when a new version is out
+= Avisar quando sair uma nova versão
+Once a day, asks GitHub for the latest version number. Nothing about you or your computer is sent.
+= Uma vez por dia, pergunta ao GitHub o número da última versão. Nada sobre você ou seu computador é enviado.
+✨ Version {} is out
+= ✨ A versão {} saiu
+Open the download page
+= Abrir a página de download
+
+# ----- Boot time on Windows -----
+Windows hasn't recorded boot times yet. Restart once, then come back.
+= O Windows ainda não registrou tempos de inicialização. Reinicie uma vez e volte.
+Windows starting up, loading drivers and finding your hardware.
+= O Windows iniciando, carregando drivers e detectando seu hardware.
+Services, sign-in and startup apps until the desktop is ready.
+= Serviços, login e apps de inicialização até a área de trabalho ficar pronta.
+WHAT SLOWED DOWN RECENT BOOTS
+= O QUE DEIXOU AS ÚLTIMAS INICIALIZAÇÕES LENTAS
+WINDOWS DIDN'T REPORT ANYTHING SLOW. NICE!
+= O WINDOWS NÃO RELATOU NADA LENTO. ÓTIMO!
+slowed boot
+= deixou lento
+Windows reported that this slowed down a recent boot. Turn it off in Task Manager (Startup apps or Services).
+= O Windows relatou que isto deixou uma inicialização recente lenta. Desative no Gerenciador de Tarefas (Apps de inicialização ou Serviços).
+
+# ----- Disk history -----
+Disk history
+= Histórico do disco
+How your free space changes over time, when the disk may fill up, what grew lately, and how healthy your drives are.
+= Como seu espaço livre muda, quando o disco pode encher, o que cresceu ultimamente e a saúde dos seus discos.
+At this rate your disk is full in {}.
+= Nesse ritmo seu disco estará cheio em {}.
+about a day
+= cerca de um dia
+about {} days
+= cerca de {} dias
+about {} weeks
+= cerca de {} semanas
+about {} months
+= cerca de {} meses
+more than 2 years
+= mais de 2 anos
+You lose about {} a day.
+= Você perde cerca de {} por dia.
+Your free space is steady. 👍
+= Seu espaço livre está estável. 👍
+AeroClean needs a few days of history before it can predict anything.
+= O AeroClean precisa de alguns dias de histórico antes de prever qualquer coisa.
+Record every hour, even when AeroClean is closed
+= Registrar a cada hora, mesmo com o AeroClean fechado
+Right now history is only saved while the app is open. This also turns on the low disk space alert.
+= Por enquanto o histórico só é salvo com o app aberto. Isso também ativa o alerta de pouco espaço.
+WHAT GREW LATELY
+= O QUE CRESCEU ULTIMAMENTE
+WHAT GREW IN THE LAST {} DAYS
+= O QUE CRESCEU NOS ÚLTIMOS {} DIAS
+AeroClean compares daily snapshots of your folders. Come back in a few days to see what grew.
+= O AeroClean compara o tamanho das suas pastas todo dia. Volte em alguns dias para ver o que cresceu.
+No folder grew by more than 50 MB. 👍
+= Nenhuma pasta cresceu mais de 50 MB. 👍
+DISK HEALTH
+= SAÚDE DOS DISCOS
+Checking your drives...
+= Verificando seus discos...
+This computer doesn't share drive health information.
+= Este computador não compartilha informações sobre a saúde dos discos.
+Healthy
+= Saudável
+Healthy, but {}
+= Saudável, mas {}
+Problem: {}. Back up your files soon.
+= Problema: {}. Faça logo um backup dos seus arquivos.
+Health unknown
+= Saúde desconhecida
+{}% worn
+= {}% de desgaste
+{} hours on
+= {} horas de uso
+{} written
+= {} gravados
+Wear: how much of the SSD's rated writes are used. 100% means it reached its rating; drives usually keep working past it, but keep backups.
+= Desgaste: quanto das gravações previstas para o SSD já foi usado. 100% significa que ele atingiu o limite nominal; os discos costumam continuar funcionando, mas faça backups.
+Your disk history starts today. The chart fills in as days go by.
+= Seu histórico do disco começa hoje. O gráfico vai se preenchendo com os dias.
+alert level
+= nível de alerta
+now
+= agora
+{}: {} free
+= {}: {} livres
+the drive reports it is failing
+= o disco relata que está falhando
+{} bad sectors
+= {} setores defeituosos
+media errors reported
+= erros de mídia relatados
+drive warning: {}
+= alerta do disco: {}
+Windows reports: {}
+= O Windows relata: {}
+
+# ----- Similar photos -----
+Files with exactly the same content, 1 MB or bigger, and optionally photos that look the same. The copy to keep is marked.
+= Arquivos com exatamente o mesmo conteúdo, de 1 MB ou mais, e se quiser fotos que parecem iguais. A cópia a manter está marcada.
+Also find similar photos
+= Procurar também fotos parecidas
+Resized, re-saved or slightly edited copies of the same picture. The first search takes longer; later ones are quick.
+= Cópias redimensionadas, salvas de novo ou retocadas da mesma imagem. A primeira busca demora mais; as seguintes são rápidas.
+SIMILAR PHOTOS
+= FOTOS PARECIDAS
+{} similar photos  ·  keeping only the biggest frees {}
+= {} fotos parecidas  ·  manter só a maior libera {}
+Keep biggest, trash rest
+= Manter a maior, jogar o resto fora
+Keeps the biggest file (usually the best quality) and moves the others to the Trash
+= Mantém o maior arquivo (geralmente a melhor qualidade) e move os outros para a lixeira
+biggest
+= a maior
+Looking at photos... {} of {}
+= Analisando fotos... {} de {}
+Comparing photos...
+= Comparando fotos...
+
+# ----- Undo -----
+Disk almost full or undo turned off: cleaned files are deleted right away.
+= Disco quase cheio ou desfazer desativado: os arquivos limpos são apagados na hora.
+↩ Undo
+= ↩ Desfazer
+Puts back what the last clean removed ({}). Kept until it's {} hours old.
+= Devolve o que a última limpeza removeu ({}). Guardado até ter {} horas.
+Close {} first, then undo.
+= Feche {} primeiro e depois desfaça.
+Restored {} item(s). Everything is back.
+= {} item(ns) restaurado(s). Tudo voltou.
+Restored {} item(s); {} skipped because a newer version exists.
+= {} item(ns) restaurado(s); {} ignorado(s) porque existe uma versão mais nova.
+UNDO
+= DESFAZER
+Keep cleaned files for
+= Manter os arquivos limpos por
+So a clean can be undone. They're deleted for real afterwards, or right away if the disk is almost full.
+= Para poder desfazer uma limpeza. Depois eles são apagados de vez, ou na hora se o disco estiver quase cheio.
+Off
+= Desativado
+24 hours
+= 24 horas
+1 week
+= 1 semana
+{} hours
+= {} horas
+Change how long
+= Mudar a duração
+↩ Restore
+= ↩ Restaurar
+Put these files back where they were
+= Devolver estes arquivos ao lugar
+🗑 Delete now ({})
+= 🗑 Apagar agora ({})
+Frees the space now; these cleans can't be undone anymore
+= Libera o espaço agora; essas limpezas não poderão mais ser desfeitas
+Freed {} kept for undo.
+= {} guardados para desfazer foram liberados.
+
+# ----- Reports -----
+Save the cleaning history as a file in your Documents folder
+= Salvar o histórico de limpeza como arquivo na sua pasta Documentos
+Saved {}
+= Salvo: {}
+Could not save the report: {}
+= Não foi possível salvar o relatório: {}
+
+# ----- Rules -----
+MY RULES
+= MINHAS REGRAS
++ New rule
+= + Nova regra
+📥 Import
+= 📥 Importar
+📤 Export
+= 📤 Exportar
+Add rules from a shared AeroClean rules file (they start unticked)
+= Adicionar regras de um arquivo compartilhado do AeroClean (elas chegam desmarcadas)
+Save your rules as a file to share
+= Salvar suas regras num arquivo para compartilhar
+Choose a rules file
+= Escolha um arquivo de regras
+Could not save the rules: {}
+= Não foi possível salvar as regras: {}
+Clean files your way, like ISO images in Downloads older than 30 days.
+= Limpe do seu jeito, por exemplo imagens ISO em Downloads com mais de 30 dias.
+Old ISO files
+= Imagens ISO antigas
+{} file(s)
+= {} arquivo(s)
+Edit this rule
+= Editar esta regra
+Edit rule
+= Editar regra
+New rule
+= Nova regra
+Matching files are deleted when you clean (and kept for undo). Folders are never deleted.
+= Os arquivos correspondentes são apagados na limpeza (e guardados para desfazer). Pastas nunca são apagadas.
+Name
+= Nome
+Folder
+= Pasta
+Files
+= Arquivos
+* means anything; separate several patterns with ;
+= * significa qualquer coisa; separe vários padrões com ;
+Older than
+= Mais antigos que
+days (0 = any age)
+= dias (0 = qualquer idade)
+Also look inside subfolders
+= Procurar também nas subpastas
+Deletes {}.
+= Apaga {}.
+✔ Save
+= ✔ Salvar
+🗑 Delete
+= 🗑 Apagar
+Choose the folder this rule cleans
+= Escolha a pasta que esta regra limpa
+Imported {} rule(s). Tick the ones you want to use.
+= {} regra(s) importada(s). Marque as que quiser usar.
+Could not read the file: {}
+= Não foi possível ler o arquivo: {}
+Give the rule a name.
+= Dê um nome à regra.
+Type a pattern, like *.iso
+= Digite um padrão, como *.iso
+The pattern is for file names only; put the folder in Folder.
+= O padrão é só para nomes de arquivo; coloque a pasta em Pasta.
+The folder must start with ~ or /.
+= A pasta deve começar com ~ ou /.
+Rules only work inside your home folder.
+= As regras só funcionam dentro da sua pasta pessoal.
+Pick a folder inside your home folder, not the whole home folder.
+= Escolha uma pasta dentro da sua pasta pessoal, não a pasta pessoal inteira.
+Older than: type a number of days (0 for any age).
+= Mais antigos que: digite um número de dias (0 para qualquer idade).
+in
+= em
+and its subfolders
+= e suas subpastas
+older than 1 day
+= com mais de 1 dia
+older than {} days
+= com mais de {} dias
+No matching files right now
+= Nenhum arquivo corresponde no momento
+Import BleachBit's cleaners for the apps installed here (they start unticked)
+= Importar os limpadores do BleachBit para os apps instalados aqui (eles chegam desmarcados)
+Choose BleachBit's cleaners folder (the .xml files)
+= Escolha a pasta de limpadores do BleachBit (os arquivos .xml)
+No BleachBit cleaner files (.xml) found there.
+= Nenhum arquivo de limpador do BleachBit (.xml) encontrado ali.
+Imported {} rule(s) from {} BleachBit cleaners, for apps installed here. Tick the ones you want.
+= {} regra(s) importada(s) de {} limpadores do BleachBit, para apps instalados aqui. Marque as que quiser.
+
+# ----- Leftovers -----
+Leftovers
+= Restos de apps
+Folders left behind by apps that don't seem installed anymore, untouched for 3 months or more. It's a guess: check each one. The Trash can bring it back.
+= Pastas deixadas por apps que não parecem mais instalados, sem uso há 3 meses ou mais. É uma estimativa: verifique cada uma. A lixeira pode devolvê-las.
+🔄 Search again
+= 🔄 Procurar de novo
+Looking for leftovers...
+= Procurando restos de apps...
+NO LEFTOVERS FOUND. TIDY!
+= NENHUM RESTO ENCONTRADO. TUDO LIMPO!
+last used {}
+= usado {}
+Not leftover
+= Ainda em uso
+Still in use: never show this folder again
+= Ainda em uso: nunca mais mostrar esta pasta
+Move this folder to the Trash (recoverable)
+= Mover esta pasta para a lixeira (recuperável)
+{} won't be shown again
+= {} não será mais mostrado
+
+# ----- Updater -----
+Checking GitHub...
+= Consultando o GitHub...
+Downloading... {} of {}
+= Baixando... {} de {}
+Version {} is out
+= A versão {} saiu
+You have the latest version. 👍
+= Você tem a versão mais recente. 👍
+Press Check now to look for a new version.
+= Clique em Verificar para procurar uma versão nova.
+Downloads the new version, checks it against the release's SHA256SUMS, then installs it
+= Baixa a versão nova, verifica com os SHA256SUMS da publicação e depois instala
+⬇ Update now
+= ⬇ Atualizar agora
+This copy wasn't installed from a package, so it can't update itself
+= Esta cópia não foi instalada a partir de um pacote, então não pode se atualizar sozinha
+Open download page
+= Abrir a página de download
+🔍 Check now
+= 🔍 Verificar
+What's new in {}
+= Novidades da {}
+See what's new and update
+= Ver as novidades e atualizar
+Updated. Restart AeroClean to use the new version.
+= Atualizado. Reinicie o AeroClean para usar a versão nova.
+The installer is running.
+= O instalador está em execução.
+Drag the new AeroClean into Applications to replace this one, then open it again.
+= Arraste o novo AeroClean para Aplicativos para substituir este e abra-o de novo.
+download failed (are you online?)
+= o download falhou (você está conectado?)
+curl or wget is needed to download updates
+= É preciso curl ou wget para baixar atualizações
+this release has no SHA256SUMS, so the download can't be checked
+= esta publicação não tem SHA256SUMS, então o download não pode ser verificado
+the package isn't listed in SHA256SUMS
+= o pacote não está listado nos SHA256SUMS
+the download doesn't match SHA256SUMS, so it was deleted
+= o download não confere com os SHA256SUMS, então foi apagado
+
+# ----- Overview -----
+Overview
+= Visão geral
+Your PC at a glance: how healthy it is, and what can be improved.
+= Seu PC num relance: a saúde dele e o que pode melhorar.
+out of 100
+= de 100
+Excellent
+= Excelente
+Good
+= Bom
+Could be better
+= Poderia estar melhor
+Needs attention
+= Precisa de atenção
+✨ Fix all safe items
+= ✨ Corrigir o que é seguro
+Cleans caches and thumbnails apps re-create, after showing you the list. Nothing that needs a password, nothing you can't undo.
+= Limpa os caches e miniaturas que os apps recriam, depois de mostrar a lista. Nada que peça senha, nada que não possa ser desfeito.
+Scanning...
+= Analisando...
+Frees about {}
+= Libera cerca de {}
+Nothing to fix right now
+= Nada para corrigir agora
+Free space
+= Espaço livre
+Junk to clean
+= Arquivos desnecessários
+Drive health
+= Saúde dos discos
+Up to date
+= Atualizado
+{} of caches and thumbnails ready to clean
+= {} de caches e miniaturas prontos para limpar
+A drive reports a problem. Back up your files soon.
+= Um disco relata um problema. Faça logo um backup dos seus arquivos.
+All drives healthy  ·  {}% worn
+= Todos os discos saudáveis  ·  {}% de desgaste
+All drives healthy
+= Todos os discos saudáveis
+Last boot took {} s
+= A última inicialização levou {} s
+Not measured on macOS yet
+= Ainda não medido no macOS
+Boot data isn't available yet
+= Os dados de inicialização ainda não estão disponíveis
+AeroClean {} is the latest version
+= AeroClean {} é a versão mais recente
+AeroClean {}  ·  not checked yet
+= AeroClean {}  ·  ainda não verificado
+Open
+= Abrir
+
+# ----- Accessibility -----
+Aero Basic
+= Aero Basic
+High contrast, plain and calm
+= Alto contraste, simples e calmo
+Text and controls size
+= Tamanho do texto e dos controles
+Makes everything bigger. The window gets bigger too, so it may not fit small screens above 150%.
+= Deixa tudo maior. A janela também cresce, então pode não caber em telas pequenas acima de 150%.
+Change the size
+= Mudar o tamanho
+
+# ----- Ages -----
+today
+= hoje
+yesterday
+= ontem
+{} days ago
+= há {} dias
+{} months ago
+= há {} meses
+{} years ago
+= há {} anos

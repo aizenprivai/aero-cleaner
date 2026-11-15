@@ -981,8 +981,8 @@ mod ui_tests {
         let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let mut h = harness();
         let themes = h.state().themes.len();
-        for lang in ["en", "fr"] {
-            i18n::set_language(lang);
+        for lang in i18n::Lang::ALL {
+            i18n::set_lang(lang);
             for theme in 0..themes {
                 h.state_mut().theme = theme;
                 for tab in ALL_TABS {
