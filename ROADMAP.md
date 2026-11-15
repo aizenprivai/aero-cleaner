@@ -116,7 +116,8 @@
 | Version | Theme | Size | Main risk |
 |---|---|---|---|
 | v2.x | Leftovers | S | – |
-| v2.1 | Aero extras & distribution | M | Accounts for Flathub and an APT repository |
+| **v2.1** | **Theme Studio: fully modular themes** | **L** | **Keeping the 6 built-in themes pixel-identical; scene performance** |
+| v2.2 | Distribution | M | Accounts for Flathub and an APT repository |
 
 ## 🔜 v2.x – Leftovers
 - **Rules in the automatic clean:** let chosen rules run with the weekly clean.
@@ -127,11 +128,70 @@
 - **Release polish:** Mac and Windows screenshots in the README.
 - **Similar photos at scale:** compare in buckets instead of every pair once libraries reach tens of thousands of photos, and read the small embedded JPEG thumbnail instead of decoding the full photo.
 
-## ✨ v2.1 – Aero extras & distribution
-- **Settings 2.0:** move to TOML, with automatic migration from the 1.x file.
+## 🎨 v2.1 – Theme Studio: fully modular themes
+
+**Goal:** every part of AeroClean's look is a building block you can change, mix, save and share: colors, the background scene, shapes and materials, motion and sound. The 6 built-in themes become theme files made with the same blocks, so anything they do, your themes can do too.
+
+**Principles:**
+- A theme is **data, never code**: no scripts, size limits on images, unknown settings ignored with a warning, and a broken file falls back to the default theme instead of crashing.
+- **Inherit, then override:** a theme starts from a base (e.g. `base = "Frutiger Aero"`) and only lists what it changes, so a 5-line file is a valid theme.
+- **Readable by default:** a contrast guard warns when text would be hard to read, and Reduce motion and battery saving always win over a theme's animations.
+- Nothing is downloaded without a click, and gallery downloads are checked (SHA-256, size, validation) before they're applied.
+
+### Milestone 1 – The theme engine
+- **Theme file** (`.aerotheme`, TOML inside, with a schema version for future upgrades):
+  - `[meta]`: name, author, description, version, base theme.
+  - `[colors]`: named tokens: text, soft text, glass, accent, go, warning, danger, user and system orbs, logo.
+  - `[material]`: corner roundness, gloss strength, glass opacity, outline, shadow depth, button style (aqua pill, soft, flat).
+  - `[font]`: one of the bundled fonts and a size factor.
+  - `[motion]`: animation speed, page transition (none, fade, glassy slide), bubble density.
+  - `[sound]`: sound pack and volume (off by default).
+  - `[[scene.layers]]`: the background, as an ordered stack of layers (see milestone 2).
+- **Built-ins as files:** the 6 current themes are rewritten as theme files and must render pixel-identical to today (a screenshot comparison test guards this).
+- **Validation with friendly errors** ("line 12: `gloss` must be between 0 and 1"), plus `aero-cleaner theme check|list|apply|export` on the command line.
+
+### Milestone 2 – Scene layers as modules
+- Each background element is a **layer module** with its own settings, drawn in order: sky gradient, sun or moon, light rays, hills, stars, aurora, bubbles, and new ones: **clouds**, **fish**, **fireflies**, **falling petals**, **snow**, **falling leaves**, and **picture** (your own image, optionally frosted).
+- Every layer has opacity, speed, color and on/off; some have more (cloud count, fish school size, hill heights, parallax).
+- **Performance budget:** each layer reports its cost; the editor shows a live "scene weight" meter, and heavy scenes are simplified on battery.
+
+### Milestone 3 – Theme Studio (the editor)
+- **Customize** on the Themes screen opens the Studio: the real app as a live preview on one side, and a panel with **Colors · Scene · Material · Motion & Sound** tabs on the other.
+- **Colors:** pickers with harmony helpers (complementary, analogous, triad), a contrast badge on every text color, a color-blindness preview, and an eyedropper that picks from the preview.
+- **Scene builder:** add, remove, reorder (drag) and tune layers like stickers.
+- **Undo/redo**, Reset to base, Duplicate, and a **🎲 Randomize** that shuffles within harmonious palettes.
+- **Live file editing:** themes are saved as readable files; edit one in any text editor and AeroClean updates as you save, with errors shown in the app.
+
+### Milestone 4 – Sharing
+- **Export and import** a single `.aerotheme` file (theme plus its images), or drag one onto the window.
+- **Online gallery:** a community GitHub repository of themes with an index and preview images; the app shows a gallery, downloads only when you click, verifies the file, and shows a preview before applying.
+- Contributions arrive as pull requests; that repository's CI runs `aero-cleaner theme check` on every submission.
+- A **theme-making guide** (`docs/THEMES.md`) with every setting explained and examples.
+
+### Milestone 5 – Day/night auto-switch
+- Pick a day theme and a night theme, then switch by: your **system's dark mode**, a **schedule**, or **sunrise and sunset** (worked out from your time zone, no location or internet needed).
+- A smooth **crossfade**: colors blend and layers fade between the two themes over a couple of seconds.
+
+### Milestone 6 – Theme from a picture
+- Choose a wallpaper or photo; AeroClean finds its main colors and builds **3 matching themes** (light, dark, vivid) with readable text guaranteed by the contrast guard.
+- Optionally use the picture itself as a frosted background layer.
+
+### Milestone 7 – Seasonal and live touches (all optional)
+- **Seasons:** snow in winter, cherry petals in spring, fireflies on summer nights, falling leaves in autumn (hemisphere from the time zone).
+- **Live sky:** the sun and its light follow the real time of day.
+- Fun dates: a few subtle touches on holidays, never on by default.
+
+### Milestone 8 – Sounds
+- An **original** 2000s-style sound pack made for AeroClean (soft chimes for a finished clean, gentle clicks, a friendly warning), no borrowed sounds.
+- Per-event on/off and volume, off by default, silent when the window is in the background.
+- Last on the list: audio libraries add build dependencies on Linux, so this is done once everything else is stable.
+
+**Done when:** the 6 built-in themes are files and look exactly as before, the Studio can recreate any of them from scratch, themes round-trip through export/import and the gallery, and every new layer respects Reduce motion.
+
+## 📦 v2.2 – Distribution
+- **Settings 2.0:** move to TOML (like themes), with automatic migration from the current file.
 - **Flathub:** user-level features inside the sandbox, system features through the helper (needs a Flathub account).
 - **A signed APT repository** on GitHub Pages, so `apt upgrade` keeps AeroClean up to date (needs a signing key).
-- **Aero extras:** a theme editor saved as a shareable file, optional 2000s-style UI sounds, glassy page transitions.
 
 ## 🚫 Not planned
 - **"RAM booster", "registry cleaner", "driver updater":** these don't help on Linux.
