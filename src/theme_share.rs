@@ -334,6 +334,20 @@ mod tests {
         }
     }
 
+    /// The real gallery on GitHub (needs the internet):
+    /// `cargo test live_gallery -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn live_gallery() {
+        let entries = fetch_index().unwrap();
+        assert!(!entries.is_empty());
+        for e in &entries {
+            let text = fetch_theme(e).unwrap();
+            let t = preview_theme(&text, &lib()).unwrap();
+            println!("{} by {}: verified, {} layers", t.name, e.author, t.scene.len());
+        }
+    }
+
     #[test]
     fn gallery_index_round_trip_and_verification() {
         let dir = std::env::temp_dir().join(format!("aero-gallery-{}", std::process::id()));
