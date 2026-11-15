@@ -97,11 +97,25 @@ pub fn disk_is_low(settings: &Settings) -> Option<(u64, u64)> {
     (low && !recently_warned).then_some((total, avail))
 }
 
+/// The hourly job: records free space, takes today's folder snapshot if
+/// there isn't one yet, and warns when the disk is almost full.
 pub fn check_disk(settings: &Settings) {
+    use crate::diskhistory;
+    if let Some((total, avail)) = tools::disk_usage() {
+        diskhistory::record(total, avail);
+    }
+    let today = diskhistory::now() / 86400;
+    if !diskhistory::has_snapshot(today) {
+        let tree = crate::diskmap::scan(&home(), 20_000_000, &|_| {});
+        diskhistory::save_snapshot(&diskhistory::snapshot_from_tree(&tree, today));
+    }
     let Some((total, avail)) = disk_is_low(settings) else { return };
     let _ = fs::create_dir_all(warning_stamp().parent().unwrap());
     let _ = fs::write(warning_stamp(), "");
-    let body = crate::i18n::tr(format!("Only {} free of {}. AeroClean can help you make room.", format_bytes(avail), format_bytes(total)));
+    let mut body = crate::i18n::tr(format!("Only {} free of {}. AeroClean can help you make room.", format_bytes(avail), format_bytes(total)));
+    if let Some(line) = diskhistory::forecast_sentence(&diskhistory::forecast(&diskhistory::load(), diskhistory::now())) {
+        body = format!("{} {body}", crate::i18n::tr(line));
+    }
     if notify(&crate::i18n::tr("Your disk is almost full"), &body, Some(&crate::i18n::tr("Open AeroClean"))) {
         launch_gui(&["--tab", "map"]);
     }

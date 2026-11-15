@@ -7,8 +7,10 @@ mod boot;
 mod browsers;
 mod cleaner;
 mod devclean;
+mod diskhistory;
 mod diskmap;
 mod dupes;
+mod health;
 mod i18n;
 mod platform;
 mod report;
@@ -55,6 +57,7 @@ enum Msg {
     BootDone(Option<boot::BootTimes>, Vec<boot::BootTimes>, Vec<boot::Service>),
     BootToggled(Result<String, String>),
     UpdateChecked(Option<update::Update>),
+    HealthDone(Vec<health::DiskHealth>),
 }
 
 /// Sends messages from worker threads and wakes the UI so it repaints only
@@ -92,6 +95,7 @@ enum Tab {
     BigFiles,
     Duplicates,
     DiskMap,
+    DiskHistory,
     Boot,
     Startup,
     Themes,
@@ -143,6 +147,7 @@ struct App {
     browsers: tabs::BrowserState,
     auto: tabs::AutoState,
     boot: tabs::BootState,
+    disk_hist: tabs::HistoryState,
 }
 
 impl App {
@@ -182,6 +187,7 @@ impl App {
             browsers: Default::default(),
             auto: Default::default(),
             boot: Default::default(),
+            disk_hist: Default::default(),
             keyboard_nav: false,
             update: None,
         };
@@ -189,6 +195,7 @@ impl App {
         app.apply_visuals(ctx);
         app.start_scan();
         app.start_update_check(false);
+        app.refresh_disk();
         app
     }
 
@@ -316,11 +323,13 @@ impl App {
                         None => format!("Freed {}", format_bytes(freed)),
                         Some(e) => format!("Freed {}, {} failed: {e}", format_bytes(freed), errors.len()),
                     };
-                    self.disk = tools::disk_usage();
+                    self.refresh_disk();
                     self.start_dev_scan();
                 }
                 Msg::MapProgress(n) => self.map.scanning = Some(n),
                 Msg::MapDone(root) => {
+                    // Today's folder sizes, for "what grew this week".
+                    diskhistory::save_snapshot(&diskhistory::snapshot_from_tree(&root, diskhistory::now() / 86400));
                     self.map.root = Some(root);
                     self.map.scanning = None;
                 }
@@ -347,6 +356,10 @@ impl App {
                     self.boot.loaded = true;
                 }
                 Msg::UpdateChecked(found) => self.update = found,
+                Msg::HealthDone(drives) => {
+                    self.disk_hist.health = Some(drives);
+                    self.disk_hist.health_loading = false;
+                }
                 Msg::BootToggled(result) => {
                     self.boot.msg = match result {
                         Ok(m) => m,
@@ -369,7 +382,7 @@ impl App {
                 }
                 Msg::ScanDone => {
                     self.phase = Phase::Idle;
-                    self.disk = tools::disk_usage();
+                    self.refresh_disk();
                     self.status = match self.baseline.take() {
                         Some((kinds, before)) => {
                             self.celebrate = Some(time);
@@ -446,7 +459,7 @@ impl eframe::App for App {
         aero::surface(&p, sidebar, 16.0, th, false, None);
         let groups: [(&str, &[(Tab, &str, &str)]); 3] = [
             ("CLEAN", &[(Tab::Cleaner, "🚿", "Cleaner"), (Tab::Browsers, "🌐", "Browsers"), (Tab::Developer, "🛠", "Developer")]),
-            ("FIND SPACE", &[(Tab::BigFiles, "🐘", "Big files"), (Tab::Duplicates, "📑", "Duplicates"), (Tab::DiskMap, "🗺", "Disk map")]),
+            ("FIND SPACE", &[(Tab::BigFiles, "🐘", "Big files"), (Tab::Duplicates, "📑", "Duplicates"), (Tab::DiskMap, "🗺", "Disk map"), (Tab::DiskHistory, "📈", "Disk history")]),
             ("SYSTEM", &[(Tab::Boot, "⏱", "Boot time"), (Tab::Startup, "🚀", "Startup"), (Tab::Themes, "🎨", "Themes"), (Tab::Settings, "⚙", "Settings")]),
         ];
         // Boot analysis: systemd on Linux, the event log on Windows. Not on macOS yet.
@@ -454,13 +467,17 @@ impl eframe::App for App {
         let mut y = nav_top + 8.0;
         let mut new_tab = self.tab;
         let mut visible = Vec::new();
+        // Squeeze the items a little when the window is too short for all of them.
+        let count = groups.iter().map(|(_, e)| e.iter().filter(|x| !hidden(x.0)).count()).sum::<usize>() as f32;
+        let fixed = groups.len() as f32 * 28.0;
+        let step = ((sidebar.max.y - y - 8.0 - fixed) / count).clamp(30.0, 39.0);
         let modifier = if platform::IS_MACOS { "Cmd" } else { "Ctrl" };
         for (title, entries) in groups {
             embossed(&p, pos2(sidebar.min.x + 14.0, y + 9.0), Align2::LEFT_CENTER, title, bold(11.5), th.soft);
             y += 22.0;
             for &(tab, icon, label) in entries.iter().filter(|e| !hidden(e.0)) {
                 visible.push(tab);
-                let r = Rect::from_min_size(pos2(sidebar.min.x + 6.0, y), vec2(sidebar.width() - 12.0, 36.0));
+                let r = Rect::from_min_size(pos2(sidebar.min.x + 6.0, y), vec2(sidebar.width() - 12.0, step - 3.0));
                 let resp = aero::nav_item(ui, r, icon, label, self.tab == tab, &self.themes[self.theme]);
                 let key = match visible.len() {
                     n @ 1..=9 => format!("{modifier}+{n}"),
@@ -470,7 +487,7 @@ impl eframe::App for App {
                 if resp.on_hover_text(key).clicked() {
                     new_tab = tab;
                 }
-                y += 39.0;
+                y += step;
             }
             y += 6.0;
         }
@@ -490,6 +507,7 @@ impl eframe::App for App {
             Tab::Developer => self.dev_tab(ui, area, spin, time),
             Tab::Duplicates => self.dupes_tab(ui, area, spin),
             Tab::DiskMap => self.map_tab(ui, area, spin),
+            Tab::DiskHistory => self.history_tab(ui, area, spin),
             Tab::BigFiles => self.big_tab(ui, area, spin),
             Tab::Boot => self.boot_tab(ui, area, spin),
             Tab::Startup => self.startup_tab(ui, area),
@@ -513,6 +531,7 @@ impl eframe::App for App {
             || self.browsers.scanning
             || self.auto.running
             || self.boot.loading
+            || self.disk_hist.health_loading
             || self.boot.busy_unit.is_some()
             || self.review.as_ref().is_some_and(|r| r.lines.is_none())
             || (self.celebrate.is_some() && !self.settings.reduce_motion);
@@ -535,6 +554,7 @@ fn start_tab() -> Tab {
         Some("dev") => Tab::Developer,
         Some("dupes") => Tab::Duplicates,
         Some("map") => Tab::DiskMap,
+        Some("history") => Tab::DiskHistory,
         Some("boot") => Tab::Boot,
         Some("startup") => Tab::Startup,
         Some("themes") => Tab::Themes,
@@ -577,6 +597,14 @@ const SCREEN_KEYS: [egui::Key; 10] =
     [egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4, egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8, egui::Key::Num9, egui::Key::Num0];
 
 impl App {
+    /// Reads free space again and adds it to the disk history (at most hourly).
+    fn refresh_disk(&mut self) {
+        self.disk = tools::disk_usage();
+        if let Some((total, avail)) = self.disk {
+            diskhistory::record(total, avail);
+        }
+    }
+
     /// Runs the update check in the background (only if the user turned it on).
     fn start_update_check(&self, force: bool) {
         if !self.settings.check_updates {
@@ -615,7 +643,7 @@ const USAGE: &str = "AeroClean
 
 Usage:
   aero-cleaner                 open the app
-  aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, big, dupes, map, boot, startup, themes, settings)
+  aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, big, dupes, map, history, boot, startup, themes, settings)
   aero-cleaner clean --auto    run the automatic clean (thumbnails, app caches, Trash if enabled) and notify
   aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
                  [--auto]      only what the automatic clean would remove
@@ -716,7 +744,8 @@ mod ui_tests {
     use super::*;
     use egui_kittest::Harness;
 
-    const ALL_TABS: [Tab; 10] = [Tab::Cleaner, Tab::Browsers, Tab::Developer, Tab::BigFiles, Tab::Duplicates, Tab::DiskMap, Tab::Boot, Tab::Startup, Tab::Themes, Tab::Settings];
+    const ALL_TABS: [Tab; 11] =
+        [Tab::Cleaner, Tab::Browsers, Tab::Developer, Tab::BigFiles, Tab::Duplicates, Tab::DiskMap, Tab::DiskHistory, Tab::Boot, Tab::Startup, Tab::Themes, Tab::Settings];
 
     fn harness() -> Harness<'static, App> {
         Harness::builder().with_size(vec2(1080.0, 800.0)).build_eframe(|cc| {
@@ -744,6 +773,46 @@ mod ui_tests {
         i18n::set_language("en");
     }
 
+    /// Renders every screen to PNG files for a human to look at (needs a GPU):
+    /// `AERO_SHOTS=/some/dir cargo test screenshots -- --ignored`
+    #[test]
+    #[ignore]
+    fn screenshots() {
+        let dir = std::path::PathBuf::from(std::env::var("AERO_SHOTS").unwrap_or_else(|_| "target/screenshots".into()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut h = Harness::builder().with_size(vec2(1080.0, 800.0)).wgpu().build_eframe(|cc| {
+            setup_fonts(&cc.egui_ctx);
+            App::new(&cc.egui_ctx)
+        });
+        let only = std::env::var("AERO_SHOT_TAB").ok();
+        for tab in ALL_TABS {
+            if only.as_deref().is_some_and(|o| o != format!("{tab:?}")) {
+                continue;
+            }
+            h.state_mut().tab = tab;
+            // Give background work (scans, drive health) a moment to finish.
+            for _ in 0..30 {
+                h.run_steps(1);
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            // AERO_SHOT_DEMO=1: made-up history, to see a full chart (never saved).
+            if tab == Tab::DiskHistory && std::env::var("AERO_SHOT_DEMO").is_ok() {
+                let now = diskhistory::now();
+                let st = h.state_mut();
+                st.disk_hist.samples = (0..60 * 4)
+                    .map(|i: u64| {
+                        let wobble = ((i as f64 * 0.7).sin() * 1.5e9) as i64;
+                        let avail = (40e9 - i as f64 * 0.12e9) as i64 + wobble;
+                        diskhistory::Sample { when: now - (60 * 4 - i) * 6 * 3600, total: 91_600_000_000, avail: avail as u64 }
+                    })
+                    .collect();
+                st.disk_hist.growth = Some((vec![("Videos/OBS".into(), 6_200_000_000), (".cache/yarn".into(), 1_100_000_000), ("Downloads".into(), 420_000_000)], 7));
+                h.run_steps(2);
+            }
+            h.render().unwrap().save(dir.join(format!("{tab:?}.png"))).unwrap();
+        }
+    }
+
     #[test]
     fn ctrl_number_jumps_to_a_screen() {
         let mut h = harness();
@@ -751,11 +820,10 @@ mod ui_tests {
         h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num3);
         h.run_steps(1);
         assert_eq!(h.state().tab, Tab::Developer);
-        // The last screen (Settings) is 0 on Linux and Windows, 9 on macOS.
-        let last = if platform::IS_MACOS { egui::Key::Num9 } else { egui::Key::Num0 };
-        h.key_press_modifiers(egui::Modifiers::COMMAND, last);
+        // Ctrl+0 is the tenth screen: Themes (Linux, Windows) or Settings (macOS, no Boot time).
+        h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num0);
         h.run_steps(1);
-        assert_eq!(h.state().tab, Tab::Settings);
+        assert_eq!(h.state().tab, if platform::IS_MACOS { Tab::Settings } else { Tab::Themes });
     }
 
     #[test]

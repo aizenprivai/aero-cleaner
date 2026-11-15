@@ -109,6 +109,18 @@ pub fn open_folder(path: &Path) {
     }
 }
 
+/// Opens a folder itself in the system file manager.
+pub fn open_dir(dir: &Path) {
+    let tool = if IS_WINDOWS {
+        "explorer"
+    } else if IS_MACOS {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    let _ = command(tool).arg(dir).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
+}
+
 /// Moves a file to the Trash / Recycle Bin (recoverable).
 pub fn move_to_trash(path: &Path) -> Result<(), String> {
     #[cfg(any(windows, target_os = "macos"))]

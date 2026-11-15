@@ -6,6 +6,7 @@ mod browsers_tab;
 mod cleaner_tab;
 mod dev_tab;
 mod dupes_tab;
+mod history_tab;
 mod map_tab;
 mod prelude;
 mod review;
@@ -17,6 +18,7 @@ pub(crate) use boot_tab::BootState;
 pub(crate) use browsers_tab::BrowserState;
 pub(crate) use dev_tab::DevState;
 pub(crate) use dupes_tab::DupeState;
+pub(crate) use history_tab::HistoryState;
 pub(crate) use map_tab::MapState;
 pub(crate) use settings_tab::AutoState;
 
