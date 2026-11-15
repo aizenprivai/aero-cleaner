@@ -17,39 +17,7 @@ cargo build --profile dist
 
 echo ">> Staging files"
 rm -rf "$STAGE"
-install -Dm755 target/dist/aero-cleaner "$STAGE/usr/bin/aero-cleaner"
-install -Dm644 assets/aero-cleaner.svg "$STAGE/usr/share/icons/hicolor/scalable/apps/aero-cleaner.svg"
-for size in 48 128 256; do
-    mkdir -p "$STAGE/usr/share/icons/hicolor/${size}x${size}/apps"
-    rsvg-convert -w $size -h $size assets/aero-cleaner.svg -o "$STAGE/usr/share/icons/hicolor/${size}x${size}/apps/aero-cleaner.png"
-done
-mkdir -p "$STAGE/usr/share/applications"
-cat > "$STAGE/usr/share/applications/aero-cleaner.desktop" <<EOF
-[Desktop Entry]
-Name=AeroClean
-Comment=Clean caches, logs and junk files
-Comment[fr]=Nettoie les caches, journaux et fichiers inutiles
-Exec=/usr/bin/aero-cleaner
-Icon=aero-cleaner
-Terminal=false
-Type=Application
-Categories=System;
-Keywords=clean;cleaner;disk;space;cache;junk;
-StartupWMClass=aero-cleaner
-Actions=QuickClean;DiskMap;
-
-[Desktop Action QuickClean]
-Name=Quick clean
-Name[fr]=Nettoyage rapide
-Exec=/usr/bin/aero-cleaner clean --auto
-
-[Desktop Action DiskMap]
-Name=Disk map
-Name[fr]=Carte du disque
-Exec=/usr/bin/aero-cleaner --tab map
-EOF
-mkdir -p "$STAGE/usr/share/doc/aero-cleaner"
-cp README.md ROADMAP.md "$STAGE/usr/share/doc/aero-cleaner/"
+packaging/linux/stage.sh "$STAGE"
 cat > "$STAGE/usr/share/doc/aero-cleaner/copyright" <<EOF
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: aero-cleaner
@@ -73,12 +41,14 @@ Installed-Size: $INSTALLED_KB
 Depends: libc6 (>= 2.35), libgcc-s1, libgl1, libegl1, libxkbcommon0, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libxcursor1, libxi6, libxrandr2
 Recommends: pkexec | policykit-1, libnotify-bin, zenity, libglib2.0-bin, xdg-utils
 Description: Frutiger Aero style system cleaner
- AeroClean frees disk space on Linux Mint and Ubuntu: caches, trash,
- old logs, APT packages, browser data, developer build folders,
- duplicates and big files, with a disk map, boot time analysis,
- a startup apps manager and weekly automatic cleaning.
+ AeroClean frees disk space: caches, trash, old logs, unused packages,
+ browser data, developer build folders, duplicates, similar photos,
+ leftovers of removed apps and big files, with undo, custom rules,
+ a disk map, disk history and health, boot time analysis, a startup
+ apps manager and weekly automatic cleaning.
  .
- Glossy 2000s "Frutiger Aero" interface with 5 themes, in English and French.
+ Glossy 2000s "Frutiger Aero" interface with 6 themes, in English,
+ French, Spanish, German and Portuguese.
 EOF
 
 echo ">> Building package"

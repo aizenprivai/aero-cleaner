@@ -1,0 +1,25 @@
+# Maintainer: AeroClean
+# Filled in by CI for each release (@VERSION@, @SHA256@). To publish:
+#   makepkg --printsrcinfo > .SRCINFO, then push PKGBUILD and .SRCINFO to the AUR.
+pkgname=aero-cleaner
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="Frutiger Aero style system cleaner"
+arch=('x86_64')
+url="https://github.com/aizenprivai/aero-cleaner"
+license=('MIT')
+depends=('gcc-libs' 'glibc' 'libxkbcommon' 'wayland' 'libglvnd')
+makedepends=('cargo' 'librsvg')
+optdepends=('polkit: clean system items' 'libnotify: notifications' 'zenity: folder picker' 'pacman-contrib: paccache for the package cache')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('@SHA256@')
+
+build() {
+    cd "$pkgname-$pkgver"
+    cargo build --profile dist --locked
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    packaging/linux/stage.sh "$pkgdir"
+}

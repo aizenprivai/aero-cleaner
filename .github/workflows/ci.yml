@@ -70,7 +70,7 @@ jobs:
         run: cargo test
 
   # The jobs below only run for a version tag (e.g. v1.1.0).
-  build-deb:
+  build-linux:
     needs: [lint, test]
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -79,16 +79,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install packaging dependencies
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev librsvg2-bin
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev librsvg2-bin rpm
       - name: Build .deb
         run: |
           git config user.name "AeroClean"
           git config user.email "noreply@github.com"
           packaging/build-deb.sh
+      - name: Build .rpm
+        run: |
+          packaging/build-rpm.sh
+          rpm -qlp target/rpm/*.rpm
+      - name: Build AppImage
+        run: |
+          packaging/build-appimage.sh
+          # Smoke test: the AppImage starts and prints its help.
+          target/appimage/*.AppImage --appimage-extract-and-run --help | head -3
       - uses: actions/upload-artifact@v7
         with:
-          name: deb
-          path: target/deb/*.deb
+          name: linux
+          path: |
+            target/deb/*.deb
+            target/rpm/*.rpm
+            target/appimage/*.AppImage
 
   build-windows:
     needs: [lint, test]
@@ -194,7 +206,7 @@ jobs:
           path: target/macos/*.dmg
 
   publish:
-    needs: [build-deb, build-windows, build-macos]
+    needs: [build-linux, build-windows, build-macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
@@ -209,6 +221,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # AUR recipe for this release, with the source archive's checksum.
+          tag="${{ github.ref_name }}"
+          curl -fsSL -o src.tar.gz "https://github.com/${{ github.repository }}/archive/refs/tags/$tag.tar.gz"
+          sed -e "s/@VERSION@/${tag#v}/" -e "s/@SHA256@/$(sha256sum src.tar.gz | cut -d' ' -f1)/" packaging/aur/PKGBUILD.in > assets/PKGBUILD
           (cd assets && sha256sum * > SHA256SUMS)
           # Notes: this version's section of ROADMAP.md ("**v1.6 – ...**" up to the next blank line).
           tag="${{ github.ref_name }}"; ver="${tag#v}"; short="${ver%.*}"

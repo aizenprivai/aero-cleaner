@@ -1,0 +1,31 @@
+[Desktop Entry]
+Name=AeroClean
+Comment=Clean caches, logs and junk files
+Comment[fr]=Nettoie les caches, journaux et fichiers inutiles
+Comment[es]=Limpia cachés, registros y archivos innecesarios
+Comment[de]=Räumt Caches, Protokolle und überflüssige Dateien auf
+Comment[pt]=Limpa caches, registros e arquivos desnecessários
+Exec=/usr/bin/aero-cleaner
+Icon=aero-cleaner
+Terminal=false
+Type=Application
+Categories=System;Utility;
+Keywords=clean;cleaner;disk;space;cache;junk;
+StartupWMClass=aero-cleaner
+Actions=QuickClean;DiskMap;
+
+[Desktop Action QuickClean]
+Name=Quick clean
+Name[fr]=Nettoyage rapide
+Name[es]=Limpieza rápida
+Name[de]=Schnellreinigung
+Name[pt]=Limpeza rápida
+Exec=/usr/bin/aero-cleaner clean --auto
+
+[Desktop Action DiskMap]
+Name=Disk map
+Name[fr]=Carte du disque
+Name[es]=Mapa del disco
+Name[de]=Datenträgerkarte
+Name[pt]=Mapa do disco
+Exec=/usr/bin/aero-cleaner --tab map

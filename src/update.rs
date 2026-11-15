@@ -199,6 +199,10 @@ pub enum Installer {
     WindowsSetup,
     /// The Mac app (an AeroClean.app bundle).
     MacDmg,
+    /// The .rpm package (Fedora, openSUSE).
+    Rpm,
+    /// An AppImage file, replaced in place.
+    AppImage,
 }
 
 impl Installer {
@@ -207,6 +211,8 @@ impl Installer {
             Installer::Deb => "_amd64.deb",
             Installer::WindowsSetup => "-windows-setup.exe",
             Installer::MacDmg => "-macos.dmg",
+            Installer::Rpm => ".x86_64.rpm",
+            Installer::AppImage => "-x86_64.AppImage",
         }
     }
 }
@@ -221,7 +227,27 @@ pub fn installer() -> Option<Installer> {
     } else if crate::platform::IS_MACOS {
         s.contains(".app/Contents/MacOS/").then_some(Installer::MacDmg)
     } else {
-        (s == "/usr/bin/aero-cleaner" && cfg!(target_arch = "x86_64")).then_some(Installer::Deb)
+        if !cfg!(target_arch = "x86_64") {
+            return None;
+        }
+        if std::env::var_os("APPIMAGE").is_some_and(|a| std::path::Path::new(&a).is_file()) {
+            return Some(Installer::AppImage);
+        }
+        if s != "/usr/bin/aero-cleaner" {
+            return None;
+        }
+        // Which package owns the program? (On Arch it's the AUR's job.)
+        let owns = |tool: &str, args: &[&str]| {
+            crate::platform::find_tool(tool)
+                .is_some_and(|t| std::process::Command::new(t).args(args).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|st| st.success()))
+        };
+        if owns("dpkg", &["-S", "/usr/bin/aero-cleaner"]) {
+            Some(Installer::Deb)
+        } else if owns("rpm", &["-qf", "/usr/bin/aero-cleaner"]) {
+            Some(Installer::Rpm)
+        } else {
+            None
+        }
     }
 }
 
@@ -314,6 +340,33 @@ pub fn install(file: &std::path::Path, kind: Installer) -> Result<String, String
             std::process::Command::new("open").arg(file).spawn().map_err(|e| e.to_string())?;
             Ok("Drag the new AeroClean into Applications to replace this one, then open it again.".into())
         }
+        Installer::Rpm => {
+            let mut cmd = std::process::Command::new("pkexec");
+            if crate::platform::find_tool("dnf").is_some() {
+                cmd.args(["dnf", "install", "-y"]);
+            } else {
+                cmd.args(["zypper", "-n", "install", "--allow-unsigned-rpm"]);
+            }
+            let out = cmd.arg(file).output().map_err(|e| e.to_string())?;
+            match out.status.code() {
+                Some(0) => Ok("Updated. Restart AeroClean to use the new version.".into()),
+                Some(126 | 127) => Err("Password prompt was cancelled".into()),
+                _ => Err(String::from_utf8_lossy(&out.stderr).lines().last().unwrap_or("install failed").to_string()),
+            }
+        }
+        Installer::AppImage => {
+            // Swap the AppImage file: copy next to it, then rename over it.
+            let target = std::path::PathBuf::from(std::env::var_os("APPIMAGE").ok_or("not running as an AppImage")?);
+            let tmp = target.with_extension("new");
+            std::fs::copy(file, &tmp).map_err(|e| e.to_string())?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+            }
+            std::fs::rename(&tmp, &target).map_err(|e| e.to_string())?;
+            Ok("Updated. Restart AeroClean to use the new version.".into())
+        }
     }
 }
 
@@ -340,6 +393,15 @@ mod tests {
         assert_eq!(pick_asset(&r, Installer::Deb).unwrap().size, 7_000_000);
         assert_eq!(pick_asset(&r, Installer::MacDmg).unwrap().name, "AeroClean-9.0.0-macos.dmg");
         assert!(pick_asset(&r, Installer::WindowsSetup).is_none());
+        let more = Release {
+            assets: vec![
+                Asset { name: "aero-cleaner-9.0.0-1.x86_64.rpm".into(), url: String::new(), size: 1 },
+                Asset { name: "AeroClean-9.0.0-x86_64.AppImage".into(), url: String::new(), size: 2 },
+            ],
+            ..r.clone()
+        };
+        assert_eq!(pick_asset(&more, Installer::Rpm).unwrap().size, 1);
+        assert_eq!(pick_asset(&more, Installer::AppImage).unwrap().size, 2);
 
         let sums = "1111111111111111111111111111111111111111111111111111111111111111  aero-cleaner_9.0.0_amd64.deb\nABCDEF0000000000000000000000000000000000000000000000000000000000 *SHA256SUMS\n";
         assert_eq!(expected_hash(sums, "aero-cleaner_9.0.0_amd64.deb").unwrap(), "1".repeat(64));

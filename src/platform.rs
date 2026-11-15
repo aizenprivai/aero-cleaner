@@ -153,6 +153,10 @@ pub fn exe() -> PathBuf {
     if !IS_LINUX {
         return current;
     }
+    // Inside an AppImage, current_exe is a temporary mount: use the AppImage file.
+    if let Some(app) = std::env::var_os("APPIMAGE").map(PathBuf::from).filter(|p| p.is_file()) {
+        return app;
+    }
     let installed = home().join(".local/bin/aero-cleaner");
     if installed.exists() { installed } else { current }
 }
