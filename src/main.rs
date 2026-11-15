@@ -945,16 +945,81 @@ mod ui_tests {
             setup_fonts(&cc.egui_ctx);
             App::new(&cc.egui_ctx)
         });
+        // AERO_SHOT_THEME="Frutiger Aero" picks a theme by name.
+        if let Ok(name) = std::env::var("AERO_SHOT_THEME")
+            && let Some(i) = h.state().themes.iter().position(|t| t.name == name)
+        {
+            h.state_mut().theme = i;
+            let ctx = h.ctx.clone();
+            h.state().apply_visuals(&ctx);
+        }
         let only = std::env::var("AERO_SHOT_TAB").ok();
+        let demo = std::env::var("AERO_SHOT_DEMO").is_ok();
+        let days_ago = |d: u64| Some(std::time::SystemTime::now() - std::time::Duration::from_secs(d * 86_400));
         for tab in ALL_TABS {
             if only.as_deref().is_some_and(|o| o != format!("{tab:?}")) {
                 continue;
             }
             h.state_mut().tab = tab;
             // Give background work (scans, drive health) a moment to finish.
-            for _ in 0..30 {
+            for _ in 0..if demo { 60 } else { 30 } {
                 h.run_steps(1);
                 std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            // Sample folders instead of the real home folder, for README screenshots.
+            if demo && tab == Tab::DiskMap {
+                let home = platform::home();
+                let node = |name: &str, gb: f64, kids: Vec<diskmap::Node>| diskmap::Node {
+                    name: name.into(),
+                    path: home.join(name),
+                    size: (gb * 1e9) as u64,
+                    is_dir: true,
+                    children: kids,
+                };
+                let leaf = |name: &str, gb: f64| node(name, gb, vec![]);
+                let kids = vec![
+                    node("Videos", 38.0, vec![leaf("Vacation 2026", 21.0), leaf("OBS", 12.0), leaf("Clips", 5.0)]),
+                    node("Games", 22.5, vec![leaf("Steam", 18.0), leaf("Emulators", 4.5)]),
+                    node("Pictures", 12.4, vec![leaf("Phone", 8.0), leaf("Screenshots", 4.4)]),
+                    leaf("Downloads", 9.1),
+                    leaf(".cache", 6.3),
+                    leaf("Music", 5.2),
+                    leaf("Documents", 3.8),
+                    leaf(".local", 3.1),
+                    leaf("projects", 2.4),
+                    leaf(".config", 1.2),
+                ];
+                let total = kids.iter().map(|k| k.size).sum();
+                h.state_mut().map =
+                    tabs::MapState { root: Some(diskmap::Node { name: "~".into(), path: home.clone(), size: total, is_dir: true, children: kids }), path: vec![], scanning: None };
+                h.run_steps(2);
+            }
+            if demo && tab == Tab::Developer {
+                let home = platform::home();
+                let item = |kind, p: &str, gb: f64, d| devclean::DevItem { kind, path: home.join(p), size: (gb * 1e9) as u64, project_touched: d };
+                let items = vec![
+                    item(devclean::DevKind::Rust, "projects/game-engine/target", 6.8, days_ago(70)),
+                    devclean::DevItem { kind: devclean::DevKind::Containers, path: "docker system prune -a".into(), size: 4_100_000_000, project_touched: None },
+                    item(devclean::DevKind::Node, "projects/website/node_modules", 1.2, days_ago(45)),
+                    item(devclean::DevKind::Python, "school/ml-homework/.venv", 0.82, days_ago(120)),
+                    item(devclean::DevKind::Node, "projects/portfolio/node_modules", 0.41, days_ago(2)),
+                ];
+                let st = h.state_mut();
+                st.dev.selected = items.iter().map(|i| i.is_stale()).collect();
+                st.dev.items = items;
+                st.dev.waydroid = None;
+                h.run_steps(2);
+            }
+            if demo && tab == Tab::Leftovers {
+                let home = platform::home();
+                let item = |p: &str, mb: f64, d| leftovers::Leftover { path: home.join(p), size: (mb * 1e6) as u64, last_used: d };
+                h.state_mut().leftovers.items = vec![
+                    item(".var/app/com.spotify.Client", 1310.0, days_ago(240)),
+                    item(".config/discord", 640.0, days_ago(300)),
+                    item(".config/Slack", 410.0, days_ago(150)),
+                    item(".local/share/Steam-old", 96.0, days_ago(400)),
+                ];
+                h.run_steps(2);
             }
             // AERO_SHOT_DEMO=1: made-up history, to see a full chart (never saved).
             if tab == Tab::DiskHistory && std::env::var("AERO_SHOT_DEMO").is_ok() {
@@ -962,9 +1027,9 @@ mod ui_tests {
                 let st = h.state_mut();
                 st.disk_hist.samples = (0..60 * 4)
                     .map(|i: u64| {
-                        let wobble = ((i as f64 * 0.7).sin() * 1.5e9) as i64;
-                        let avail = (40e9 - i as f64 * 0.12e9) as i64 + wobble;
-                        diskhistory::Sample { when: now - (60 * 4 - i) * 6 * 3600, total: 91_600_000_000, avail: avail as u64 }
+                        let wobble = ((i as f64 * 0.7).sin() * 3e9) as i64;
+                        let avail = (262e9 - i as f64 * 0.2e9) as i64 + wobble;
+                        diskhistory::Sample { when: now - (60 * 4 - i) * 6 * 3600, total: 512_000_000_000, avail: avail as u64 }
                     })
                     .collect();
                 st.disk_hist.growth = Some((vec![("Videos/OBS".into(), 6_200_000_000), (".cache/yarn".into(), 1_100_000_000), ("Downloads".into(), 420_000_000)], 7));
@@ -981,6 +1046,7 @@ mod ui_tests {
             }
             if tab == Tab::Cleaner && std::env::var("AERO_SHOT_DEMO").is_ok() {
                 let st = h.state_mut();
+                st.disk = Some((512_000_000_000, 214_000_000_000));
                 st.rules = rules::parse(
                     "[Old ISO files]\nfolder = ~/Downloads\npattern = *.iso;*.img\nolder_than_days = 30\nenabled = yes\n[Screen recordings]\nfolder = ~/Videos/OBS\npattern = *.mkv\nolder_than_days = 90\nsubfolders = yes\nenabled = no\n",
                 );
@@ -1018,6 +1084,11 @@ mod ui_tests {
                     },
                 ];
                 h.run_steps(2);
+            }
+            // A neutral disk in the header, not the real one.
+            if demo {
+                h.state_mut().disk = Some((512_000_000_000, 214_000_000_000));
+                h.run_steps(1);
             }
             h.render().unwrap().save(dir.join(format!("{tab:?}.png"))).unwrap();
         }

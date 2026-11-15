@@ -9,40 +9,52 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 
 ## Features
 
-**Clean**
-- **Cleaner:** trash, thumbnails, app and browser caches, developer caches, recent files list, unused Flatpak runtimes, APT cache, unused packages and old kernels, system journal, rotated logs, crash reports and old temp files. System items ask for your password **once** (pkexec).
-- **Review before cleaning:** see exactly what will be removed. AeroClean warns you if a browser is open.
-- **Undo:** cleaned files are kept for 24 hours (3 days, a week or off in Settings). **↩ Undo** in the Cleaner puts the last clean back; Settings lists every kept clean. Nothing is kept when the disk is almost full.
-- **My rules:** your own cleaning rules, like "`*.iso` in `~/Downloads` older than 30 days", with an editor. Share them as a plain text file, or import **BleachBit**'s cleaners for the apps you have installed.
-- **Browsers:** cache, cookies and history, chosen separately, for Brave, Chrome, Chromium, Vivaldi, Edge and Firefox. Firefox history is removed page by page from its database, so your bookmarks stay.
-- **Leftovers:** folders left behind by apps you uninstalled, untouched for 3 months, moved to the Trash with one click (and wrong guesses can be hidden).
-- **Developer:** Rust `target/` folders, `node_modules` and Python virtualenvs, with "last changed" dates (stale projects are pre-selected), plus unused Docker or Podman images, stopped containers and build cache (never volumes). The Cleaner's developer caches cover Cargo, npm, pnpm, Yarn, Go, Maven and Gradle.
-
-**Find space**
-- **Big files**, with warnings for duplicates and files that belong to apps.
-- **Duplicates**, compared by content (BLAKE3). The oldest copy is kept as the original. Optionally also **similar photos**: resized, re-saved or slightly edited copies of the same picture.
-- **Disk map:** a treemap of your home folder that you can click into.
-- **Disk history:** a chart of your free space over time, a forecast ("at this rate your disk is full in about 3 weeks"), the folders that grew the most this week, and the health of your drives (SMART status, SSD wear, temperature), all without a password.
-- Scans read folders on every CPU core: Big files and Disk map are 2–3× faster than in 1.3.
-
-**System**
-- **Boot time:** last boot by stage (firmware, boot menu, kernel, services), boot history, and the slowest services, with on/off toggles on Linux (system-critical services are locked). On Windows it shows what Windows itself reports as slowing down your boots.
-- **Startup apps:** turn login apps on or off. Only your own settings change, never system files.
-- **Automation:** a weekly automatic clean and a low disk space alert (systemd user timers, no password needed).
-
-**Make it yours**
-- 5 themes: Frutiger Aero, Aqua Abyss, Sunset Vista, Aurora Night and Sakura Spring.
-- Folders to keep, journal retention, big file threshold, a remembered selection, and language.
-- **Keyboard:** Tab and the arrow keys move between controls, Space or Enter activates them, Ctrl+1…0 (Cmd on macOS) jumps to a screen.
-- **Update check (optional, off by default):** once a day it asks GitHub for the latest version number and shows a button when there's a new one. Nothing about you is sent.
-- Battery friendly: animations pause when the window isn't active, and there's a "Reduce motion" option.
+### Clean
+- **Cleaner:** caches, thumbnails, the Trash, crash reports, old logs and temp files, unused packages (APT and Flatpak on Linux, Homebrew on macOS, superseded components on Windows) and developer download caches (Cargo, npm, pnpm, Yarn, Go, Maven, Gradle). System items ask for your password **once**.
+- **Review first:** a "Ready to clean?" sheet lists exactly what will go, and warns you if a browser is open.
+- **Undo:** cleaned files are kept for 24 hours (3 days, a week or off). **↩ Undo** puts the last clean back, and Settings lists every kept clean. Nothing is kept when the disk is almost full.
+- **My rules:** your own rules, like "`*.iso` in `~/Downloads` older than 30 days", made in an editor and cleaned with everything else. Share them as a plain text file, or import **BleachBit**'s cleaners for the apps you have installed.
+- **Browsers:** cache, cookies and history, chosen separately, for Brave, Chrome, Chromium, Vivaldi, Edge and Firefox. Firefox history is removed page by page, so your bookmarks stay.
+- **Developer:** Rust `target/` folders, `node_modules` and Python virtualenvs with "last changed" dates (stale projects are pre-selected), plus unused Docker or Podman images, stopped containers and build cache (never volumes).
+- **Leftovers:** folders left behind by apps you uninstalled, untouched for 3 months. Move them to the Trash, or hide a wrong guess.
 
 | | |
 |---|---|
-| ![Disk map](docs/screenshots/disk-map.png) | ![Developer cleanup](docs/screenshots/developer.png) |
-| ![Boot time](docs/screenshots/boot-time.png) | ![French](docs/screenshots/french.png) |
+| ![My rules](docs/screenshots/rules.png) | ![Developer cleanup](docs/screenshots/developer.png) |
+| ![Leftovers](docs/screenshots/leftovers.png) | ![Duplicates and similar photos](docs/screenshots/duplicates.png) |
+
+### Find space
+- **Big files**, with warnings for duplicates and files that belong to apps.
+- **Duplicates**, compared by content. The oldest copy is kept as the original. Optionally also **similar photos**: resized, re-saved or slightly edited copies of the same picture.
+- **Disk map:** a treemap of your home folder that you can click into.
+- **Disk history:** your free space over time, a forecast ("at this rate your disk is full in about 9 months"), the folders that grew the most this week, and your drives' health (SMART status, SSD wear, temperature), all without a password.
+- Scans use every CPU core: Big files and Disk map are 2–3× faster than in 1.3.
+
+| | |
+|---|---|
+| ![Disk history](docs/screenshots/disk-history.png) | ![Disk map](docs/screenshots/disk-map.png) |
+
+### System
+- **Boot time:** the last boot by stage, boot history and the slowest services. On Linux you can turn services off (system-critical ones are locked); on Windows it shows what Windows reports as slowing your boots.
+- **Startup apps:** turn login apps on or off. Only your own settings change, never system files.
+- **Automation:** a weekly automatic clean and a low disk space alert that includes the forecast. No password needed.
+- **Cleaning reports:** export your cleaning history as CSV or Markdown.
+
+### Make it yours
+- **5 themes:** Frutiger Aero, Aqua Abyss, Sunset Vista, Aurora Night and Sakura Spring.
+- **English and French**, chosen automatically from your system or in Settings.
+- **Settings:** folders to keep, how long to keep cleaned files, journal retention, big file size, a remembered selection.
+- **Keyboard:** Tab and the arrow keys move between controls, Space or Enter activates them, Ctrl+1…0 (Cmd on macOS) jumps to a screen.
+- **Update check** (optional, off by default): once a day it asks GitHub for the latest version number. Nothing about you is sent.
+- **Battery friendly:** animations pause when the window isn't active, and there's a "Reduce motion" option.
+
+| | |
+|---|---|
+| ![Boot time](docs/screenshots/boot-time.png) | ![En français](docs/screenshots/french.png) |
 
 ![Themes](docs/screenshots/themes.png)
+
+<sub>Screenshots use sample folders and files.</sub>
 
 ## Linux, Windows and macOS
 
