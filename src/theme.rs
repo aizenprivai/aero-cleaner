@@ -685,6 +685,10 @@ pub fn parse(text: &str, known: &[(String, toml::Table)], file: Option<PathBuf>,
 
 /// The folder for your own themes.
 pub fn user_dir() -> PathBuf {
+    // Tests never touch your real themes.
+    if cfg!(test) {
+        return std::env::temp_dir().join(format!("aero-test-themes-{}", std::process::id()));
+    }
     crate::platform::config_dir().join("themes")
 }
 

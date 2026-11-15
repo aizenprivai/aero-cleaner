@@ -153,6 +153,14 @@ speed = 0.7
 - **Themes → 📥 Import**, dragging the file onto AeroClean's window, or `aero-cleaner theme apply file.aerotheme` adds a shared theme. Pictures are unpacked next to it in your themes folder. Files are checked first: only plain picture files, nothing that runs, nothing written outside the themes folder.
 - **Themes → 🌐 Gallery** lists themes shared by the community. To share yours there, see the gallery's README: export your theme and open a pull request.
 
+## Themes from a picture
+
+**Themes → 📥 Import → 🖼 Themes from a picture** opens a wallpaper or photo (`.png`, `.jpg` or `.webp`). AeroClean finds its main colors and how they run from top to bottom, then makes three themes: **Light**, **Dark** and **Vivid**. Text colors are adjusted until they pass the readability check above.
+
+Tick **Use the picture as the background** to put the picture itself behind the frosted glass (dimmed in the dark theme). Saving copies a smaller JPEG of it into your themes folder, next to the theme, so the theme keeps working if you move the original.
+
+The themes are ordinary files: open them in the Theme Studio to change anything.
+
 ## Day and night
 
 **Themes → 🌗 Day & night** picks a day theme and a night theme, any of the built-in ones or yours. AeroClean switches between them:

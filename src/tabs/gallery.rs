@@ -134,34 +134,48 @@ impl App {
         let p = ui.painter().clone();
         let bar = Rect::from_min_size(area.min, vec2(area.width(), 40.0));
         let editing = self.studio.is_some();
-        let title = if self.gallery.open { "Theme gallery" } else { "Your themes" };
+        let sub = self.gallery.open || self.picture.open;
+        let title = if self.gallery.open {
+            "Theme gallery"
+        } else if self.picture.open {
+            "Themes from a picture"
+        } else {
+            "Your themes"
+        };
         embossed(&p, pos2(bar.min.x + 6.0, bar.center().y), Align2::LEFT_CENTER, title, bold(17.0), th.text);
         let import_r = Rect::from_min_size(pos2(bar.max.x - 132.0, bar.min.y + 4.0), vec2(132.0, 32.0));
         let gallery_r = Rect::from_min_size(pos2(import_r.min.x - 150.0, bar.min.y + 4.0), vec2(142.0, 32.0));
-        let (glabel, gtip) =
-            if self.gallery.open { ("⬅ Your themes", "Back to your themes") } else { ("🌐 Gallery", "Themes shared by the community (downloads only when you open it)") };
+        let (glabel, gtip) = if sub { ("⬅ Your themes", "Back to your themes") } else { ("🌐 Gallery", "Themes shared by the community (downloads only when you open it)") };
         let toggle = aero::aqua_button(ui, gallery_r, glabel, th.accent, !editing).on_hover_text(crate::i18n::tr(gtip)).clicked();
         let daynight_r = Rect::from_min_size(pos2(gallery_r.min.x - 166.0, bar.min.y + 4.0), vec2(158.0, 32.0));
         let mut daynight = false;
-        if !self.gallery.open {
+        if !sub {
             // Lit up while its settings are showing.
             let color = if self.daynight_open { th.go } else { th.accent };
             daynight = aero::aqua_button(ui, daynight_r, "🌗 Day & night", color, true).on_hover_text(crate::i18n::tr("Use one theme by day and another at night")).clicked();
         }
-        let import = aero::aqua_button(ui, import_r, "📥 Import", th.accent, !editing)
-            .on_hover_text(crate::i18n::tr("Add a theme file someone shared (or drag it onto the window)"))
-            .clicked();
+        // Import: a shared theme file, or a new theme from a picture.
+        let import_resp =
+            aero::aqua_button(ui, import_r, "📥 Import", th.accent, !editing).on_hover_text(crate::i18n::tr("Add a shared theme file, or make themes from a picture"));
+        let (mut import, mut from_picture) = (false, false);
+        egui::Popup::menu(&import_resp).show(|ui| {
+            ui.set_min_width(230.0);
+            import = ui.button(crate::i18n::tr("📄 A theme file someone shared...")).clicked();
+            from_picture = ui.button(crate::i18n::tr("🖼 Themes from a picture...")).clicked();
+        });
         let msg = if !self.gallery.error.is_empty() && self.gallery.open {
             crate::i18n::tr(format!("Couldn't open the gallery: {}", self.gallery.error))
         } else {
             crate::i18n::tr(&self.gallery.msg)
         };
         let title_w = p.layout_no_wrap(crate::i18n::tr(title), bold(17.0), th.text).size().x;
-        let room = if self.gallery.open { gallery_r.min.x } else { daynight_r.min.x } - bar.min.x - title_w - 30.0;
+        let room = if sub { gallery_r.min.x } else { daynight_r.min.x } - bar.min.x - title_w - 30.0;
         if !msg.is_empty() && room > 40.0 {
             aero::fit_text(&p, pos2(bar.min.x + title_w + 22.0, bar.center().y), Align2::LEFT_CENTER, &msg, regular(12.5), th.soft, room);
         }
-        if toggle {
+        if toggle && self.picture.open {
+            self.picture.open = false;
+        } else if toggle {
             self.gallery.open = !self.gallery.open;
             self.gallery.msg.clear();
             if !self.gallery.open {
@@ -172,6 +186,9 @@ impl App {
         }
         if daynight {
             self.daynight_open = !self.daynight_open;
+        }
+        if from_picture {
+            self.pick_picture();
         }
         if import {
             let tx = self.notifier();

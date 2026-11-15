@@ -28,6 +28,7 @@ mod similar;
 mod tabs;
 mod theme;
 mod theme_edit;
+mod theme_picture;
 mod theme_share;
 mod tools;
 mod update;
@@ -84,6 +85,9 @@ enum Msg {
     GalleryLoaded(Result<Vec<(theme_share::GalleryEntry, Option<String>)>, String>),
     GalleryInstall(Result<String, String>),
     ImportTheme(Option<String>),
+    /// A picture to make themes from, and what's in it.
+    PicturePicked(Option<String>),
+    PictureAnalyzed(Result<theme_picture::Analysis, String>),
     /// The "Check now" answer.
     Release(Result<update::Release, String>),
     UpdateProgress(u64, u64),
@@ -187,6 +191,7 @@ struct App {
     /// The Theme Studio, while it's open.
     studio: Option<tabs::Studio>,
     gallery: tabs::GalleryState,
+    picture: tabs::PictureState,
     /// Theme files that couldn't be read, and why.
     theme_problems: Vec<(std::path::PathBuf, String)>,
     /// The themes folder's files and dates, to reload when one changes.
@@ -250,6 +255,7 @@ impl App {
             anim_t: 0.0,
             studio: None,
             gallery: Default::default(),
+            picture: Default::default(),
             theme_problems: theme::load_library(&theme::user_dir()).problems,
             theme_files: theme_folder_state(),
             theme_check_at: 0.0,
@@ -562,6 +568,8 @@ impl App {
                 Msg::GalleryLoaded(r) => self.gallery_loaded(r),
                 Msg::GalleryInstall(r) => self.gallery_install(r),
                 Msg::ImportTheme(path) => self.import_theme_file(path),
+                Msg::PicturePicked(path) => self.picture_picked(path),
+                Msg::PictureAnalyzed(r) => self.picture_analyzed(r),
                 Msg::StudioPicture(path) => {
                     let ctx = self.ctx.clone();
                     self.studio_picture(&ctx, path);
@@ -1550,6 +1558,57 @@ mod ui_tests {
         assert_eq!(h.state().settings.auto_theme, daynight::Mode::Off);
     }
 
+    /// Themes from a picture: three are made, one is saved and used.
+    #[test]
+    fn themes_from_a_picture() {
+        use egui_kittest::kittest::Queryable;
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let dir = std::env::temp_dir().join(format!("aero-picture-ui-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pic = dir.join("lavender_field.png");
+        image::RgbImage::from_fn(200, 120, |_, y| if y < 70 { image::Rgb([120, 170, 240]) } else { image::Rgb([150, 110, 210]) }).save(&pic).unwrap();
+        let mut h = harness();
+        h.state_mut().tab = Tab::Themes;
+        h.state_mut().settings.reduce_motion = true;
+        h.run_steps(2);
+        h.state_mut().picture_picked(Some(pic.to_string_lossy().into_owned()));
+        let mut found = false;
+        for _ in 0..200 {
+            h.step();
+            if h.state().picture.analysis.is_some() {
+                found = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(found, "the picture was analyzed");
+        h.run_steps(2);
+        assert_eq!(h.state().picture.made.len(), 3);
+        let names: Vec<String> = h.state().picture.made.iter().map(|(_, _, t)| t.name.clone()).collect();
+        assert_eq!(names, ["Lavender field Light", "Lavender field Dark", "Lavender field Vivid"]);
+        h.get_by_label("Use the picture as the background (frosted)").click();
+        h.run_steps(2);
+        assert!(h.state().picture.use_picture);
+        let before = h.state().themes.len();
+        h.get_all_by_label("Use it").nth(1).unwrap().click();
+        h.run_steps(2);
+        assert_eq!(h.state().themes.len(), before + 1, "saved");
+        assert_eq!(h.state().themes[h.state().theme].name, "Lavender field Dark", "and used");
+        let saved = h.state().themes[h.state().theme].clone();
+        let file = saved.file.clone().unwrap();
+        assert!(file.starts_with(theme::user_dir()));
+        assert!(theme::user_dir().join("lavender-field-dark.jpg").exists(), "with its own copy of the picture");
+        assert!(saved.scene.iter().any(|l| matches!(&l.kind, theme::Layer::Picture { path, .. } if path.exists())));
+        h.get_by_label("Saved");
+        // Back to the themes.
+        h.get_by_label("Your themes").click();
+        h.run_steps(2);
+        assert!(!h.state().picture.open);
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(theme::user_dir());
+    }
+
     /// The Theme Studio, used like a person would: open, randomize, undo, close.
     #[test]
     fn theme_studio_edits_live_and_closes_cleanly() {
@@ -1635,6 +1694,26 @@ mod ui_tests {
             }
             h.render().unwrap().save(dir_out(&dir_shots(), "gallery.png")).unwrap();
             h.state_mut().gallery.open = false;
+        }
+        // Themes from a picture (AERO_SHOT_PICTURE: any picture file).
+        if let Ok(pic) = std::env::var("AERO_SHOT_PICTURE") {
+            let a = theme_picture::analyze(std::path::Path::new(&pic)).unwrap();
+            let st = h.state_mut();
+            st.tab = Tab::Themes;
+            st.picture.open = true;
+            st.picture_analyzed(Ok(a));
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("picture.png")).unwrap();
+            let st = h.state_mut();
+            st.picture.use_picture = true;
+            st.picture_analyzed(Ok(theme_picture::analyze(std::path::Path::new(&pic)).unwrap()));
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("picture-frosted.png")).unwrap();
+            h.state_mut().picture = Default::default();
         }
         // Day and night: the panel, and halfway through a crossfade.
         {

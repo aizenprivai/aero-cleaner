@@ -1462,3 +1462,45 @@ The sun doesn't rise today.
 = Die Sonne geht heute nicht auf.
 ⚠ There's no theme called {} any more: pick another.
 = ⚠ Es gibt kein Design namens {} mehr: wähle ein anderes.
+
+# ----- Themes from a picture -----
+Themes from a picture
+= Designs aus einem Bild
+Add a shared theme file, or make themes from a picture
+= Eine geteilte Design-Datei hinzufügen oder Designs aus einem Bild erstellen
+📄 A theme file someone shared...
+= 📄 Eine geteilte Design-Datei...
+🖼 Themes from a picture...
+= 🖼 Designs aus einem Bild...
+Choose a picture (.png, .jpg or .webp)
+= Wähle ein Bild (.png, .jpg oder .webp)
+Looking at your picture...
+= Dein Bild wird angesehen...
+Couldn't use this picture: {}
+= Dieses Bild kann nicht verwendet werden: {}
+🖼 Another picture
+= 🖼 Anderes Bild
+Its main colors
+= Seine Hauptfarben
+{}% of the picture
+= {} % des Bildes
+Use the picture as the background (frosted)
+= Das Bild als Hintergrund verwenden (milchig)
+💾 Save
+= 💾 Speichern
+✔ Use it
+= ✔ Verwenden
+Add it to your themes
+= Zu deinen Designs hinzufügen
+Save it and switch to it
+= Speichern und dazu wechseln
+Text colors are adjusted so they stay easy to read.
+= Die Textfarben werden angepasst, damit sie gut lesbar bleiben.
+Couldn't save the theme: {}
+= Das Design konnte nicht gespeichert werden: {}
+Light frosted glass, the picture's colors
+= Helles Milchglas, die Farben des Bildes
+Smoked glass, the picture by night
+= Rauchglas, das Bild bei Nacht
+The picture's colors, turned up
+= Die Farben des Bildes, kräftiger

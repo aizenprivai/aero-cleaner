@@ -172,7 +172,7 @@
 - Pick a day theme and a night theme, then switch by: your **system's dark mode**, a **schedule**, or **sunrise and sunset** (worked out from your time zone, no location or internet needed).
 - A smooth **crossfade**: colors blend and layers fade between the two themes over a couple of seconds.
 
-### Milestone 6 – Theme from a picture
+### ✅ Milestone 6 – Theme from a picture
 - Choose a wallpaper or photo; AeroClean finds its main colors and builds **3 matching themes** (light, dark, vivid) with readable text guaranteed by the contrast guard.
 - Optionally use the picture itself as a frosted background layer.
 
