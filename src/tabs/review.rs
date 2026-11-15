@@ -51,7 +51,7 @@ impl App {
                         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                             for (kind, ls) in lines {
                                 let cat = CATEGORIES.iter().find(|c| c.kind == *kind).unwrap();
-                                let size = self.items.iter().zip(CATEGORIES).find(|(_, c)| c.kind == *kind).and_then(|(it, _)| it.result.as_ref()?.size);
+                                let size = self.items.iter().zip(CATEGORIES.iter()).find(|(_, c)| c.kind == *kind).and_then(|(it, _)| it.result.as_ref()?.size);
                                 let title = match size {
                                     Some(sz) => format!("{} {}  ·  {}", cat.icon, crate::i18n::t(cat.name), format_bytes(sz)),
                                     None => format!("{} {}", cat.icon, crate::i18n::t(cat.name)),

@@ -1102,3 +1102,45 @@ yesterday
 = il y a {} mois
 {} years ago
 = il y a {} ans
+
+# ----- Linux distributions -----
+DNF package cache
+= Cache des paquets DNF
+Downloaded .rpm packages DNF keeps after installing
+= Paquets .rpm téléchargés que DNF garde après l'installation
+Unused packages
+= Paquets inutiles
+Packages nothing needs anymore (dnf autoremove)
+= Paquets dont plus rien n'a besoin (dnf autoremove)
+Pacman package cache
+= Cache des paquets pacman
+Old package versions, keeping the 2 newest of each
+= Anciennes versions des paquets, en gardant les 2 plus récentes de chacun
+Orphan packages
+= Paquets orphelins
+Installed as dependencies, needed by nothing anymore (pacman -Qdt)
+= Installés comme dépendances, plus nécessaires à rien (pacman -Qdt)
+Zypper package cache
+= Cache des paquets zypper
+Downloaded .rpm packages zypper keeps
+= Paquets .rpm téléchargés que zypper garde
+Packages nothing needs anymore (zypper)
+= Paquets dont plus rien n'a besoin (zypper)
+Old Snap revisions
+= Anciennes révisions Snap
+Older versions of snaps that Snap keeps (2 or 3 of each)
+= Anciennes versions des snaps que Snap garde (2 ou 3 de chacun)
+Deletes downloaded packages in {}
+= Supprime les paquets téléchargés dans {}
+Runs: paccache -rk2 (or pacman -Sc without paccache)
+= Exécute : paccache -rk2 (ou pacman -Sc sans paccache)
+>> Cleaning DNF cache
+= >> Nettoyage du cache DNF
+>> Cleaning pacman cache
+= >> Nettoyage du cache pacman
+>> Cleaning zypper cache
+= >> Nettoyage du cache zypper
+>> Removing orphan packages
+= >> Suppression des paquets orphelins
+>> Removing old snap revisions
+= >> Suppression des anciennes révisions Snap

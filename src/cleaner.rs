@@ -35,8 +35,12 @@ pub enum Kind {
     /// crash reports in /Library/Logs/DiagnosticReports.
     #[cfg_attr(target_os = "linux", allow(dead_code))]
     SystemCrash,
+    /// Linux: old (disabled) Snap revisions.
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    Snap,
 }
 
+#[derive(Clone)]
 pub struct Category {
     pub kind: Kind,
     pub name: &'static str,
@@ -47,7 +51,7 @@ pub struct Category {
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
-pub const CATEGORIES: &[Category] = &[
+const BASE: &[Category] = &[
     Category { kind: Kind::Trash, name: "Trash", desc: "Files you already moved to the trash", icon: "🗑", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
     Category { kind: Kind::AppCache, name: "App & browser cache", desc: "~/.cache and Flatpak app caches (close your browser first)", icon: "🌐", root: false, default_on: true },
@@ -79,7 +83,7 @@ pub const CATEGORIES: &[Category] = &[
 // On macOS, "AptCache" and "Autoremove" are Homebrew's download cache and
 // unused dependencies; both are the user's own, so they need no password.
 #[cfg(target_os = "macos")]
-pub const CATEGORIES: &[Category] = &[
+const BASE: &[Category] = &[
     Category { kind: Kind::Trash, name: "Trash", desc: "Files you already moved to the Trash (emptied through Finder)", icon: "🗑", root: false, default_on: true },
     Category { kind: Kind::AppCache, name: "App & browser cache", desc: "~/Library/Caches (close your browser first)", icon: "🌐", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Quick Look thumbnails", desc: "File previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
@@ -105,7 +109,7 @@ pub const CATEGORIES: &[Category] = &[
 ];
 
 #[cfg(windows)]
-pub const CATEGORIES: &[Category] = &[
+const BASE: &[Category] = &[
     Category { kind: Kind::Trash, name: "Recycle Bin", desc: "Files you already deleted to the Recycle Bin", icon: "🗑", root: false, default_on: true },
     Category { kind: Kind::AppCache, name: "Temporary files", desc: "Your temp folder and graphics shader caches", icon: "⏳", root: false, default_on: true },
     Category { kind: Kind::Thumbnails, name: "Thumbnail cache", desc: "Explorer image previews, rebuilt automatically when needed", icon: "🖼", root: false, default_on: true },
@@ -133,6 +137,44 @@ pub const CATEGORIES: &[Category] = &[
         default_on: false,
     },
 ];
+
+/// This system's categories, built once: on Linux the package cache and
+/// unused packages follow the distro's package manager, and old Snap
+/// revisions appear where Snap is installed.
+pub static CATEGORIES: std::sync::LazyLock<Vec<Category>> = std::sync::LazyLock::new(platform_categories);
+
+#[cfg(any(windows, target_os = "macos"))]
+fn platform_categories() -> Vec<Category> {
+    BASE.to_vec()
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+fn platform_categories() -> Vec<Category> {
+    let labels = crate::distro::labels(crate::distro::detect());
+    let mut out = Vec::new();
+    for c in BASE {
+        match c.kind {
+            Kind::AptCache | Kind::Autoremove => {
+                // An unknown package manager: leave these out rather than guess.
+                let Some(l) = labels else { continue };
+                let (name, desc) = l[usize::from(c.kind == Kind::Autoremove)];
+                out.push(Category { name, desc, ..c.clone() });
+                if c.kind == Kind::Autoremove && crate::distro::has_snap() {
+                    out.push(Category {
+                        kind: Kind::Snap,
+                        name: "Old Snap revisions",
+                        desc: "Older versions of snaps that Snap keeps (2 or 3 of each)",
+                        icon: "📦",
+                        root: true,
+                        default_on: true,
+                    });
+                }
+            }
+            _ => out.push(c.clone()),
+        }
+    }
+    out
+}
 
 pub struct ScanResult {
     /// Bytes that cleaning would free, if it can be measured.
@@ -372,13 +414,21 @@ pub fn preview(kind: Kind, exclusions: &[PathBuf], journal_days: u32) -> Vec<Str
         Kind::VarTmp => vec!["Deletes files in /private/var/tmp untouched for 7+ days".into()],
         #[cfg(target_os = "linux")]
         Kind::Autoremove => {
-            let out = run_c("apt-get", &["-s", "autoremove", "--purge"]);
-            let pkgs: Vec<&str> = out.lines().filter_map(|l| l.strip_prefix("Purg ").or_else(|| l.strip_prefix("Remv "))).filter_map(|l| l.split_whitespace().next()).collect();
+            let (pkgs, _) = crate::distro::unused_packages(crate::distro::detect());
             if pkgs.is_empty() { vec!["No packages to remove".into()] } else { vec![format!("Removes: {}", pkgs.join(", "))] }
+        }
+        #[cfg(target_os = "linux")]
+        Kind::Snap => {
+            let revs = crate::distro::snap_old_revisions();
+            if revs.is_empty() {
+                vec!["No packages to remove".into()]
+            } else {
+                vec![format!("Removes: {}", revs.iter().map(|(n, r)| format!("{n} ({r})")).collect::<Vec<_>>().join(", "))]
+            }
         }
         Kind::Flatpak => vec!["Runs: flatpak uninstall --unused".into()],
         #[cfg(target_os = "linux")]
-        Kind::AptCache => vec!["Deletes downloaded .deb files in /var/cache/apt/archives".into()],
+        Kind::AptCache => vec![crate::distro::cache_preview(crate::distro::detect())],
         Kind::Journal => vec![format!("Deletes system log entries older than {journal_days} days")],
         #[cfg(target_os = "linux")]
         Kind::OldLogs => vec!["Deletes *.gz, *.old and *.1-style files in /var/log".into()],
@@ -532,18 +582,33 @@ pub fn scan(kind: Kind, exclusions: &[PathBuf]) -> ScanResult {
             ScanResult { size: None, note: "size unknown until removed".into(), available: true }
         }
         #[cfg(target_os = "linux")]
-        Kind::AptCache => ok(path_size(Path::new("/var/cache/apt/archives"), &[], &|p, _| p.extension().is_some_and(|e| e == "deb"))),
+        Kind::AptCache => {
+            let pkg = crate::distro::detect();
+            // paccache keeps the 2 newest versions; ask it what it would save.
+            if pkg == crate::distro::Pkg::Pacman
+                && let Some(saved) = crate::distro::paccache_saving()
+            {
+                return ok(saved);
+            }
+            match crate::distro::cache_dir(pkg) {
+                Some((dir, ends)) => ok(path_size(Path::new(dir), &[], &|p, _| {
+                    let n = p.to_string_lossy();
+                    ends.iter().any(|e| n.ends_with(e))
+                })),
+                None => ScanResult { size: None, note: String::new(), available: false },
+            }
+        }
         #[cfg(target_os = "linux")]
         Kind::Autoremove => {
-            let out = run_c("apt-get", &["-s", "autoremove", "--purge"]);
-            let count = out.lines().filter(|l| l.starts_with("Purg ") || l.starts_with("Remv ")).count();
-            let size = out
-                .lines()
-                .find(|l| l.contains("disk space will be freed"))
-                .and_then(|l| l.strip_prefix("After this operation, "))
-                .and_then(|l| l.split(" disk space").next())
-                .and_then(parse_size);
-            ScanResult { size: size.or(Some(0)), note: format!("{count} package{}", if count == 1 { "" } else { "s" }), available: true }
+            let (pkgs, size) = crate::distro::unused_packages(crate::distro::detect());
+            let count = pkgs.len();
+            let size = size.or(if count == 0 { Some(0) } else { None });
+            ScanResult { size, note: format!("{count} package{}", if count == 1 { "" } else { "s" }), available: true }
+        }
+        #[cfg(target_os = "linux")]
+        Kind::Snap => {
+            let revs = crate::distro::snap_old_revisions();
+            ok(crate::distro::snap_old_size(&revs))
         }
         Kind::Journal => {
             // "Archived and active journals take up 1.2G in the file system."
@@ -671,8 +736,9 @@ fn macos_root_script(kind: Kind) -> Option<String> {
 #[cfg(not(target_os = "macos"))]
 fn root_script(kind: Kind, journal_days: u32) -> Option<String> {
     let s = match kind {
-        Kind::AptCache => "echo '>> Cleaning APT cache'; apt-get clean",
-        Kind::Autoremove => "echo '>> Removing unused packages'; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y",
+        Kind::AptCache => return crate::distro::cache_script(crate::distro::detect()).map(String::from),
+        Kind::Autoremove => return crate::distro::unused_script(crate::distro::detect()).map(String::from),
+        Kind::Snap => crate::distro::SNAP_SCRIPT,
         Kind::Journal => return Some(format!("echo '>> Shrinking system journal'; journalctl --vacuum-time={}d", journal_days.max(1))),
         Kind::OldLogs => {
             "echo '>> Deleting rotated logs'; find /var/log -type f -not -path '/var/log/journal/*' \\( -name '*.gz' -o -name '*.old' -o -regex '.*\\.[0-9]+' \\) -print -delete | wc -l | sed 's/$/ files removed/'"
@@ -949,7 +1015,7 @@ mod tests {
     #[test]
     #[cfg(unix)] // uses Linux tools or Unix-only file features
     fn root_scripts_are_valid_shell() {
-        for c in CATEGORIES {
+        for c in CATEGORIES.iter() {
             if let Some(s) = root_script(c.kind, 3) {
                 let ok = Command::new("sh").args(["-n", "-c", &s]).status().unwrap().success();
                 assert!(ok, "bad shell for {:?}", c.kind);

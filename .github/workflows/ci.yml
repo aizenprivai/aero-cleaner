@@ -41,6 +41,34 @@ jobs:
         # Debug build on purpose: integer overflow checks are on.
         run: cargo test
 
+  # The same tests on other Linux distributions (package manager detection,
+  # their cleaning scripts), inside each distro's own container.
+  distros:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: fedora
+            image: fedora:latest
+            deps: dnf -y install gcc pkgconf-pkg-config libxkbcommon-devel wayland-devel mesa-libGL-devel findutils which curl git
+          - name: arch
+            image: archlinux:latest
+            deps: pacman -Syu --noconfirm base-devel libxkbcommon wayland mesa findutils which curl git
+          - name: opensuse
+            image: opensuse/tumbleweed:latest
+            deps: zypper -n install gcc pkg-config libxkbcommon-devel wayland-devel Mesa-libGL-devel findutils which curl git tar gzip
+    name: test (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install build dependencies
+        run: ${{ matrix.deps }}
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test
+
   # The jobs below only run for a version tag (e.g. v1.1.0).
   build-deb:
     needs: [lint, test]

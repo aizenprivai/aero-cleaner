@@ -10,6 +10,7 @@ mod cleaner;
 mod devclean;
 mod diskhistory;
 mod diskmap;
+mod distro;
 mod dupes;
 mod health;
 mod holding;
@@ -261,7 +262,7 @@ impl App {
 
     /// Saves the current ticks so they come back next time.
     fn remember_selection(&mut self) {
-        let sel = self.items.iter().zip(CATEGORIES).filter(|(it, _)| it.on).map(|(_, c)| format!("{:?}", c.kind)).collect();
+        let sel = self.items.iter().zip(CATEGORIES.iter()).filter(|(it, _)| it.on).map(|(_, c)| format!("{:?}", c.kind)).collect();
         self.settings.selected = Some(sel);
         self.settings.save();
     }
@@ -301,7 +302,7 @@ impl App {
     }
 
     fn selected(&self) -> Vec<Kind> {
-        self.items.iter().zip(CATEGORIES).filter(|(it, _)| it.on && it.result.as_ref().is_some_and(|r| r.available)).map(|(_, c)| c.kind).collect()
+        self.items.iter().zip(CATEGORIES.iter()).filter(|(it, _)| it.on && it.result.as_ref().is_some_and(|r| r.available)).map(|(_, c)| c.kind).collect()
     }
 
     /// Ticked rules that found something.
@@ -320,7 +321,7 @@ impl App {
     }
 
     fn total_of(&self, kinds: &[Kind]) -> u64 {
-        self.items.iter().zip(CATEGORIES).filter(|(_, c)| kinds.contains(&c.kind)).filter_map(|(it, _)| it.result.as_ref().and_then(|r| r.size)).sum()
+        self.items.iter().zip(CATEGORIES.iter()).filter(|(_, c)| kinds.contains(&c.kind)).filter_map(|(it, _)| it.result.as_ref().and_then(|r| r.size)).sum()
     }
 
     fn notifier(&self) -> Notifier {

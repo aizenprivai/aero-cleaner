@@ -257,6 +257,10 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")] // needs systemd-analyze
     fn systemd_accepts_the_units() {
+        // Minimal containers (CI on other distros) may not ship systemd-analyze.
+        if crate::platform::find_tool("systemd-analyze").is_none() {
+            return;
+        }
         let dir = std::env::temp_dir().join(format!("aero-units-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         for job in [&AUTO_CLEAN, &DISK_CHECK] {
