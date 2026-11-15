@@ -16,17 +16,21 @@ use std::time::SystemTime;
 pub struct DupeFile {
     pub path: PathBuf,
     pub modified: Option<SystemTime>,
+    pub size: u64,
 }
 
 pub struct DupeGroup {
-    pub size: u64,
-    /// Oldest first, so the first one is the natural "original" to keep.
+    /// The first file is the one to keep: the oldest copy for exact
+    /// duplicates, the biggest file for similar photos.
     pub files: Vec<DupeFile>,
+    /// Similar photos (see `similar.rs`) rather than byte-identical files.
+    pub similar: bool,
 }
 
 impl DupeGroup {
+    /// Space freed by keeping only the first file.
     pub fn wasted(&self) -> u64 {
-        self.size * (self.files.len().saturating_sub(1)) as u64
+        self.files.iter().skip(1).map(|f| f.size).sum()
     }
 }
 
@@ -115,11 +119,11 @@ pub fn find_duplicates(root: &Path, min_size: u64, include_hidden: bool, progres
                         .into_iter()
                         .map(|path| {
                             let modified = path.metadata().and_then(|m| m.modified()).ok();
-                            DupeFile { path, modified }
+                            DupeFile { path, modified, size }
                         })
                         .collect();
                     files.sort_by_key(|f| f.modified);
-                    out.push(DupeGroup { size, files });
+                    out.push(DupeGroup { files, similar: false });
                 }
             }
             out

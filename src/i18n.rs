@@ -645,6 +645,26 @@ const FR: &[(&str, &str)] = &[
     ("media errors reported", "erreurs de support signalées"),
     ("drive warning: {}", "alerte du disque : {}"),
     ("Windows reports: {}", "Windows signale : {}"),
+    // ----- Similar photos -----
+    (
+        "Files with exactly the same content, 1 MB or bigger, and optionally photos that look the same. The copy to keep is marked.",
+        "Fichiers au contenu identique, de 1 Mo ou plus, et si vous voulez les photos qui se ressemblent. La copie à garder est indiquée.",
+    ),
+    ("Also find similar photos", "Chercher aussi les photos similaires"),
+    (
+        "Resized, re-saved or slightly edited copies of the same picture. The first search takes longer; later ones are quick.",
+        "Copies redimensionnées, réenregistrées ou légèrement retouchées d'une même image. La première recherche est plus longue, les suivantes sont rapides.",
+    ),
+    ("SIMILAR PHOTOS", "PHOTOS SIMILAIRES"),
+    ("{} similar photos  ·  keeping only the biggest frees {}", "{} photos similaires  ·  garder seulement la plus grande libère {}"),
+    ("Keep biggest, trash rest", "Garder la plus grande, jeter le reste"),
+    (
+        "Keeps the biggest file (usually the best quality) and moves the others to the Trash",
+        "Garde le plus gros fichier (en général la meilleure qualité) et met les autres à la Corbeille",
+    ),
+    ("biggest", "la plus grande"),
+    ("Looking at photos... {} of {}", "Analyse des photos... {} sur {}"),
+    ("Comparing photos...", "Comparaison des photos..."),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

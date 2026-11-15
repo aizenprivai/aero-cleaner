@@ -10,6 +10,8 @@ pub(crate) struct DupeState {
     pub scanning: Option<String>,
     pub done: bool,
     pub include_hidden: bool,
+    /// Also look for similar photos (resized or re-saved copies).
+    pub include_similar: bool,
     pub msg: String,
 }
 
@@ -19,10 +21,15 @@ impl App {
         self.dupes.msg.clear();
         let tx = self.notifier();
         let hidden = self.dupes.include_hidden;
+        let similar = self.dupes.include_similar;
         let home = crate::platform::home();
         std::thread::spawn(move || {
             let ptx = tx.clone();
-            let groups = dupes::find_duplicates(&home, 1_000_000, hidden, &move |s| ptx.send(Msg::DupeProgress(s)));
+            let progress = move |s| ptx.send(Msg::DupeProgress(s));
+            let mut groups = dupes::find_duplicates(&home, 1_000_000, hidden, &progress);
+            if similar {
+                groups.extend(crate::similar::find_similar(&home, hidden, &progress));
+            }
             tx.send(Msg::DupeDone(groups));
         });
     }
@@ -34,7 +41,7 @@ impl App {
             ui,
             area,
             "Duplicate files",
-            "Files with exactly the same content, 1 MB or bigger. The oldest copy is marked as the original.",
+            "Files with exactly the same content, 1 MB or bigger, and optionally photos that look the same. The copy to keep is marked.",
             Some((label, !scanning)),
         );
         if clicked {
@@ -52,6 +59,7 @@ impl App {
         let home = crate::platform::home().to_string_lossy().into_owned();
         let pretty = |p: &std::path::Path| p.to_string_lossy().replacen(&home, "~", 1);
         let mut toggle_hidden = false;
+        let mut toggle_similar = false;
         let mut trash_one: Option<(usize, usize)> = None;
         let mut trash_rest: Option<usize> = None;
         ui.scope_builder(egui::UiBuilder::new().max_rect(list.shrink(6.0)), |ui| {
@@ -74,6 +82,21 @@ impl App {
                     regular(12.0),
                     th.soft,
                 );
+                let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 54.0), Sense::click());
+                let rect = rect.translate(vec2(4.0, 0.0));
+                toggle_similar = resp.clicked();
+                let p = ui.painter();
+                aero::surface(p, rect, 14.0, th, resp.hovered(), None);
+                let cy = rect.center().y;
+                aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.dupes.include_similar, resp.hovered(), th.go, th.accent);
+                p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Also find similar photos"), bold(15.0), th.text);
+                p.text(
+                    pos2(rect.min.x + 52.0, cy + 11.0),
+                    Align2::LEFT_CENTER,
+                    crate::i18n::tr("Resized, re-saved or slightly edited copies of the same picture. The first search takes longer; later ones are quick."),
+                    regular(12.0),
+                    th.soft,
+                );
 
                 if !self.dupes.done {
                     Self::section(ui, "PRESS \"FIND DUPLICATES\" TO START (IT READS FILES, SO IT CAN TAKE A MINUTE)", th);
@@ -88,27 +111,36 @@ impl App {
                 }
 
                 for (gi, g) in self.dupes.groups.iter().enumerate() {
+                    if g.similar && (gi == 0 || !self.dupes.groups[gi - 1].similar) {
+                        Self::section(ui, "SIMILAR PHOTOS", th);
+                    }
                     let (rect, _) = ui.allocate_exact_size(vec2(row_w, 46.0), Sense::hover());
                     let rect = rect.translate(vec2(4.0, 0.0));
                     let p = ui.painter();
                     aero::surface(p, rect, 12.0, th, false, Some(aero::lighten(th.accent, 0.8)));
                     let cy = rect.center().y;
-                    aero::orb(p, pos2(rect.min.x + 24.0, cy), 15.0, th.user_orb, "📑");
+                    aero::orb(p, pos2(rect.min.x + 24.0, cy), 15.0, th.user_orb, if g.similar { "🖼" } else { "📑" });
                     let name = g.files[0].path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
                     let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 250.0, rect.max.y)));
                     clip.text(pos2(rect.min.x + 48.0, cy - 8.0), Align2::LEFT_CENTER, crate::i18n::tr(&name), bold(15.0), th.text);
                     clip.text(
                         pos2(rect.min.x + 48.0, cy + 11.0),
                         Align2::LEFT_CENTER,
-                        format!("{} copies × {}  ·  wastes {}", g.files.len(), format_bytes(g.size), format_bytes(g.wasted())),
+                        if g.similar {
+                            format!("{} similar photos  ·  keeping only the biggest frees {}", g.files.len(), format_bytes(g.wasted()))
+                        } else {
+                            format!("{} copies × {}  ·  wastes {}", g.files.len(), format_bytes(g.files[0].size), format_bytes(g.wasted()))
+                        },
                         regular(12.0),
                         th.soft,
                     );
                     let btn = Rect::from_min_size(pos2(rect.max.x - 236.0, cy - 15.0), vec2(224.0, 30.0));
-                    if aero::aqua_button(ui, btn, "Keep original, trash rest", th.root_orb, true)
-                        .on_hover_text(crate::i18n::tr("Moves every copy except the oldest to the Trash"))
-                        .clicked()
-                    {
+                    let (label, tip) = if g.similar {
+                        ("Keep biggest, trash rest", "Keeps the biggest file (usually the best quality) and moves the others to the Trash")
+                    } else {
+                        ("Keep original, trash rest", "Moves every copy except the oldest to the Trash")
+                    };
+                    if aero::aqua_button(ui, btn, label, th.root_orb, true).on_hover_text(crate::i18n::tr(tip)).clicked() {
                         trash_rest = Some(gi);
                     }
 
@@ -120,7 +152,7 @@ impl App {
                         let cy = rect.center().y;
                         let mut x = rect.min.x + 12.0;
                         if fi == 0 {
-                            let tag = p.layout_no_wrap(crate::i18n::tr("original"), regular(10.5), aero::darken(th.go, 0.6));
+                            let tag = p.layout_no_wrap(crate::i18n::tr(if g.similar { "biggest" } else { "original" }), regular(10.5), aero::darken(th.go, 0.6));
                             let br = Rect::from_min_size(pos2(x, cy - 8.0), vec2(tag.size().x + 12.0, 16.0));
                             aero::rrect_grad(p, br, 8.0, &[(0.0, aero::lighten(th.go, 0.65)), (1.0, aero::lighten(th.go, 0.3))]);
                             p.galley(br.center() - tag.size() / 2.0, tag, th.text);
@@ -128,7 +160,19 @@ impl App {
                         }
                         let dir = f.path.parent().map(&pretty).unwrap_or_default();
                         let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 180.0, rect.max.y)));
-                        clip.text(pos2(x, cy), Align2::LEFT_CENTER, crate::i18n::tr(format!("{dir}  ·  {}", tools::age(f.modified))), regular(12.5), th.text);
+                        // Similar photos have different names and sizes, so show them.
+                        let mut parts = vec![if g.similar {
+                            let name = f.path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                            format!("{dir}/{name}")
+                        } else {
+                            dir
+                        }];
+                        if g.similar {
+                            parts.push(format_bytes(f.size));
+                        }
+                        parts.push(tools::age(f.modified));
+                        parts.retain(|p| !p.is_empty());
+                        clip.text(pos2(x, cy), Align2::LEFT_CENTER, parts.join("  ·  "), regular(12.5), th.text);
                         let open_r = Rect::from_min_size(pos2(rect.max.x - 172.0, cy - 13.0), vec2(76.0, 26.0));
                         let trash_r = Rect::from_min_size(pos2(rect.max.x - 90.0, cy - 13.0), vec2(80.0, 26.0));
                         if aero::aqua_button(ui, open_r, "📂 Open", th.accent, true).clicked() {
@@ -144,6 +188,13 @@ impl App {
             });
         });
 
+        if toggle_similar {
+            self.dupes.include_similar = !self.dupes.include_similar;
+            if self.dupes.done {
+                self.start_dupe_scan();
+            }
+            return;
+        }
         if toggle_hidden {
             self.dupes.include_hidden = !self.dupes.include_hidden;
             if self.dupes.done {
@@ -168,7 +219,7 @@ impl App {
             let g = &mut self.dupes.groups[gi];
             match tools::trash(&g.files[fi].path) {
                 Ok(()) => {
-                    freed += g.size;
+                    freed += g.files[fi].size;
                     moved += 1;
                     g.files.remove(fi);
                 }

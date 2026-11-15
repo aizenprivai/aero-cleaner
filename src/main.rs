@@ -15,6 +15,7 @@ mod i18n;
 mod platform;
 mod report;
 mod settings;
+mod similar;
 mod tabs;
 mod theme;
 mod tools;
@@ -807,6 +808,21 @@ mod ui_tests {
                     })
                     .collect();
                 st.disk_hist.growth = Some((vec![("Videos/OBS".into(), 6_200_000_000), (".cache/yarn".into(), 1_100_000_000), ("Downloads".into(), 420_000_000)], 7));
+                h.run_steps(2);
+            }
+            if tab == Tab::Duplicates && std::env::var("AERO_SHOT_DEMO").is_ok() {
+                let home = platform::home();
+                let f = |p: &str, size: u64| dupes::DupeFile { path: home.join(p), modified: None, size };
+                let st = h.state_mut();
+                st.dupes.done = true;
+                st.dupes.include_similar = true;
+                st.dupes.groups = vec![
+                    dupes::DupeGroup { files: vec![f("Videos/talk.mp4", 812_000_000), f("Downloads/talk.mp4", 812_000_000)], similar: false },
+                    dupes::DupeGroup {
+                        files: vec![f("Pictures/beach.jpg", 6_100_000), f("Pictures/WhatsApp/IMG-20260712.jpg", 240_000), f("Downloads/beach (1).webp", 610_000)],
+                        similar: true,
+                    },
+                ];
                 h.run_steps(2);
             }
             h.render().unwrap().save(dir.join(format!("{tab:?}.png"))).unwrap();
