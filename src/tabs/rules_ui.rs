@@ -69,7 +69,25 @@ impl App {
         embossed(ui.painter(), pos2(head.min.x + 8.0, head.center().y + 2.0), Align2::LEFT_CENTER, "MY RULES", bold(14.0), th.soft);
         let new_r = Rect::from_min_size(pos2(head.max.x - 118.0, head.min.y + 4.0), vec2(118.0, 28.0));
         let import_r = Rect::from_min_size(pos2(new_r.min.x - 96.0, new_r.min.y), vec2(90.0, 28.0));
-        let export_r = Rect::from_min_size(pos2(import_r.min.x - 96.0, new_r.min.y), vec2(90.0, 28.0));
+        let bb_r = Rect::from_min_size(pos2(import_r.min.x - 126.0, new_r.min.y), vec2(120.0, 28.0));
+        let export_r = Rect::from_min_size(pos2(bb_r.min.x - 96.0, new_r.min.y), vec2(90.0, 28.0));
+        if aero::aqua_button(ui, bb_r, "📥 BleachBit", th.accent, !busy)
+            .on_hover_text(crate::i18n::tr("Import BleachBit's cleaners for the apps installed here (they start unticked)"))
+            .clicked()
+        {
+            let tx = self.notifier();
+            let title = crate::i18n::tr("Choose BleachBit's cleaners folder (the .xml files)");
+            std::thread::spawn(move || {
+                let mut dirs = crate::bleachbit::default_dirs();
+                if dirs.is_empty() {
+                    dirs.extend(crate::platform::pick_folder(&title).map(std::path::PathBuf::from));
+                }
+                if !dirs.is_empty() {
+                    let (found, files) = crate::bleachbit::import(&dirs);
+                    tx.send(Msg::BleachBit(found, files));
+                }
+            });
+        }
         if aero::aqua_button(ui, new_r, "+ New rule", th.go, !busy).clicked() {
             self.rule_editor = Some(RuleEditor::from_rule(None, &Rule { name: crate::i18n::tr("Old ISO files"), ..Default::default() }));
         }
@@ -270,6 +288,16 @@ impl App {
             Some(_) => self.rule_editor = None,
             None => {}
         }
+    }
+
+    pub(crate) fn add_bleachbit_rules(&mut self, found: Vec<Rule>, files: usize) {
+        if files == 0 {
+            self.status = "No BleachBit cleaner files (.xml) found there.".into();
+            return;
+        }
+        let added = rules::merge_imported(&mut self.rules, found);
+        self.save_rules();
+        self.status = format!("Imported {added} rule(s) from {files} BleachBit cleaners, for apps installed here. Tick the ones you want.");
     }
 
     /// A rules file was picked for import.

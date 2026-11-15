@@ -3,6 +3,7 @@
 
 mod aero;
 mod automation;
+mod bleachbit;
 mod boot;
 mod browsers;
 mod cleaner;
@@ -50,6 +51,8 @@ enum Msg {
     Preview(Vec<(Kind, Vec<String>)>, Vec<(String, u64, Vec<String>)>),
     RuleScanned(usize, rules::RuleScan),
     RulesFile(Option<String>),
+    /// Rules from BleachBit cleaner files, and how many files were read.
+    BleachBit(Vec<rules::Rule>, usize),
     Picked(Option<String>),
     DupeProgress(String),
     DupeDone(Vec<dupes::DupeGroup>),
@@ -368,6 +371,7 @@ impl App {
                     }
                 }
                 Msg::RulesFile(path) => self.import_rules_file(path),
+                Msg::BleachBit(found, files) => self.add_bleachbit_rules(found, files),
                 Msg::RuleScanned(i, scan) => {
                     if let Some(slot) = self.rule_scans.get_mut(i) {
                         *slot = Some(scan);

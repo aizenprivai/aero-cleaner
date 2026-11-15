@@ -743,6 +743,16 @@ const FR: &[(&str, &str)] = &[
     ("older than 1 day", "plus d'un jour"),
     ("older than {} days", "plus de {} jours"),
     ("No matching files right now", "Aucun fichier correspondant pour l'instant"),
+    (
+        "Import BleachBit's cleaners for the apps installed here (they start unticked)",
+        "Importer les nettoyeurs de BleachBit pour les applis installées ici (ils arrivent décochés)",
+    ),
+    ("Choose BleachBit's cleaners folder (the .xml files)", "Choisissez le dossier des nettoyeurs BleachBit (les fichiers .xml)"),
+    ("No BleachBit cleaner files (.xml) found there.", "Aucun fichier de nettoyeur BleachBit (.xml) trouvé ici."),
+    (
+        "Imported {} rule(s) from {} BleachBit cleaners, for apps installed here. Tick the ones you want.",
+        "{} règle(s) importée(s) depuis {} nettoyeurs BleachBit, pour les applis installées ici. Cochez celles que vous voulez.",
+    ),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

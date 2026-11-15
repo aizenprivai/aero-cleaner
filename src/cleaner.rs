@@ -295,6 +295,12 @@ fn make_writable(p: &Path) {
     }
 }
 
+/// Folders the Cleaner's own user categories already clean, so imported
+/// rules don't count the same files twice.
+pub fn covered_paths() -> Vec<PathBuf> {
+    CATEGORIES.iter().filter(|c| !c.root).flat_map(|c| user_paths(c.kind)).collect()
+}
+
 /// Paths excluded from a category because another category covers them.
 fn user_skips(kind: Kind) -> Vec<PathBuf> {
     match kind {
