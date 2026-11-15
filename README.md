@@ -12,8 +12,8 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 **Clean**
 - **Cleaner:** trash, thumbnails, app and browser caches, developer caches, recent files list, unused Flatpak runtimes, APT cache, unused packages and old kernels, system journal, rotated logs, crash reports and old temp files. System items ask for your password **once** (pkexec).
 - **Review before cleaning:** see exactly what will be removed. AeroClean warns you if a browser is open.
-- **Browsers:** cache, cookies and history, chosen separately, for Brave, Chrome, Chromium, Vivaldi, Edge and Firefox.
-- **Developer:** Rust `target/` folders, `node_modules` and Python virtualenvs, with "last changed" dates. Stale projects are pre-selected.
+- **Browsers:** cache, cookies and history, chosen separately, for Brave, Chrome, Chromium, Vivaldi, Edge and Firefox. Firefox history is removed page by page from its database, so your bookmarks stay.
+- **Developer:** Rust `target/` folders, `node_modules` and Python virtualenvs, with "last changed" dates (stale projects are pre-selected), plus unused Docker or Podman images, stopped containers and build cache (never volumes). The Cleaner's developer caches cover Cargo, npm, pnpm, Yarn, Go, Maven and Gradle.
 
 **Find space**
 - **Big files**, with warnings for duplicates and files that belong to apps.
@@ -21,13 +21,15 @@ Written in Rust with <a href="https://github.com/emilk/egui">egui</a>. English a
 - **Disk map:** a treemap of your home folder that you can click into.
 
 **System**
-- **Boot time:** last boot by stage (firmware, boot menu, kernel, services), boot history, and the slowest services with on/off toggles. System-critical services are locked.
+- **Boot time:** last boot by stage (firmware, boot menu, kernel, services), boot history, and the slowest services, with on/off toggles on Linux (system-critical services are locked). On Windows it shows what Windows itself reports as slowing down your boots.
 - **Startup apps:** turn login apps on or off. Only your own settings change, never system files.
 - **Automation:** a weekly automatic clean and a low disk space alert (systemd user timers, no password needed).
 
 **Make it yours**
 - 5 themes: Frutiger Aero, Aqua Abyss, Sunset Vista, Aurora Night and Sakura Spring.
 - Folders to keep, journal retention, big file threshold, a remembered selection, and language.
+- **Keyboard:** Tab and the arrow keys move between controls, Space or Enter activates them, Ctrl+1…0 (Cmd on macOS) jumps to a screen.
+- **Update check (optional, off by default):** once a day it asks GitHub for the latest version number and shows a button when there's a new one. Nothing about you is sent.
 - Battery friendly: animations pause when the window isn't active, and there's a "Reduce motion" option.
 
 | | |
@@ -48,7 +50,7 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Big fi
 | Permission | One password prompt (pkexec) | One UAC prompt (an elevated copy of AeroClean, no scripts) | One administrator prompt (osascript) |
 | Startup apps | `.desktop` autostart overrides | Registry and Startup folder, toggled like Task Manager | Launch agents, turned off per user with `launchctl disable` (plist files untouched) |
 | Automation | systemd user timers, notifications | Task Scheduler, toast notifications | launchd agents, notifications |
-| Boot time | ✅ | not yet | not yet |
+| Boot time | ✅ | ✅ (read-only, from the event log) | not yet |
 
 ## Safety
 
@@ -60,9 +62,9 @@ All versions share the same app, themes, languages, Duplicates, Disk map, Big fi
 
 ## Install
 
-**Windows:** download `AeroClean-<version>-windows-x64.zip` from the Releases page, unzip it, and run `AeroClean.exe`. No installation is needed; the first launch adds AeroClean to the Start Menu. SmartScreen may warn about an unknown publisher (the `.exe` isn't code-signed yet): click **More info**, then **Run anyway**.
+**Windows:** download `AeroClean-<version>-windows-setup.exe` from the Releases page and run it. It installs for your account only (no administrator rights) and adds an uninstaller. Prefer no installation? Use `AeroClean-<version>-windows-x64-portable.zip`: unzip it and run `AeroClean.exe`. Until releases are code-signed, SmartScreen may warn about an unknown publisher: click **More info**, then **Run anyway**.
 
-**macOS:** download `AeroClean-<version>-macos.zip` from the Releases page, unzip it and drag `AeroClean.app` into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. It isn't notarized yet, so the first time: right-click it, choose **Open**, then **Open** again (on macOS 15, open it once, then click **Open Anyway** in System Settings → Privacy & Security).
+**macOS:** download `AeroClean-<version>-macos.dmg` from the Releases page, open it and drag AeroClean into **Applications** (the automatic clean runs the app from there). It's a universal app for Apple Silicon and Intel Macs. Until releases are notarized, macOS warns the first time: click **Done**, then **Open Anyway** in System Settings → Privacy & Security.
 
 **Linux, from a release:** download `aero-cleaner_<version>_amd64.deb` from the Releases page, then:
 
@@ -80,8 +82,8 @@ aero-cleaner   # the first run adds AeroClean to your menu
 
 **Build the packages yourself:**
 - `packaging/build-deb.sh` builds the `.deb` (needs `librsvg2-bin`).
-- `packaging/build-windows.sh` cross-compiles the Windows `.zip` from Linux (needs `mingw-w64` and `rustup target add x86_64-pc-windows-gnu`).
-- `packaging/build-macos.sh` builds the universal `AeroClean.app` and its `.zip` on a Mac (needs `rustup target add aarch64-apple-darwin x86_64-apple-darwin`).
+- `packaging/build-windows.sh` cross-compiles the portable Windows `.zip` from Linux (needs `mingw-w64` and `rustup target add x86_64-pc-windows-gnu`). The installer is built by CI with Inno Setup (`packaging/windows/aeroclean.iss`).
+- `packaging/build-macos.sh` builds the universal `AeroClean.app` and its `.dmg` on a Mac (needs `rustup target add aarch64-apple-darwin x86_64-apple-darwin`).
 
 Packages are written to `target/deb/`, `target/windows/` and `target/macos/`.
 
@@ -91,21 +93,39 @@ Packages are written to `target/deb/`, `target/windows/` and `target/macos/`.
 aero-cleaner                 open the app
 aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, big, dupes, map, boot, startup, themes, settings)
 aero-cleaner clean --auto    run the automatic clean and show a notification
+aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
+               [--auto]      only what the automatic clean would remove
+               [--json]      as JSON, sizes in bytes (for scripts)
 aero-cleaner check-disk      notify if free space is below the alert threshold
 ```
 
 Right-click AeroClean in the menu for **Quick clean** and **Disk map**.
 
+## Signing releases
+
+Releases build unsigned until these GitHub secrets exist (Settings → Secrets and variables → Actions). Each set is optional and independent.
+
+| Secret | What it is |
+|---|---|
+| `MACOS_CERTIFICATE` | Your **Developer ID Application** certificate exported as `.p12`, base64-encoded (`base64 -i cert.p12 \| pbcopy`). Needs an Apple Developer account. |
+| `MACOS_CERTIFICATE_PASSWORD` | The password you chose when exporting the `.p12`. |
+| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | For notarization: your Apple ID, your 10-character team ID, and an [app-specific password](https://support.apple.com/102654). |
+| `WINDOWS_CERTIFICATE` | A code signing certificate as `.pfx`, base64-encoded. |
+| `WINDOWS_CERTIFICATE_PASSWORD` | The `.pfx` password. |
+
+With them, the Mac app is signed with the hardened runtime and notarized (no Gatekeeper warning), and the Windows `.exe` and installer are signed. To try the packages without publishing anything, open **Actions → CI → Run workflow**.
+
 ## Development
 
 ```sh
-cargo test                        # runs in CI on Linux, Windows and macOS
+cargo test                        # runs in CI on Linux, Windows and macOS, including headless UI tests
+cargo clippy --all-targets -- -D warnings && cargo fmt --check   # also checked in CI
 AERO_I18N_MISSING=1 cargo run     # with language=fr, prints untranslated strings
 ```
 
 | Folder | Contents |
 |---|---|
-| `src/cleaner.rs`, `browsers.rs`, `devclean.rs`, `dupes.rs`, `diskmap.rs`, `boot.rs`, `automation.rs`, `tools.rs` | Backends (no UI) |
+| `src/cleaner.rs`, `browsers.rs`, `devclean.rs`, `dupes.rs`, `diskmap.rs`, `boot.rs`, `automation.rs`, `tools.rs`, `report.rs`, `update.rs` | Backends (no UI) |
 | `src/tabs/` | One file per screen |
 | `src/platform.rs`, `windows.rs`, `macos.rs` | Differences between systems, Windows-only and macOS-only features |
 | `src/aero.rs`, `theme.rs` | Frutiger Aero drawing kit and themes |

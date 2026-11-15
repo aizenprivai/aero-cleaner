@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cross-compiles the Windows version from Linux and zips it:
-#   target/windows/AeroClean-<version>-windows-x64.zip
+#   target/windows/AeroClean-<version>-windows-x64-portable.zip
 # Needs: rustup target add x86_64-pc-windows-gnu, and the mingw-w64 package.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -8,7 +8,7 @@ command -v cargo >/dev/null || { [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/en
 
 VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
 TARGET=x86_64-pc-windows-gnu
-NAME="AeroClean-${VERSION}-windows-x64"
+NAME="AeroClean-${VERSION}-windows-x64-portable"
 OUT="target/windows/$NAME"
 
 echo ">> Building optimized Windows binary (this takes a few minutes)"

@@ -63,6 +63,17 @@
 - Browsers at their macOS locations, launchd agents for automation, macOS notifications, Lucida Grande font, native folder picker
 - `packaging/build-macos.sh`; CI tests on Linux, Windows and macOS; releases also ship the macOS `.zip`
 
+**v1.3 – Quick wins & trust**
+- Firefox history: visits and unbookmarked pages deleted inside `places.sqlite` (bundled SQLite), bookmarks and keyword pages kept, then vacuumed
+- Docker and Podman in the Developer screen (unused images, stopped containers, build cache, never volumes); developer caches now also cover pnpm, Yarn, Go modules, Maven and Cargo git/sources
+- `clean --dry-run [--auto] [--json]`; command-line output now reaches the terminal on Windows
+- Keyboard navigation: focus ring on the glossy controls, focus that survives scrolling, Ctrl/Cmd+1…0 for screens
+- Opt-in daily update check against GitHub Releases (curl/wget, nothing sent)
+- Boot time on Windows, read-only, from the timings Windows records itself (Diagnostics-Performance events 100–103)
+- Mac `.dmg`; Windows installer (per user, no admin) next to the portable zip; Developer ID signing + notarization and Windows code signing, switched on by GitHub secrets
+- Headless UI tests (every screen × 5 themes × 2 languages, keyboard); `cargo fmt` and `clippy -D warnings` in CI; CI tests a debug build
+- Fixes: Developer, Disk map and Duplicates scanned nothing on Windows (`$HOME` isn't set there); an 8-bit overflow in the glass drawing code
+
 ---
 
 # 🗺 Road to 2.0
@@ -78,19 +89,16 @@
 
 | Version | Theme | Size | Main risk |
 |---|---|---|---|
-| v1.3 | Quick wins | S | – |
+| v1.3.x | Leftovers from v1.3 | S | – |
 | v1.4 | Your disk over time | M | Keeping history small |
 | v1.5 | Safety net & custom rules | M | Undo storage on nearly full disks |
 | **v2.0** | **Trusted & everywhere** | **L** | **Privileged helper security, distro differences** |
 
-## 🔜 v1.3 – Quick wins
-- **Firefox history:** delete visits and unbookmarked pages through SQLite (`rusqlite`, bundled). Bookmarks stay untouched.
-- **Keyboard navigation:** Tab and arrow keys, Space to tick, Ctrl+1…9 to switch screens.
-- **UI snapshot tests** (`egui_kittest`): every screen × 2 languages × 5 themes × 2 systems, compared to reference images in CI.
-- **macOS polish:** notarized, signed app (no Gatekeeper warning), a `.dmg`, and the Boot time screen.
-- **Windows polish:** Boot time screen (from the Windows event log), a proper installer (MSI or Inno Setup), and a code-signed `.exe` so SmartScreen stops warning.
-- **Update check:** opt-in "New version available" check against GitHub Releases. No data is sent.
-- **Release polish:** `SHA256SUMS` attached to each release, and a Duplicates screenshot in the README.
+## 🔜 v1.3.x – Leftovers
+- **Signing for real:** the pipeline is ready; it needs an Apple Developer account and a Windows code signing certificate (or Azure Trusted Signing) added as secrets.
+- **Image snapshot tests:** the UI tests check every screen draws and responds to the keyboard, but don't compare pictures yet. That needs a demo-data mode (fixed sizes, no real scan, frozen animation) so images are identical on every machine.
+- **Boot time on macOS:** macOS has no per-stage boot breakdown without root and slow `log` queries; find a cheap, honest source first.
+- **Release polish:** a Duplicates screenshot and Mac screenshots in the README.
 
 ## 📈 v1.4 – Your disk over time
 - **Disk history:** the hourly check already runs, so it also records free space. A glossy line chart shows the last 90 days.
