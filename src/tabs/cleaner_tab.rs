@@ -40,7 +40,8 @@ impl App {
             aero::rrect_outline(p, badge, 9.0, Stroke::new(1.0, aero::darken(b, 0.25)));
             p.text(badge.center(), Align2::CENTER_CENTER, crate::i18n::tr("🔒 admin"), regular(11.0), aero::darken(b, 0.65));
         }
-        p.text(pos2(text_x, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(cat.desc.replace("{}", &self.settings.journal_days.to_string())), regular(13.0), th.soft);
+        let desc = crate::i18n::tr(cat.desc.replace("{}", &self.settings.journal_days.to_string()));
+        aero::fit_text(p, pos2(text_x, cy + 11.0), Align2::LEFT_CENTER, &desc, regular(13.0), th.soft, rect.max.x - 140.0 - text_x);
 
         let right = pos2(rect.max.x - 18.0, cy);
         match &item.result {

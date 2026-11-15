@@ -44,7 +44,19 @@ impl App {
         let th = &self.themes[self.theme];
         let p = ui.painter().clone();
         embossed(&p, pos2(area.min.x + 6.0, area.min.y + 12.0), Align2::LEFT_CENTER, title, bold(17.0), th.text);
-        let info_g = p.layout(crate::i18n::tr(info), regular(13.0), th.soft, area.width() - 230.0);
+        // At most two lines above the list: shrink a little, then cut with "…".
+        let info = crate::i18n::tr(info);
+        let wrap = area.width() - 230.0;
+        let mut size = 13.0;
+        let info_g = loop {
+            let mut job = egui::text::LayoutJob::simple(info.clone(), regular(size), th.soft, wrap);
+            job.wrap.max_rows = 2;
+            let g = p.layout_job(job);
+            if !g.elided || size <= 11.5 {
+                break g;
+            }
+            size -= 0.5;
+        };
         p.galley(pos2(area.min.x + 6.0, area.min.y + 26.0), info_g, th.soft);
         let mut clicked = false;
         if let Some((label, enabled)) = button {

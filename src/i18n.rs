@@ -665,6 +665,10 @@ const FR: &[(&str, &str)] = &[
     ("biggest", "la plus grande"),
     ("Looking at photos... {} of {}", "Analyse des photos... {} sur {}"),
     ("Comparing photos...", "Comparaison des photos..."),
+    (
+        "Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
+        "Nécessaire pour les applis Android. Si vous ne vous en servez pas : sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
+    ),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),

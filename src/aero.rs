@@ -164,6 +164,29 @@ pub fn with_alpha(c: Color32, a: u8) -> Color32 {
     rgba(c.r(), c.g(), c.b(), a)
 }
 
+/// Draws one line of text that must fit in `max_w`: the font shrinks a
+/// little (down to 85%) first, then the text is cut with "…".
+pub fn fit_text(painter: &Painter, pos: Pos2, align: Align2, text: &str, font: FontId, color: Color32, max_w: f32) -> Rect {
+    let mut size = font.size;
+    let layout = |t: String, s: f32| painter.layout_no_wrap(t, FontId::new(s, font.family.clone()), color);
+    let mut g = layout(text.to_string(), size);
+    while g.size().x > max_w && size > font.size * 0.85 {
+        size -= 0.5;
+        g = layout(text.to_string(), size);
+    }
+    if g.size().x > max_w {
+        let chars: Vec<char> = text.chars().collect();
+        let mut keep = chars.len();
+        while keep > 1 && g.size().x > max_w {
+            keep -= 1;
+            g = layout(format!("{}…", chars[..keep].iter().collect::<String>().trim_end()), size);
+        }
+    }
+    let rect = align.anchor_size(pos, g.size());
+    painter.galley(rect.min, g, color);
+    rect
+}
+
 /// Text with a dark drop shadow, for light text on colored buttons.
 pub fn shadowed(painter: &Painter, pos: Pos2, align: Align2, text: &str, font: FontId, color: Color32) {
     let text = &crate::i18n::tr(text);
@@ -382,6 +405,13 @@ pub fn nav_item(ui: &mut Ui, rect: Rect, icon: &str, label: &str, active: bool, 
         }
     };
     draw(pos2(rect.min.x + 12.0, cy), icon, regular(16.0));
-    draw(pos2(rect.min.x + 40.0, cy), label, bold(14.5));
+    // Long labels (French "Historique du disque") shrink to fit the button.
+    let room = rect.width() - 48.0;
+    let shown = crate::i18n::tr(label);
+    let mut size = 14.5;
+    while size > 11.0 && p.layout_no_wrap(shown.clone(), bold(size), text_color).size().x > room {
+        size -= 0.5;
+    }
+    draw(pos2(rect.min.x + 40.0, cy), label, bold(size));
     if active { resp } else { resp.on_hover_cursor(eframe::egui::CursorIcon::PointingHand) }
 }

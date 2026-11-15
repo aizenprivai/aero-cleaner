@@ -75,12 +75,14 @@ impl App {
                 let cy = rect.center().y;
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.dupes.include_hidden, resp.hovered(), th.go, th.accent);
                 p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Include hidden app folders"), bold(15.0), th.text);
-                p.text(
+                aero::fit_text(
+                    p,
                     pos2(rect.min.x + 52.0, cy + 11.0),
                     Align2::LEFT_CENTER,
-                    crate::i18n::tr("Off by default: copies inside an app's own folders are usually needed by that app."),
+                    &crate::i18n::tr("Off by default: copies inside an app's own folders are usually needed by that app."),
                     regular(12.0),
                     th.soft,
+                    rect.width() - 52.0 - 16.0,
                 );
                 let (rect, resp) = ui.allocate_exact_size(vec2(row_w, 54.0), Sense::click());
                 let rect = rect.translate(vec2(4.0, 0.0));
@@ -90,12 +92,14 @@ impl App {
                 let cy = rect.center().y;
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.dupes.include_similar, resp.hovered(), th.go, th.accent);
                 p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Also find similar photos"), bold(15.0), th.text);
-                p.text(
+                aero::fit_text(
+                    p,
                     pos2(rect.min.x + 52.0, cy + 11.0),
                     Align2::LEFT_CENTER,
-                    crate::i18n::tr("Resized, re-saved or slightly edited copies of the same picture. The first search takes longer; later ones are quick."),
+                    &crate::i18n::tr("Resized, re-saved or slightly edited copies of the same picture. The first search takes longer; later ones are quick."),
                     regular(12.0),
                     th.soft,
+                    rect.width() - 52.0 - 16.0,
                 );
 
                 if !self.dupes.done {

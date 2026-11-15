@@ -139,12 +139,14 @@ impl App {
                     let cy = rect.center().y;
                     aero::orb(p, pos2(rect.min.x + 26.0, cy), 15.0, th.root_orb, "📱");
                     p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Waydroid Android image"), bold(15.0), th.text);
-                    p.text(
+                    aero::fit_text(
+                        p,
                         pos2(rect.min.x + 52.0, cy + 11.0),
                         Align2::LEFT_CENTER,
-                        "Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid",
+                        &crate::i18n::tr("Needed to run Android apps. If you don't use them: sudo apt purge waydroid && sudo rm -rf /var/lib/waydroid"),
                         regular(12.0),
                         th.soft,
+                        rect.width() - 52.0 - 110.0,
                     );
                     embossed(p, pos2(rect.max.x - 18.0, cy), Align2::RIGHT_CENTER, &format_bytes(size), bold(16.0), th.text);
                 }

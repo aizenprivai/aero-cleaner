@@ -24,8 +24,8 @@ fn toggle_row(ui: &mut egui::Ui, w: f32, indent: f32, on: bool, icon: &str, titl
     aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, on, resp.hovered(), th.go, th.accent);
     aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, icon);
     p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(title), bold(15.0), th.text);
-    let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 120.0, rect.max.y)));
-    clip.text(pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(desc), regular(12.0), th.soft);
+    // Room is kept on the right for a value button or the next run date.
+    aero::fit_text(p, pos2(rect.min.x + 98.0, cy + 11.0), Align2::LEFT_CENTER, &crate::i18n::tr(desc), regular(12.0), th.soft, rect.width() - 98.0 - 150.0);
     resp
 }
 
@@ -39,8 +39,7 @@ fn option_row(ui: &mut egui::Ui, w: f32, icon: &str, title: &str, desc: &str, va
     let cy = rect.center().y;
     aero::orb(p, pos2(rect.min.x + 26.0, cy), 15.0, th.user_orb, icon);
     p.text(pos2(rect.min.x + 52.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr(title), bold(15.0), th.text);
-    let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(rect.max.x - 150.0, rect.max.y)));
-    clip.text(pos2(rect.min.x + 52.0, cy + 11.0), Align2::LEFT_CENTER, crate::i18n::tr(desc), regular(12.0), th.soft);
+    aero::fit_text(p, pos2(rect.min.x + 52.0, cy + 11.0), Align2::LEFT_CENTER, &crate::i18n::tr(desc), regular(12.0), th.soft, rect.width() - 52.0 - 150.0);
     let btn = Rect::from_min_size(pos2(rect.max.x - 136.0, cy - 15.0), vec2(124.0, 30.0));
     aero::aqua_button(ui, btn, value, th.accent, true).on_hover_text(crate::i18n::tr(tip)).clicked()
 }
@@ -83,12 +82,14 @@ impl App {
                 aero::bubble_check(p, pos2(rect.min.x + 26.0, cy), 12.0, self.settings.reduce_motion, resp.hovered(), th.go, th.accent);
                 aero::orb(p, pos2(rect.min.x + 70.0, cy), 17.0, th.user_orb, "⏸");
                 p.text(pos2(rect.min.x + 98.0, cy - 9.0), Align2::LEFT_CENTER, crate::i18n::tr("Reduce motion"), bold(15.0), th.text);
-                p.text(
+                aero::fit_text(
+                    p,
                     pos2(rect.min.x + 98.0, cy + 11.0),
                     Align2::LEFT_CENTER,
-                    crate::i18n::tr("Freeze the animated background to save battery. It already pauses when the window isn't active."),
+                    &crate::i18n::tr("Freeze the animated background to save battery. It already pauses when the window isn't active."),
                     regular(12.0),
                     th.soft,
+                    rect.width() - 98.0 - 16.0,
                 );
 
                 // ----- Automation -----
@@ -101,7 +102,8 @@ impl App {
                     ui.painter().text(
                         pos2(r.max.x - 14.0, r.center().y),
                         Align2::RIGHT_CENTER,
-                        crate::i18n::tr(format!("next: {}", next.split_whitespace().take(2).collect::<Vec<_>>().join(" "))),
+                        // Just the date ("Mon 2026-11-16 00:42 CET" -> "2026-11-16"): no untranslated weekday.
+                        crate::i18n::tr(format!("next: {}", next.split_whitespace().find(|w| w.contains('-')).unwrap_or(next))),
                         regular(12.0),
                         th.soft,
                     );
@@ -143,7 +145,15 @@ impl App {
                 } else {
                     "Tip: right-click AeroClean in the menu for Quick clean and Disk map."
                 };
-                ui.painter().text(pos2(run_r.max.x + 14.0, run_r.center().y), Align2::LEFT_CENTER, crate::i18n::tr(tip), regular(12.0), th.soft);
+                aero::fit_text(
+                    ui.painter(),
+                    pos2(run_r.max.x + 14.0, run_r.center().y),
+                    Align2::LEFT_CENTER,
+                    &crate::i18n::tr(tip),
+                    regular(12.0),
+                    th.soft,
+                    rect.max.x - run_r.max.x - 24.0,
+                );
 
                 // ----- Cleaning -----
                 Self::section(ui, "CLEANING", th);

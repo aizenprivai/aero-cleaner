@@ -781,7 +781,11 @@ mod ui_tests {
     fn screenshots() {
         let dir = std::path::PathBuf::from(std::env::var("AERO_SHOTS").unwrap_or_else(|_| "target/screenshots".into()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut h = Harness::builder().with_size(vec2(1080.0, 800.0)).wgpu().build_eframe(|cc| {
+        // AERO_SHOT_SIZE=960x680 (the smallest window), AERO_SHOT_LANG=fr.
+        let size = std::env::var("AERO_SHOT_SIZE").ok().and_then(|s| s.split_once('x').and_then(|(w, h)| Some(vec2(w.parse().ok()?, h.parse().ok()?))));
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language(&std::env::var("AERO_SHOT_LANG").unwrap_or_else(|_| "en".into()));
+        let mut h = Harness::builder().with_size(size.unwrap_or(vec2(1080.0, 800.0))).wgpu().build_eframe(|cc| {
             setup_fonts(&cc.egui_ctx);
             App::new(&cc.egui_ctx)
         });

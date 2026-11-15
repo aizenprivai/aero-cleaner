@@ -163,12 +163,13 @@ impl App {
     }
 }
 
-/// A plain message row.
+/// A plain message row; long text wraps onto more lines.
 fn note(ui: &mut egui::Ui, w: f32, text: &str, th: &Theme) {
-    let (rect, _) = ui.allocate_exact_size(vec2(w, 44.0), Sense::hover());
+    let g = ui.painter().layout(crate::i18n::tr(text), regular(13.0), th.soft, w - 36.0);
+    let (rect, _) = ui.allocate_exact_size(vec2(w, (g.size().y + 26.0).max(44.0)), Sense::hover());
     let rect = rect.translate(vec2(4.0, 0.0));
     aero::surface(ui.painter(), rect, 14.0, th, false, None);
-    ui.painter().text(pos2(rect.min.x + 18.0, rect.center().y), Align2::LEFT_CENTER, crate::i18n::tr(text), regular(13.0), th.soft);
+    ui.painter().galley(pos2(rect.min.x + 18.0, rect.center().y - g.size().y / 2.0), g, th.soft);
 }
 
 fn health_row(ui: &mut egui::Ui, w: f32, d: &DiskHealth, th: &Theme) {
@@ -196,9 +197,7 @@ fn health_row(ui: &mut egui::Ui, w: f32, d: &DiskHealth, th: &Theme) {
         (None, _) => crate::i18n::tr("Health unknown"),
     };
     let mut details = vec![status];
-    if let Some(wear) = d.wear_percent {
-        details.push(crate::i18n::tr(format!("{wear}% worn")));
-    }
+    // With a gauge on the right, the wear % is written on the gauge instead.
     if let Some(t) = d.temperature_c {
         details.push(format!("{t:.0} °C"));
     }
@@ -208,10 +207,12 @@ fn health_row(ui: &mut egui::Ui, w: f32, d: &DiskHealth, th: &Theme) {
     if let Some(b) = d.bytes_written {
         details.push(crate::i18n::tr(format!("{} written", format_bytes(b))));
     }
-    p.text(pos2(rect.min.x + 56.0, cy + 11.0), Align2::LEFT_CENTER, details.join("  ·  "), regular(12.0), if bad { aero::rgba(190, 40, 30, 255) } else { th.soft });
+    let text_end = if d.wear_percent.is_some() { rect.max.x - 166.0 } else { rect.max.x - 12.0 };
+    let clip = p.with_clip_rect(Rect::from_min_max(rect.min, pos2(text_end, rect.max.y)));
+    clip.text(pos2(rect.min.x + 56.0, cy + 11.0), Align2::LEFT_CENTER, details.join("  ·  "), regular(12.0), if bad { aero::rgba(190, 40, 30, 255) } else { th.soft });
     if let Some(wear) = d.wear_percent {
         // A small glossy wear gauge on the right.
-        let bar = Rect::from_min_size(pos2(rect.max.x - 150.0, cy - 7.0), vec2(130.0, 14.0));
+        let bar = Rect::from_min_size(pos2(rect.max.x - 150.0, cy + 2.0), vec2(130.0, 12.0));
         aero::surface(p, bar, 7.0, th, false, None);
         let c = if wear >= 90 {
             aero::rgba(220, 70, 50, 255)
@@ -222,6 +223,7 @@ fn health_row(ui: &mut egui::Ui, w: f32, d: &DiskHealth, th: &Theme) {
         };
         let fill = Rect::from_min_size(bar.min, vec2((bar.width() * (wear.min(100) as f32 / 100.0)).max(bar.height()), bar.height()));
         aero::rrect_grad(p, fill, 7.0, &[(0.0, aero::lighten(c, 0.4)), (1.0, c)]);
+        p.text(pos2(bar.center().x, bar.min.y - 9.0), Align2::CENTER_CENTER, crate::i18n::tr(format!("{wear}% worn")), bold(11.5), th.text);
         resp.on_hover_text(crate::i18n::tr(
             "Wear: how much of the SSD's rated writes are used. 100% means it reached its rating; drives usually keep working past it, but keep backups.",
         ));
