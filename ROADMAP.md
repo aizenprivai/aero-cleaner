@@ -176,7 +176,7 @@
 - Choose a wallpaper or photo; AeroClean finds its main colors and builds **3 matching themes** (light, dark, vivid) with readable text guaranteed by the contrast guard.
 - Optionally use the picture itself as a frosted background layer.
 
-### Milestone 7 – Seasonal and live touches (all optional)
+### ✅ Milestone 7 – Seasonal and live touches (all optional)
 - **Seasons:** snow in winter, cherry petals in spring, fireflies on summer nights, falling leaves in autumn (hemisphere from the time zone).
 - **Live sky:** the sun and its light follow the real time of day.
 - Fun dates: a few subtle touches on holidays, never on by default.

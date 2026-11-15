@@ -31,6 +31,7 @@ mod theme_edit;
 mod theme_picture;
 mod theme_share;
 mod tools;
+mod touches;
 mod update;
 mod walk;
 #[cfg(windows)]
@@ -208,6 +209,9 @@ struct App {
     auto_night: Option<bool>,
     auto_check_at: f64,
     daynight_open: bool,
+    /// Today's seasonal and live touches, worked out every half minute.
+    touches: Option<touches::Touches>,
+    touches_at: f64,
     review: Option<Review>,
     excl_input: String,
     settings_msg: String,
@@ -266,6 +270,8 @@ impl App {
             auto_night: None,
             auto_check_at: -100.0,
             daynight_open: false,
+            touches: None,
+            touches_at: -100.0,
             review: None,
             excl_input: String::new(),
             settings_msg: String::new(),
@@ -645,24 +651,38 @@ impl eframe::App for App {
         self.poll(time);
         self.auto_theme_tick(ui.ctx(), time);
         // During a crossfade, the current theme is drawn as a blend of the
-        // old and the new one for this frame, then put back.
+        // old and the new one; seasonal and live touches are added on top.
+        // Both only for this frame: the theme is put back afterwards.
         let fading = self.fade.as_ref().map(|(_, start)| daynight::fade_progress(time - start)).filter(|k| *k < 1.0);
         if fading.is_none() {
             self.fade = None;
         }
-        let Some(k) = fading else { return self.frame_ui(ui, time) };
+        let touches = self.current_touches(time);
+        if fading.is_none() && touches.is_none() {
+            return self.frame_ui(ui, time);
+        }
         let (idx, generation) = (self.theme, self.themes_gen);
-        let blended = daynight::blend(&self.fade.as_ref().unwrap().0, &self.themes[idx], k);
-        let real = std::mem::replace(&mut self.themes[idx], blended);
-        self.apply_visuals(ui.ctx());
+        let mut shown = match (fading, &self.fade) {
+            (Some(k), Some((from, _))) => daynight::blend(from, &self.themes[idx], k),
+            _ => self.themes[idx].clone(),
+        };
+        if let Some(t) = &touches {
+            shown = touches::apply(&shown, t);
+        }
+        let real = std::mem::replace(&mut self.themes[idx], shown);
+        if fading.is_some() {
+            self.apply_visuals(ui.ctx());
+        }
         self.frame_ui(ui, time);
         if self.themes_gen == generation {
             self.themes[idx] = real;
         }
-        if self.theme == idx {
+        if fading.is_some() && self.theme == idx {
             self.apply_visuals(ui.ctx());
         }
-        ui.ctx().request_repaint();
+        if fading.is_some() {
+            ui.ctx().request_repaint();
+        }
     }
 }
 
@@ -1558,6 +1578,32 @@ mod ui_tests {
         assert_eq!(h.state().settings.auto_theme, daynight::Mode::Off);
     }
 
+    /// Live touches are drawn but never stick to the theme, and the panel's
+    /// checkboxes turn them on.
+    #[test]
+    fn live_touches_only_change_the_drawing() {
+        use egui_kittest::kittest::Queryable;
+        let _lang = i18n::LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        i18n::set_language("en");
+        let mut h = harness();
+        h.state_mut().tab = Tab::Themes;
+        h.state_mut().daynight_open = true;
+        h.run_steps(2);
+        let before = h.state().themes[0].scene.clone();
+        h.get_by_label("❄ Seasons").click();
+        h.get_by_label("☀ Live sky").click();
+        h.run_steps(3);
+        assert!(h.state().settings.seasons && h.state().settings.live_sky);
+        assert!(h.state().touches.is_some());
+        assert_eq!(h.state().themes[0].scene, before, "the theme itself is unchanged");
+        assert!(h.query_by_label_contains("The sun follows the time of day.").is_some());
+        // While a theme is edited in the Studio, no touches.
+        let ctx = h.ctx.clone();
+        h.state_mut().open_studio(&ctx);
+        h.run_steps(2);
+        assert!(h.state().touches.is_none());
+    }
+
     /// Themes from a picture: three are made, one is saved and used.
     #[test]
     fn themes_from_a_picture() {
@@ -1714,6 +1760,48 @@ mod ui_tests {
             }
             h.render().unwrap().save(dir.join("picture-frosted.png")).unwrap();
             h.state_mut().picture = Default::default();
+        }
+        // Live touches: the panel, an autumn sunset, and Christmas.
+        {
+            let time = h.ctx.input(|i| i.time);
+            let st = h.state_mut();
+            st.tab = Tab::Themes;
+            st.daynight_open = true;
+            st.theme = 0;
+            st.settings.seasons = true;
+            st.settings.live_sky = true;
+            st.settings.fun_dates = true;
+            let sun = daynight::Sun::RiseSet(8.0 * 60.0, 17.0 * 60.0);
+            st.touches = Some(touches::Touches { season: Some(touches::Season::Autumn), sky: Some(touches::sky_time(16.0 * 60.0 + 40.0, sun)), date: None, night: false });
+            st.touches_at = time + 1000.0;
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("touches-panel.png")).unwrap();
+            let st = h.state_mut();
+            st.daynight_open = false;
+            st.tab = Tab::Cleaner;
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("touches-autumn-sunset.png")).unwrap();
+            let st = h.state_mut();
+            st.touches = Some(touches::Touches {
+                season: Some(touches::Season::Winter),
+                sky: Some(touches::sky_time(10.0 * 60.0, sun)),
+                date: Some(touches::FunDate::Christmas),
+                night: false,
+            });
+            st.tab = Tab::Overview;
+            for _ in 0..4 {
+                h.run_steps(1);
+            }
+            h.render().unwrap().save(dir.join("touches-christmas.png")).unwrap();
+            let st = h.state_mut();
+            st.settings.seasons = false;
+            st.settings.live_sky = false;
+            st.settings.fun_dates = false;
+            st.touches = None;
         }
         // Day and night: the panel, and halfway through a crossfade.
         {

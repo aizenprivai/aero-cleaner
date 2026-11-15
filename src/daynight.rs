@@ -51,11 +51,14 @@ pub struct Now {
     pub minutes: u32,
     pub day: u32,
     pub offset: i32,
+    /// Month (1 to 12) and day of the month.
+    pub month: u32,
+    pub mday: u32,
 }
 
 pub fn now() -> Now {
     let t = Local::now();
-    Now { minutes: t.hour() * 60 + t.minute(), day: t.ordinal(), offset: t.offset().fix().local_minus_utc() / 60 }
+    Now { minutes: t.hour() * 60 + t.minute(), day: t.ordinal(), offset: t.offset().fix().local_minus_utc() / 60, month: t.month(), mday: t.day() }
 }
 
 const ZONES: &str = include_str!("zones.txt");
@@ -286,7 +289,7 @@ mod tests {
 
     #[test]
     fn modes() {
-        let now = Now { minutes: 22 * 60, day: 172, offset: 120 };
+        let now = Now { minutes: 22 * 60, day: 172, offset: 120, month: 6, mday: 21 };
         let paris = (48.9, 2.3);
         assert_eq!(is_night(Mode::Off, now, (420, 1200), Some(true), paris), None);
         assert_eq!(is_night(Mode::System, now, (420, 1200), None, paris), None);

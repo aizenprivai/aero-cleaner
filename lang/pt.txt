@@ -1504,3 +1504,39 @@ Smoked glass, the picture by night
 = Vidro fumê, a imagem à noite
 The picture's colors, turned up
 = As cores da imagem, mais vivas
+
+# ----- Seasonal and live touches -----
+Live touches
+= Toques vivos
+❄ Seasons
+= ❄ Estações
+☀ Live sky
+= ☀ Céu vivo
+🎉 Fun dates
+= 🎉 Datas especiais
+Snow in winter, petals in spring, fireflies on summer nights, leaves in autumn
+= Neve no inverno, pétalas na primavera, vaga-lumes nas noites de verão, folhas no outono
+The sun and its light follow the real time of day
+= O sol e a sua luz seguem a hora real
+Small touches on New Year, Valentine's Day, Halloween and Christmas
+= Pequenos toques no Ano Novo, Dia dos Namorados, Halloween e Natal
+Now: {}.
+= Agora: {}.
+winter snow
+= neve de inverno
+spring petals
+= pétalas de primavera
+summer fireflies (at night)
+= vaga-lumes de verão (à noite)
+autumn leaves
+= folhas de outono
+The sun follows the time of day.
+= O sol segue a hora do dia.
+🎉 Happy New Year!
+= 🎉 Feliz Ano Novo!
+💕 Happy Valentine's Day!
+= 💕 Feliz Dia dos Namorados!
+🎃 Happy Halloween!
+= 🎃 Feliz Halloween!
+🎄 Merry Christmas!
+= 🎄 Feliz Natal!

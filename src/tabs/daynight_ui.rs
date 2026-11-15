@@ -60,6 +60,24 @@ impl App {
         }
     }
 
+    /// Today's touches (worked out at most every 30 seconds), or None when
+    /// they're all off or a theme is being edited or previewed.
+    pub(crate) fn current_touches(&mut self, time: f64) -> Option<crate::touches::Touches> {
+        let s = &self.settings;
+        if !(s.seasons || s.live_sky || s.fun_dates) || self.studio.is_some() || self.gallery.preview.is_some() {
+            self.touches = None;
+            return None;
+        }
+        ctx_repaint_soon(&self.ctx);
+        if self.touches.is_none() || time - self.touches_at > 30.0 {
+            self.touches_at = time;
+            let now = daynight::now();
+            let coords = daynight::coords(daynight::zone_name().as_deref(), now.offset);
+            self.touches = crate::touches::compute(s.seasons, s.live_sky, s.fun_dates, now, coords);
+        }
+        self.touches.clone()
+    }
+
     /// The settings, above the theme cards. Returns the room left for the cards.
     pub(crate) fn daynight_panel(&mut self, ui: &mut egui::Ui, area: Rect) -> Rect {
         let th = self.themes[self.theme].clone();
@@ -70,6 +88,8 @@ impl App {
         aero::surface(ui.painter(), r, 14.0, &th, false, None);
         let names: Vec<String> = self.themes.iter().take(self.studio.as_ref().map(|s| s.preview_index).unwrap_or(self.themes.len())).map(|t| t.name.clone()).collect();
         let before = (self.settings.auto_theme, self.settings.day_theme.clone(), self.settings.night_theme.clone(), self.settings.day_at, self.settings.night_at);
+        let touches_before = (self.settings.seasons, self.settings.live_sky, self.settings.fun_dates);
+        let touches_status = self.touches_status();
         let status = self.daynight_status(ui.ctx());
         let used = ui.scope_builder(egui::UiBuilder::new().max_rect(r.shrink2(vec2(16.0, 12.0))), |ui| {
             ui.style_mut().visuals.override_text_color = Some(th.text);
@@ -100,6 +120,18 @@ impl App {
                 }
             });
             ui.label(egui::RichText::new(status).color(th.soft).size(12.5));
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(crate::i18n::tr("Live touches")).strong());
+                ui.checkbox(&mut self.settings.seasons, crate::i18n::tr("❄ Seasons"))
+                    .on_hover_text(crate::i18n::tr("Snow in winter, petals in spring, fireflies on summer nights, leaves in autumn"));
+                ui.checkbox(&mut self.settings.live_sky, crate::i18n::tr("☀ Live sky")).on_hover_text(crate::i18n::tr("The sun and its light follow the real time of day"));
+                ui.checkbox(&mut self.settings.fun_dates, crate::i18n::tr("🎉 Fun dates"))
+                    .on_hover_text(crate::i18n::tr("Small touches on New Year, Valentine's Day, Halloween and Christmas"));
+            });
+            if !touches_status.is_empty() {
+                ui.label(egui::RichText::new(touches_status).color(th.soft).size(12.5));
+            }
         });
         let content = used.response.rect.height();
         if (content - h).abs() > 0.5 {
@@ -107,12 +139,33 @@ impl App {
             ui.ctx().request_repaint();
         }
         let after = (self.settings.auto_theme, self.settings.day_theme.clone(), self.settings.night_theme.clone(), self.settings.day_at, self.settings.night_at);
+        if (self.settings.seasons, self.settings.live_sky, self.settings.fun_dates) != touches_before {
+            self.settings.save();
+            self.touches = None;
+        }
         if after != before {
             self.settings.save();
             // Apply the new settings right away.
             self.auto_night = None;
         }
         Rect::from_min_max(pos2(area.min.x, r.max.y + 14.0), area.max)
+    }
+
+    /// "Now: winter snow. The sun follows the time of day."
+    fn touches_status(&self) -> String {
+        let s = &self.settings;
+        let Some(t) = &self.touches else { return String::new() };
+        let mut out = vec![];
+        if let (true, Some(season)) = (s.seasons, t.season) {
+            out.push(crate::i18n::tr(format!("Now: {}.", crate::i18n::tr(season.label()))));
+        }
+        if s.live_sky {
+            out.push(crate::i18n::tr("The sun follows the time of day."));
+        }
+        if let (true, Some(d)) = (s.fun_dates, t.date) {
+            out.push(crate::i18n::tr(d.label()));
+        }
+        out.join(" ")
     }
 
     /// "It's night now (sunset was at 17:14)."
@@ -167,4 +220,9 @@ fn time_combo(ui: &mut egui::Ui, id: &str, value: &mut u32) {
             ui.selectable_value(value, m, daynight::clock(m as f64));
         }
     });
+}
+
+/// The sky moves slowly: a frame every half minute is enough when nothing else is moving.
+fn ctx_repaint_soon(ctx: &egui::Context) {
+    ctx.request_repaint_after(std::time::Duration::from_secs(30));
 }

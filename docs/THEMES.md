@@ -171,6 +171,14 @@ The themes are ordinary files: open them in the Theme Studio to change anything.
 
 The switch is a crossfade: colors blend and the new scene fades in over the old one. A theme you pick by hand stays until the next sunrise or sunset (or schedule change). **Reduce motion** switches instantly.
 
+## Live touches
+
+The **🌗 Day & night** panel also has three **live touches**, all off until you tick them. They're added while AeroClean draws your theme; the theme file itself never changes.
+
+- **❄ Seasons:** snow in winter, cherry petals in spring, fireflies on summer nights and falling leaves in autumn. The hemisphere comes from your time zone. A theme that already has that kind of layer (Winter Glass and its snow) doesn't get a second one.
+- **☀ Live sky:** the theme's sun moves across the sky with the real time of day, its rays follow it, and the horizon glows warm around sunrise and sunset. After sunset the sun sets behind the hills, and a moon crosses the night.
+- **🎉 Fun dates:** golden bubbles on New Year's Day, pink petals on Valentine's Day, orange leaves and fireflies on Halloween, and snow from December 24 to 26.
+
 ## Command line
 
 ```bash

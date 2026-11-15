@@ -36,6 +36,10 @@ pub struct Settings {
     /// When day and night start on a schedule, in minutes since midnight.
     pub day_at: u32,
     pub night_at: u32,
+    /// Seasonal particles, a sun that follows the time of day, and fun dates.
+    pub seasons: bool,
+    pub live_sky: bool,
+    pub fun_dates: bool,
 }
 
 impl Default for Settings {
@@ -57,6 +61,9 @@ impl Default for Settings {
             night_theme: "Aurora Night".into(),
             day_at: 7 * 60,
             night_at: 20 * 60,
+            seasons: false,
+            live_sky: false,
+            fun_dates: false,
         }
     }
 }
@@ -64,6 +71,10 @@ impl Default for Settings {
 impl Settings {
     pub fn load() -> Self {
         let mut s = Settings::default();
+        // Tests start from the defaults, whatever your own settings are.
+        if cfg!(test) {
+            return s;
+        }
         let Ok(text) = fs::read_to_string(config_dir().join("settings")) else { return s };
         for line in text.lines() {
             match line.split_once('=') {
@@ -82,6 +93,9 @@ impl Settings {
                 Some(("night_theme", v)) if !v.trim().is_empty() => s.night_theme = v.trim().to_string(),
                 Some(("day_at", v)) => s.day_at = v.trim().parse().unwrap_or(7 * 60).min(1439),
                 Some(("night_at", v)) => s.night_at = v.trim().parse().unwrap_or(20 * 60).min(1439),
+                Some(("seasons", v)) => s.seasons = v.trim() == "true",
+                Some(("live_sky", v)) => s.live_sky = v.trim() == "true",
+                Some(("fun_dates", v)) => s.fun_dates = v.trim() == "true",
                 Some(("exclude", v)) if !v.trim().is_empty() => s.exclusions.push(PathBuf::from(v.trim())),
                 _ => {}
             }
@@ -95,7 +109,7 @@ impl Settings {
             return;
         }
         let mut text = format!(
-            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\nauto_theme={}\nday_theme={}\nnight_theme={}\nday_at={}\nnight_at={}\n",
+            "reduce_motion={}\nauto_trash={}\nlow_disk_percent={}\njournal_days={}\nbig_min_mb={}\nlanguage={}\ncheck_updates={}\nundo_hours={}\nui_scale={}\nauto_theme={}\nday_theme={}\nnight_theme={}\nday_at={}\nnight_at={}\nseasons={}\nlive_sky={}\nfun_dates={}\n",
             self.reduce_motion,
             self.auto_trash,
             self.low_disk_percent,
@@ -109,7 +123,10 @@ impl Settings {
             self.day_theme.replace('\n', " "),
             self.night_theme.replace('\n', " "),
             self.day_at,
-            self.night_at
+            self.night_at,
+            self.seasons,
+            self.live_sky,
+            self.fun_dates
         );
         if let Some(sel) = &self.selected {
             text.push_str(&format!("selected={}\n", sel.join(",")));
