@@ -294,6 +294,30 @@ pub fn firmware_ms() -> Option<u32> {
     key.get_value::<u32, _>("FwPOSTTime").ok().filter(|ms| *ms > 0)
 }
 
+/// Names and publishers of installed programs (Apps & features), from the
+/// registry's Uninstall keys, machine-wide and per user, 64- and 32-bit.
+pub fn installed_programs() -> Vec<String> {
+    const KEYS: [&str; 2] = ["SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall", "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"];
+    let mut out = Vec::new();
+    for root in [RegKey::predef(HKEY_LOCAL_MACHINE), RegKey::predef(HKEY_CURRENT_USER)] {
+        for key in KEYS {
+            let Ok(list) = root.open_subkey(key) else { continue };
+            for sub in list.enum_keys().flatten() {
+                let Ok(app) = list.open_subkey(&sub) else { continue };
+                for value in ["DisplayName", "Publisher"] {
+                    if let Ok(v) = app.get_value::<String, _>(value) {
+                        out.push(v);
+                    }
+                }
+                if let Ok(loc) = app.get_value::<String, _>("InstallLocation") {
+                    out.extend(Path::new(loc.trim_matches('"')).file_name().map(|n| n.to_string_lossy().to_string()));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Sends printed output to the terminal the app was started from, if any
 /// (the app is a GUI program, so it has no console of its own).
 pub fn attach_console() {

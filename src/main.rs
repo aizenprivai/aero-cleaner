@@ -14,6 +14,7 @@ mod dupes;
 mod health;
 mod holding;
 mod i18n;
+mod leftovers;
 mod platform;
 mod report;
 mod rules;
@@ -67,6 +68,7 @@ enum Msg {
     BootToggled(Result<String, String>),
     UpdateChecked(Option<update::Update>),
     HealthDone(Vec<health::DiskHealth>),
+    LeftoversDone(Vec<leftovers::Leftover>),
     UndoList(Vec<holding::Held>),
     Restored(String),
 }
@@ -105,6 +107,7 @@ enum Tab {
     Cleaner,
     Browsers,
     Developer,
+    Leftovers,
     BigFiles,
     Duplicates,
     DiskMap,
@@ -171,6 +174,7 @@ struct App {
     auto: tabs::AutoState,
     boot: tabs::BootState,
     disk_hist: tabs::HistoryState,
+    leftovers: tabs::LeftoverState,
 }
 
 impl App {
@@ -215,6 +219,7 @@ impl App {
             auto: Default::default(),
             boot: Default::default(),
             disk_hist: Default::default(),
+            leftovers: Default::default(),
             keyboard_nav: false,
             update: None,
             undo_list: None,
@@ -441,6 +446,11 @@ impl App {
                     self.undo_list = None;
                     self.start_scan();
                 }
+                Msg::LeftoversDone(items) => {
+                    self.leftovers.items = items;
+                    self.leftovers.scanning = false;
+                    self.leftovers.done = true;
+                }
                 Msg::HealthDone(drives) => {
                     self.disk_hist.health = Some(drives);
                     self.disk_hist.health_loading = false;
@@ -548,7 +558,7 @@ impl eframe::App for App {
         let sidebar = Rect::from_min_max(pos2(inner.min.x - 6.0, nav_top), pos2(inner.min.x + 164.0, inner.max.y));
         aero::surface(&p, sidebar, 16.0, th, false, None);
         let groups: [(&str, &[(Tab, &str, &str)]); 3] = [
-            ("CLEAN", &[(Tab::Cleaner, "🚿", "Cleaner"), (Tab::Browsers, "🌐", "Browsers"), (Tab::Developer, "🛠", "Developer")]),
+            ("CLEAN", &[(Tab::Cleaner, "🚿", "Cleaner"), (Tab::Browsers, "🌐", "Browsers"), (Tab::Developer, "🛠", "Developer"), (Tab::Leftovers, "📁", "Leftovers")]),
             ("FIND SPACE", &[(Tab::BigFiles, "🐘", "Big files"), (Tab::Duplicates, "📑", "Duplicates"), (Tab::DiskMap, "🗺", "Disk map"), (Tab::DiskHistory, "📈", "Disk history")]),
             ("SYSTEM", &[(Tab::Boot, "⏱", "Boot time"), (Tab::Startup, "🚀", "Startup"), (Tab::Themes, "🎨", "Themes"), (Tab::Settings, "⚙", "Settings")]),
         ];
@@ -595,6 +605,7 @@ impl eframe::App for App {
             Tab::Cleaner => self.cleaner_tab(ui, area, spin, time),
             Tab::Browsers => self.browsers_tab(ui, area, spin, time),
             Tab::Developer => self.dev_tab(ui, area, spin, time),
+            Tab::Leftovers => self.leftovers_tab(ui, area, spin),
             Tab::Duplicates => self.dupes_tab(ui, area, spin),
             Tab::DiskMap => self.map_tab(ui, area, spin),
             Tab::DiskHistory => self.history_tab(ui, area, spin),
@@ -625,6 +636,7 @@ impl eframe::App for App {
             || self.auto.running
             || self.boot.loading
             || self.disk_hist.health_loading
+            || self.leftovers.scanning
             || self.boot.busy_unit.is_some()
             || self.review.as_ref().is_some_and(|r| r.lines.is_none())
             || (self.celebrate.is_some() && !self.settings.reduce_motion);
@@ -645,6 +657,7 @@ fn start_tab() -> Tab {
         Some("big") => Tab::BigFiles,
         Some("browsers") => Tab::Browsers,
         Some("dev") => Tab::Developer,
+        Some("leftovers") => Tab::Leftovers,
         Some("dupes") => Tab::Duplicates,
         Some("map") => Tab::DiskMap,
         Some("history") => Tab::DiskHistory,
@@ -769,7 +782,7 @@ const USAGE: &str = "AeroClean
 
 Usage:
   aero-cleaner                 open the app
-  aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, big, dupes, map, history, boot, startup, themes, settings)
+  aero-cleaner --tab <name>    open on a screen (cleaner, browsers, dev, leftovers, big, dupes, map, history, boot, startup, themes, settings)
   aero-cleaner clean --auto    run the automatic clean (thumbnails, app caches, Trash if enabled) and notify
   aero-cleaner clean --dry-run show what the Cleaner would remove, without removing anything
                  [--auto]      only what the automatic clean would remove
@@ -876,8 +889,20 @@ mod ui_tests {
     use super::*;
     use egui_kittest::Harness;
 
-    const ALL_TABS: [Tab; 11] =
-        [Tab::Cleaner, Tab::Browsers, Tab::Developer, Tab::BigFiles, Tab::Duplicates, Tab::DiskMap, Tab::DiskHistory, Tab::Boot, Tab::Startup, Tab::Themes, Tab::Settings];
+    const ALL_TABS: [Tab; 12] = [
+        Tab::Cleaner,
+        Tab::Browsers,
+        Tab::Developer,
+        Tab::Leftovers,
+        Tab::BigFiles,
+        Tab::Duplicates,
+        Tab::DiskMap,
+        Tab::DiskHistory,
+        Tab::Boot,
+        Tab::Startup,
+        Tab::Themes,
+        Tab::Settings,
+    ];
 
     fn harness() -> Harness<'static, App> {
         Harness::builder().with_size(vec2(1080.0, 800.0)).build_eframe(|cc| {
@@ -1005,10 +1030,10 @@ mod ui_tests {
         h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num3);
         h.run_steps(1);
         assert_eq!(h.state().tab, Tab::Developer);
-        // Ctrl+0 is the tenth screen: Themes (Linux, Windows) or Settings (macOS, no Boot time).
+        // Ctrl+0 is the tenth screen: Startup (Linux, Windows) or Themes (macOS, no Boot time).
         h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num0);
         h.run_steps(1);
-        assert_eq!(h.state().tab, if platform::IS_MACOS { Tab::Settings } else { Tab::Themes });
+        assert_eq!(h.state().tab, if platform::IS_MACOS { Tab::Themes } else { Tab::Startup });
     }
 
     #[test]

@@ -753,6 +753,20 @@ const FR: &[(&str, &str)] = &[
         "Imported {} rule(s) from {} BleachBit cleaners, for apps installed here. Tick the ones you want.",
         "{} règle(s) importée(s) depuis {} nettoyeurs BleachBit, pour les applis installées ici. Cochez celles que vous voulez.",
     ),
+    // ----- Leftovers -----
+    ("Leftovers", "Restes d'applis"),
+    (
+        "Folders left behind by apps that don't seem installed anymore, untouched for 3 months or more. It's a guess: check each one. The Trash can bring it back.",
+        "Dossiers laissés par des applis qui ne semblent plus installées, inutilisés depuis 3 mois ou plus. C'est une estimation : vérifiez chacun. La corbeille peut les rendre.",
+    ),
+    ("🔄 Search again", "🔄 Relancer"),
+    ("Looking for leftovers...", "Recherche des restes d'applis..."),
+    ("NO LEFTOVERS FOUND. TIDY!", "AUCUN RESTE TROUVÉ. TOUT EST PROPRE !"),
+    ("last used {}", "utilisé {}"),
+    ("Not leftover", "Encore utilisé"),
+    ("Still in use: never show this folder again", "Toujours utilisé : ne plus jamais afficher ce dossier"),
+    ("Move this folder to the Trash (recoverable)", "Mettre ce dossier à la corbeille (récupérable)"),
+    ("{} won't be shown again", "{} ne sera plus affiché"),
     // ----- Ages -----
     ("today", "aujourd'hui"),
     ("yesterday", "hier"),
